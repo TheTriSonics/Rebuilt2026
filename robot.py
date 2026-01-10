@@ -1,26 +1,26 @@
-import wpilib
+import magicbot
 
-class MyRobot(wpilib.TimedRobot):
-    def robotInit(self):
-        """Robot initialization function"""
-        pass
 
-    def autonomousInit(self):
-        """Executed when autonomous mode starts"""
-        pass
+class MyRobot(magicbot.MagicRobot):
+    # Declare components and controllers here
+
+    def createObjects(self):
+        # Create logging and such here; actual robot components are above
+        ...
+
+    def autonomousInit(self): ...
 
     def autonomousPeriodic(self):
-        """Called periodically during autonomous"""
-        pass
+        # MagicBot handles periodic execution; this never runs but is left as
+        # a placeholder to keep others from trying to implement it thinking
+        # it will be called.
+        ...
 
-    def teleopInit(self):
-        """Executed when teleop mode starts"""
-        pass
+    def teleopInit(self): ...
 
-    def teleopPeriodic(self):
-        """Called periodically during teleop"""
-        print('running teleop!')
-        pass
+    def teleopPeriodic(self): 
+        print('teleop running')
 
-if __name__ == "__main__":
-    wpilib.run(MyRobot)
+    def disabledPeriodic(self):
+        print('robot awaiting instructions')
+

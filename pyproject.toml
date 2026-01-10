@@ -1,7 +1,7 @@
 [project]
 name = "rebuilt2026"
 version = "0.1.0"
-description = "Add your description here"
+description = "TriSonics 4003 Rebuilt 2026"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
