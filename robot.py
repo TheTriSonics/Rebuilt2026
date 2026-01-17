@@ -1,12 +1,25 @@
+import wpilib
 import magicbot
+
+from components.drivetrain import DrivetrainComponent
+from components.gyro import GyroComponent
+from utilities.scalers import rescale_js
 
 
 class MyRobot(magicbot.MagicRobot):
     # Declare components and controllers here
+    # Controllers (must be declared before components)
+
+    # Components
+    gyro: GyroComponent
+    drivetrain: DrivetrainComponent
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
-        ...
+        self.data_log = wpilib.DataLogManager.getLog()
+        wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
+        self.field = wpilib.Field2d()
+        wpilib.SmartDashboard.putData(self.field)
 
     def autonomousInit(self): ...
 
@@ -16,10 +29,19 @@ class MyRobot(magicbot.MagicRobot):
         # it will be called.
         ...
 
-    def teleopInit(self): ...
+    def teleopInit(self):
+        self.driver_controller = wpilib.XboxController(0)
 
-    def teleopPeriodic(self): 
+    def teleopPeriodic(self):
         print('teleop running')
+        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * 50
+        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * 50
+        drive_rot = -rescale_js(self.driver_controller.getRightX(), 0.05, 1.0) * 3.14
+        drive_x = 50
+        drive_y = 40
+        drive_rot = 0
+
+        self.drivetrain.drive_local(drive_x, drive_y, drive_rot)
 
     def disabledPeriodic(self):
         print('robot awaiting instructions')
