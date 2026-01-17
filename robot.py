@@ -1,3 +1,4 @@
+import math
 import wpilib
 import magicbot
 
@@ -33,16 +34,13 @@ class MyRobot(magicbot.MagicRobot):
         self.driver_controller = wpilib.XboxController(0)
 
     def teleopPeriodic(self):
-        print('teleop running')
-        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * 50
-        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * 50
-        drive_rot = -rescale_js(self.driver_controller.getRightX(), 0.05, 1.0) * 3.14
-        drive_x = 50
-        drive_y = 40
-        drive_rot = 0
-
+        xyfudge = 500
+        rotfudge = 200 * math.pi
+        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * xyfudge
+        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * xyfudge
+        drive_rot = rescale_js(self.driver_controller.getRightX(), 0.05, 1.0) * rotfudge
         self.drivetrain.drive_local(drive_x, drive_y, drive_rot)
 
     def disabledPeriodic(self):
-        print('robot awaiting instructions')
+        ...
 
