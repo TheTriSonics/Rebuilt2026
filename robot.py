@@ -7,7 +7,7 @@ from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from utilities.scalers import rescale_js
 
-from magicbot import feedback
+from magicbot import feedback, tunable
 
 pn = wpilib.SmartDashboard.putNumber
 
@@ -28,10 +28,13 @@ class MyRobot(magicbot.MagicRobot):
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
-    xyfudge = 250.0
-    rotfudge = 2.0 * math.pi
+    max_speed = tunable(5.0)
+    max_rotation = tunable(math.tau)
 
     balls: list[BallProperties] = []
+
+    fuel_launch_vel = tunable(2.0)
+    fuel_launch_zvel = tunable(5.0)
 
 
     def createObjects(self):
@@ -56,17 +59,17 @@ class MyRobot(magicbot.MagicRobot):
 
     @feedback
     def get_drive_x(self) -> float:
-        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.xyfudge
+        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
         return drive_x
     
     @feedback
     def get_drive_y(self) -> float:
-        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.xyfudge
+        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
         return drive_y
 
     @feedback
     def get_drive_rot(self) -> float:
-        drive_rot = rescale_js(self.driver_controller.getRawAxis(3), 0.05, 2.0) * self.rotfudge
+        drive_rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.05, 2.0) * self.max_rotation
         return drive_rot
 
     def teleopPeriodic(self):
@@ -78,14 +81,18 @@ class MyRobot(magicbot.MagicRobot):
         )
         self.drivetrain.drive_local(x, y, rot)
         if self.driver_controller.getAButtonPressed():
+            xvel = self.fuel_launch_vel * math.cos(current_pose.rotation().radians())
+            yvel = self.fuel_launch_vel * math.sin(current_pose.rotation().radians())
+            xvel += self.drivetrain.vx 
+            yvel += self.drivetrain.vy 
             self.balls.append(
                 BallProperties(
                     xpos=current_pose.X(),
                     ypos=current_pose.Y(),
-                    zpos=1.0,
-                    xvel=2.0,
-                    yvel=0.0,
-                    zvel=5.0,)
+                    zpos=0.15,
+                    xvel=xvel,
+                    yvel=yvel,
+                    zvel=self.fuel_launch_zvel)
             )
         print('Balls:', len(self.balls))
 

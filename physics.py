@@ -101,8 +101,7 @@ class PhysicsEngine:
             SimpleTalonFXMotorSim(
                 module.drive,
                 units_per_rev=1 / 0.0503,
-                # kV=2.7,
-                kV=5.0,
+                kV=2.7,
             )
             for module in robot.drivetrain.modules
         ]

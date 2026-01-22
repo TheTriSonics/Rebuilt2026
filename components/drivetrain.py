@@ -211,6 +211,8 @@ class DrivetrainComponent():
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
+        self.vx = 0
+        self.vy = 0
 
         self.publisher = (ntcore.NetworkTableInstance.getDefault()
                                                 .getStructTopic("MyPose", Pose2d)
@@ -391,7 +393,7 @@ class DrivetrainComponent():
         desired_speeds = self.chassis_speeds
         desired_states = self.kinematics.toSwerveModuleStates(desired_speeds)
         desired_states = self.kinematics.desaturateWheelSpeeds(
-            desired_states, attainableMaxSpeed=self.max_wheel_speed
+            desired_states, attainableMaxSpeed=5
         )
 
         for state, module in zip(desired_states, self.modules):
@@ -412,10 +414,20 @@ class DrivetrainComponent():
         v = self.gyro.pigeon.get_angular_velocity_z_world().value
         return math.radians(v)
 
-    def update_odometry(self) -> None:
-        self.estimator.update(self.gyro.get_Rotation2d(), self.get_module_positions())
+    def get_robot_speeds(self) -> tuple[float, float]:
+        return self.vx, self.vy
 
-        self.publisher.set(self.get_pose())
+    def update_odometry(self) -> None:
+        orig_pose = self.get_pose()
+        self.estimator.update(self.gyro.get_Rotation2d(), self.get_module_positions())
+        curr_pose = self.get_pose()
+
+        dx = curr_pose.x - orig_pose.x
+        dy = curr_pose.y - orig_pose.y
+        self.vx = dx / 0.02
+        self.vy = dy / 0.02
+
+        self.publisher.set(curr_pose)
         if self.send_modules:
             self.setpoints_publisher.set([module.state for module in self.modules])
             self.measurements_publisher.set([module.get() for module in self.modules])
