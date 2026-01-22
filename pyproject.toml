@@ -8,5 +8,6 @@ dependencies = [
     "numpy>=2.4.1",
     "phoenix6>=26.1.0",
     "robotpy>=2026.2.1",
+    "robotpy-apriltag>=2026.2.1",
     "wpilib>=2026.2.1",
 ]

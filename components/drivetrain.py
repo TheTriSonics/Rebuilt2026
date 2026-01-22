@@ -1,4 +1,5 @@
 import math
+from collections import deque
 from logging import Logger
 
 import magicbot
@@ -213,6 +214,12 @@ class DrivetrainComponent():
     def __init__(self) -> None:
         self.vx = 0
         self.vy = 0
+        # Buffers for weighted moving average of velocity
+        self._velocity_samples = 10
+        self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
+        self._vy_samples: deque[float] = deque(maxlen=self._velocity_samples)
+        # Weights for exponential weighting (most recent sample has highest weight)
+        self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
 
         self.publisher = (ntcore.NetworkTableInstance.getDefault()
                                                 .getStructTopic("MyPose", Pose2d)
@@ -424,8 +431,15 @@ class DrivetrainComponent():
 
         dx = curr_pose.x - orig_pose.x
         dy = curr_pose.y - orig_pose.y
-        self.vx = dx / 0.02
-        self.vy = dy / 0.02
+        # Add new velocity samples to the buffers
+        self._vx_samples.append(dx / 0.02)
+        self._vy_samples.append(dy / 0.02)
+        # Calculate weighted moving average (recent samples weighted more heavily)
+        n = len(self._vx_samples)
+        weights = self._velocity_weights[:n]
+        total_weight = sum(weights)
+        self.vx = sum(v * w for v, w in zip(self._vx_samples, weights)) / total_weight
+        self.vy = sum(v * w for v, w in zip(self._vy_samples, weights)) / total_weight
 
         self.publisher.set(curr_pose)
         if self.send_modules:

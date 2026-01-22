@@ -4,6 +4,7 @@ import magicbot
 
 from dataclasses import dataclass
 from components.drivetrain import DrivetrainComponent
+from components.turret import TurretComponent, traj_calc
 from components.gyro import GyroComponent
 from utilities.scalers import rescale_js
 
@@ -27,6 +28,7 @@ class MyRobot(magicbot.MagicRobot):
     # Components
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
+    turret: TurretComponent
 
     max_speed = tunable(5.0)
     max_rotation = tunable(math.tau)
@@ -69,7 +71,7 @@ class MyRobot(magicbot.MagicRobot):
 
     @feedback
     def get_drive_rot(self) -> float:
-        drive_rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.05, 2.0) * self.max_rotation
+        drive_rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
         return drive_rot
 
     def teleopPeriodic(self):
@@ -81,10 +83,15 @@ class MyRobot(magicbot.MagicRobot):
         )
         self.drivetrain.drive_local(x, y, rot)
         if self.driver_controller.getAButtonPressed():
-            xvel = self.fuel_launch_vel * math.cos(current_pose.rotation().radians())
-            yvel = self.fuel_launch_vel * math.sin(current_pose.rotation().radians())
-            xvel += self.drivetrain.vx 
-            yvel += self.drivetrain.vy 
+            field_shot_angle = self.turret.measured_angle - self.gyro.get_Rotation2d().radians()
+            distance_to_goal = self.turret.distance_to_goal * 0.90
+            vhoriz, vz, t = traj_calc(distance_to_goal)
+            xvel = vhoriz * math.cos(field_shot_angle)
+            yvel = vhoriz * math.sin(field_shot_angle)
+            self.fuel_launch_vel = vhoriz
+            self.fuel_launch_zvel = vz
+            xvel += self.drivetrain.vx
+            yvel += self.drivetrain.vy
             self.balls.append(
                 BallProperties(
                     xpos=current_pose.X(),
@@ -92,9 +99,9 @@ class MyRobot(magicbot.MagicRobot):
                     zpos=0.15,
                     xvel=xvel,
                     yvel=yvel,
-                    zvel=self.fuel_launch_zvel)
+                    zvel=vz)
             )
-        print('Balls:', len(self.balls))
+            print('Field shot angle (deg):', math.degrees(field_shot_angle))
 
     def disabledPeriodic(self):
         ...
