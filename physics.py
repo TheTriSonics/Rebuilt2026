@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import ntcore
 import typing
 import numpy as np
 
@@ -8,7 +9,7 @@ import phoenix6
 import phoenix6.unmanaged
 import wpilib
 # import robotpy_apriltag
-from wpimath.geometry import Rotation2d
+from wpimath.geometry import Rotation2d, Pose3d, Rotation3d, Translation3d
 from pyfrc.physics.core import PhysicsInterface
 from wpilib.simulation import DCMotorSim
 from wpimath.kinematics import SwerveDrive4Kinematics
@@ -25,6 +26,7 @@ from photonlibpy.simulation.photonCameraSim import PhotonCameraSim
 from photonlibpy.simulation.simCameraProperties import SimCameraProperties
 """
 
+from robot import BallProperties
 if typing.TYPE_CHECKING:
     from robot import MyRobot
 
@@ -83,6 +85,11 @@ class PhysicsEngine:
         self.physics_controller = physics_controller
         self.robot = robot
         self.cancoder_test_offset = 0
+        self.sim_balls = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructArrayTopic('/components/shooter/simballs', Pose3d)
+            .publish()
+        )
 
         self.kinematics: SwerveDrive4Kinematics = robot.drivetrain.kinematics
         self.swerve_modules: tuple[
@@ -94,7 +101,8 @@ class PhysicsEngine:
             SimpleTalonFXMotorSim(
                 module.drive,
                 units_per_rev=1 / 0.0503,
-                kV=2.7,
+                # kV=2.7,
+                kV=5.0,
             )
             for module in robot.drivetrain.modules
         ]
@@ -103,7 +111,8 @@ class PhysicsEngine:
                 module.steer,
                 gearing=1 / TunerConstants._steer_gear_ratio,
                 # measured from MKCad CAD
-                moi=0.0009972,
+                # moi=0.0009972,
+                moi=0.0009972 * 4,
             )
             for module in robot.drivetrain.modules
         ]
@@ -122,6 +131,29 @@ class PhysicsEngine:
         # TODO: delete when phoenix6 integrates with wpilib
         if wpilib.DriverStation.isEnabled():
             phoenix6.unmanaged.feed_enable(0.1)
+
+        poses: list[Pose3d] = []
+        for b in self.robot.balls:
+            pose = Pose3d(
+                Translation3d(b.xpos, b.ypos, b.zpos),
+                Rotation3d(0, 0, 0),
+            )
+            b.xpos += b.xvel * tm_diff
+            b.ypos += b.yvel * tm_diff
+            b.zpos += b.zvel * tm_diff
+            if b.zpos >= 0.075:
+                # Calculate new Z velocity with simple gravity
+                b.zvel -= 9.81 * tm_diff
+            else:
+                # Ball has hit the ground; stop simulating it
+                b.xvel = 0.0
+                b.yvel = 0.0
+                b.zvel = 0.0
+
+            poses.append(pose)
+        if len(poses) > 0:
+            self.sim_balls.set(poses)
+
 
         for wheel in self.wheels:
             wheel.update(tm_diff)
@@ -148,7 +180,8 @@ class PhysicsEngine:
 
         self.current_yaw += math.degrees(speeds.omega * tm_diff)
         sigma = (math.radians(0.5) / math.tau) / 2
-        yaw_jitter = np.random.normal(loc=0, scale=sigma)
+        # yaw_jitter = np.random.normal(loc=0, scale=sigma)
+        yaw_jitter = 0
         self.gyro.set_raw_yaw(self.current_yaw + yaw_jitter)
 
         self.physics_controller.drive(speeds, tm_diff)

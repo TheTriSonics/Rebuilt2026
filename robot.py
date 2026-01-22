@@ -2,10 +2,23 @@ import math
 import wpilib
 import magicbot
 
+from dataclasses import dataclass
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from utilities.scalers import rescale_js
 
+from magicbot import feedback
+
+pn = wpilib.SmartDashboard.putNumber
+
+@dataclass
+class BallProperties:
+    xpos: float
+    ypos: float
+    zpos: float
+    xvel: float
+    yvel: float
+    zvel: float
 
 class MyRobot(magicbot.MagicRobot):
     # Declare components and controllers here
@@ -15,12 +28,20 @@ class MyRobot(magicbot.MagicRobot):
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
+    xyfudge = 250.0
+    rotfudge = 2.0 * math.pi
+
+    balls: list[BallProperties] = []
+
+
     def createObjects(self):
         # Create logging and such here; actual robot components are above
         self.data_log = wpilib.DataLogManager.getLog()
         wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         self.field = wpilib.Field2d()
         wpilib.SmartDashboard.putData(self.field)
+
+        self.driver_controller = wpilib.XboxController(0)
 
     def autonomousInit(self): ...
 
@@ -31,15 +52,42 @@ class MyRobot(magicbot.MagicRobot):
         ...
 
     def teleopInit(self):
-        self.driver_controller = wpilib.XboxController(0)
+        ...
+
+    @feedback
+    def get_drive_x(self) -> float:
+        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.xyfudge
+        return drive_x
+    
+    @feedback
+    def get_drive_y(self) -> float:
+        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.xyfudge
+        return drive_y
+
+    @feedback
+    def get_drive_rot(self) -> float:
+        drive_rot = rescale_js(self.driver_controller.getRawAxis(3), 0.05, 2.0) * self.rotfudge
+        return drive_rot
 
     def teleopPeriodic(self):
-        xyfudge = 500
-        rotfudge = 200 * math.pi
-        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * xyfudge
-        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * xyfudge
-        drive_rot = rescale_js(self.driver_controller.getRightX(), 0.05, 1.0) * rotfudge
-        self.drivetrain.drive_local(drive_x, drive_y, drive_rot)
+        current_pose = self.drivetrain.get_pose()
+        x, y, rot = (
+            self.get_drive_x(),
+            self.get_drive_y(),
+            self.get_drive_rot(),
+        )
+        self.drivetrain.drive_local(x, y, rot)
+        if self.driver_controller.getAButtonPressed():
+            self.balls.append(
+                BallProperties(
+                    xpos=current_pose.X(),
+                    ypos=current_pose.Y(),
+                    zpos=1.0,
+                    xvel=2.0,
+                    yvel=0.0,
+                    zvel=5.0,)
+            )
+        print('Balls:', len(self.balls))
 
     def disabledPeriodic(self):
         ...
