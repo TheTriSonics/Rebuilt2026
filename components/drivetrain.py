@@ -30,14 +30,14 @@ from wpimath.kinematics import (
     SwerveModuleState,
 )
 from wpimath.trajectory import TrapezoidProfileRadians
-from components.gyro import GyroComponent
 
+from components.gyro import GyroComponent
 from generated.tuner_constants_NoBot import TunerConstants
 from ids import CancoderId, TalonId
-from utilities.game import is_red, is_sim, is_match
+from utilities.game import is_match, is_red
 
 
-def angle_difference(angle1, angle2):
+def angle_difference(angle1: float, angle2: float) -> float:
     """
     Calculate the smallest difference between two angles in radians.
     Returns the absolute difference in radians.
@@ -193,7 +193,7 @@ class SwerveModule:
         return SwerveModuleState(self.get_speed(), self.get_rotation())
 
 
-class DrivetrainComponent():
+class DrivetrainComponent:
     # Here's where we inject the other components
     # Note that you can't use the components directly in the __init__ method
     # You have to use them in the setup() method
@@ -379,8 +379,7 @@ class DrivetrainComponent():
         """set a heading target for the heading controller"""
         self.snapping_to_heading = True
         self.snap_heading = heading
-        if self.snap_heading is not None:
-            self.heading_controller.setGoal(self.snap_heading)
+        self.heading_controller.setGoal(self.snap_heading)
 
     def stop_snapping(self) -> None:
         """stops the heading_controller"""
@@ -403,7 +402,7 @@ class DrivetrainComponent():
             desired_states, attainableMaxSpeed=5
         )
 
-        for state, module in zip(desired_states, self.modules):
+        for state, module in zip(desired_states, self.modules, strict=True):
             module.set(state)
 
         self.update_odometry()
@@ -421,9 +420,6 @@ class DrivetrainComponent():
         v = self.gyro.pigeon.get_angular_velocity_z_world().value
         return math.radians(v)
 
-    def get_robot_speeds(self) -> tuple[float, float]:
-        return self.vx, self.vy
-
     def update_odometry(self) -> None:
         orig_pose = self.get_pose()
         self.estimator.update(self.gyro.get_Rotation2d(), self.get_module_positions())
@@ -438,8 +434,8 @@ class DrivetrainComponent():
         n = len(self._vx_samples)
         weights = self._velocity_weights[:n]
         total_weight = sum(weights)
-        self.vx = sum(v * w for v, w in zip(self._vx_samples, weights)) / total_weight
-        self.vy = sum(v * w for v, w in zip(self._vy_samples, weights)) / total_weight
+        self.vx = sum(v * w for v, w in zip(self._vx_samples, weights, strict=True)) / total_weight
+        self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
 
         self.publisher.set(curr_pose)
         if self.send_modules:

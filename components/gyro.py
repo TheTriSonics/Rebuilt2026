@@ -1,7 +1,8 @@
-from wpimath.geometry import Rotation2d
-from phoenix6.hardware import Pigeon2
-from ids import CanId
 from magicbot import feedback
+from phoenix6.hardware import Pigeon2
+from wpimath.geometry import Rotation2d
+
+from ids import CanId
 
 
 class GyroComponent:

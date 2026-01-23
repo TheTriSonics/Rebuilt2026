@@ -16,7 +16,7 @@ class TunerConstants:
         configs.Slot0Configs()
         .with_k_p(0.29)
         .with_k_i(0)
-        .with_k_d(0) 
+        .with_k_d(0)
         .with_k_s(0.233)
         .with_k_v(0.874)
         .with_k_a(0.016)
@@ -85,7 +85,7 @@ class TunerConstants:
     _invert_left_side = False
     _invert_right_side = True
 
-    _pigeon_id = 41 
+    _pigeon_id = 41
 
     # These are only used for simulation
     _steer_inertia: units.kilogram_square_meter = 0.01

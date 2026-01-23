@@ -1,23 +1,23 @@
 from __future__ import annotations
 
 import math
-import ntcore
 import typing
-import numpy as np
 
+import ntcore
+import numpy as np
 import phoenix6
 import phoenix6.unmanaged
 import wpilib
-# import robotpy_apriltag
-from wpimath.geometry import Rotation2d, Pose3d, Rotation3d, Translation3d
 from pyfrc.physics.core import PhysicsInterface
 from wpilib.simulation import DCMotorSim
+
+# import robotpy_apriltag
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 from wpimath.kinematics import SwerveDrive4Kinematics
 from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.units import kilogram_square_meters
 
 from components.drivetrain import SwerveModule
-
 from generated.tuner_constants_NoBot import TunerConstants
 
 """
@@ -26,7 +26,6 @@ from photonlibpy.simulation.photonCameraSim import PhotonCameraSim
 from photonlibpy.simulation.simCameraProperties import SimCameraProperties
 """
 
-from robot import BallProperties
 if typing.TYPE_CHECKING:
     from robot import MyRobot
 
@@ -132,7 +131,7 @@ class PhysicsEngine:
             phoenix6.unmanaged.feed_enable(0.1)
 
         poses: list[Pose3d] = []
-        for b in self.robot.balls:
+        for b in self.robot.turret.balls:
             pose = Pose3d(
                 Translation3d(b.xpos, b.ypos, b.zpos),
                 Rotation3d(0, 0, 0),

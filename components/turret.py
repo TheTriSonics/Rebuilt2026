@@ -1,15 +1,19 @@
-from math import atan2, pi, tau, sqrt, sin, cos
-import wpilib
+from collections import deque
+from dataclasses import dataclass
+from math import atan2, cos, pi, sin, sqrt, tau
+
 import ntcore
-
-from wpimath.geometry import Pose3d, Translation3d, Rotation3d
-
 from magicbot import feedback, tunable
+from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d
+
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 
-from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
-
+_G = 9.81
+_shooter_height = 0.15  # meters
+_goal_height = 2.00  # meters
+_margin_factor = 2.00
 
 def clamp_angle(rads: float) -> float:
     rads = rads % tau
@@ -17,29 +21,22 @@ def clamp_angle(rads: float) -> float:
         rads -= tau
     return rads
 
-def traj_calc(d: float, margin_factor: float = 2.0, 
-              launch_height: float = 0.15, goal_height: float = 2.0,
-              g: float = 9.81) -> dict:
-    delta_h = goal_height - launch_height
-    
-    t_min = sqrt(2 * delta_h / g)
-    t = t_min * margin_factor  # slightly longer flight
-    
-    # Now solve for v and θ with this fixed t:
-    # d = v*cos(θ)*t
-    # delta_h = v*sin(θ)*t - 0.5*g*t²
-    #
-    # Let vx = v*cos(θ) = d/t
-    # Let vy = v*sin(θ) = (delta_h + 0.5*g*t²) / t
-    
-    vx = d / t
-    vy = (delta_h + 0.5 * g * t**2) / t
-    
-    v = sqrt(vx**2 + vy**2)
-    theta = atan2(vy, vx)
-    vx = cos(theta) * v
-    vz = sin(theta) * v
-    return vx, vz, t
+def traj_calc(d: float) -> tuple[float, float, float]:
+    delta_h = _goal_height - _shooter_height
+    t = sqrt(2 * delta_h / _G) * _margin_factor
+    vhoriz = d / t
+    vvert = (delta_h + 0.5 * _G * t**2) / t
+    return vhoriz, vvert, t
+
+
+@dataclass
+class BallProperties:
+    xpos: float
+    ypos: float
+    zpos: float
+    xvel: float
+    yvel: float
+    zvel: float
 
 
 class TurretComponent:
@@ -53,14 +50,14 @@ class TurretComponent:
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
     def __init__(self):
-        self.angle = 0.0
+        self.balls: deque[BallProperties] = deque(maxlen=20)
         self.targets = (
             ntcore.NetworkTableInstance.getDefault()
             .getStructArrayTopic('/components/turret/targets', Pose3d)
             .publish()
         )
-        tag20 = self.apriltags.getTagPose(20)
-        tag26 = self.apriltags.getTagPose(26)
+        tag20: Pose3d = self.apriltags.getTagPose(20) or Pose3d()
+        tag26: Pose3d = self.apriltags.getTagPose(26) or Pose3d()
         self.static_goal_center = Pose3d(
             Translation3d((tag20.x + tag26.x)/2, tag20.y, tag20.z),
             Rotation3d(0, 0, 0),
@@ -73,15 +70,33 @@ class TurretComponent:
         # If we're within half a degree say we're at position
         return abs(self.desired_angle - self.measured_angle) < 0.5
 
-    def set_angle(self, angle: float):
-        self.desired_angle = angle
-    
+    def shoot_fuel(self) -> None:
+        current_pose = self.drivetrain.get_pose()
+        field_shot_angle = self.measured_angle - self.gyro.get_Rotation2d().radians()
+        distance_to_goal = self.distance_to_goal * 0.90
+        vhoriz, vz, _ = traj_calc(distance_to_goal)
+        xvel = vhoriz * cos(field_shot_angle)
+        yvel = vhoriz * sin(field_shot_angle)
+        self.fuel_launch_vel = vhoriz
+        self.fuel_launch_zvel = vz
+        xvel += self.drivetrain.vx
+        yvel += self.drivetrain.vy
+        self.balls.append(
+            BallProperties(
+                xpos=current_pose.x,
+                ypos=current_pose.y,
+                zpos=_shooter_height,
+                xvel=xvel,
+                yvel=yvel,
+                zvel=vz)
+        )
+
     def execute(self) -> None:
         curr_pose = self.drivetrain.get_pose()
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
 
-        t = sqrt(2 * (2.0 - 0.15) / 9.81) * 2.0
+        t = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
         futurex = self.static_goal_center.translation().x - robotvx * t
         futurey = self.static_goal_center.translation().y - robotvy * t
         # Calculate the angle to the goal from the current pose
@@ -91,10 +106,12 @@ class TurretComponent:
             atan2(dy, dx) + self.gyro.get_Rotation2d().radians()
         )
         self.distance_to_goal = sqrt(dx**2 + dy**2)
-        # Just hack this for now
-        self.measured_angle = self.desired_angle
         goal_viz = Pose3d(
             Translation3d(futurex, futurey, self.static_goal_center.translation().z),
             Rotation3d(0, 0, 0),
         )
         self.targets.set([goal_viz])
+
+        # Just hack this for now, later this is where we'd want to drive the
+        # motor to the proper setpoint.
+        self.measured_angle = self.desired_angle
