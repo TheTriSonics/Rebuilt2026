@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from math import atan2, cos, pi, sin, sqrt, tau
 
 import ntcore
-from magicbot import feedback, tunable
+from magicbot import tunable
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
 from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
@@ -21,10 +21,27 @@ def clamp_angle(rads: float) -> float:
         rads -= tau
     return rads
 
+# We'll gloss over the derivation of the physics here and just use the formulas
+# you might find in a high school physics textbook.
 def traj_calc(d: float) -> tuple[float, float, float]:
+    # Determine the height difference of our target spot and where fuel exits
+    # the shooter
     delta_h = _goal_height - _shooter_height
-    t = sqrt(2 * delta_h / _G) * _margin_factor
+    # Now calculate the time it will take for the ball to reach the target
+    # height if launched on a trajectory where that target height was it's max.
+    # This is also the time it would take to drop from the target height to the
+    # shooter height
+    t = sqrt(2 * delta_h / _G)
+    # Now multiply the minimum flight time by something larger than 1 so that we
+    # know the fuel cell will be coming down in its flight path. The larger the
+    # value the more of a "lob" shot you'll get.
+    t *= _margin_factor
+    # Horizontal velocity to reach the goal is simply distance / time
     vhoriz = d / t
+    # Calculate how hard we have to launch the fuel vertically so that after t
+    # seconds it's still risen up delta_h. That means we'll have to launch it
+    # above the target height and it'll be falling because t is longer than the
+    # time it would take to reach the target height.
     vvert = (delta_h + 0.5 * _G * t**2) / t
     return vhoriz, vvert, t
 
@@ -43,6 +60,7 @@ class TurretComponent:
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
+    # These are set to tunables just so they show up on the dashboard for now
     distance_to_goal = tunable(0.0)
     desired_angle = tunable(0.0)
     measured_angle = tunable(0.0)
@@ -50,12 +68,19 @@ class TurretComponent:
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
     def __init__(self):
+        # We'll keep track of 20 ball objects and let the physics sim handle
+        # their motion. This doesn't matter to a real robot at all.
         self.balls: deque[BallProperties] = deque(maxlen=20)
+        # We'll use this to debug targetting. Right now it shows where the
+        # robot's turret should be aiming at if it were to launch a fuel cell
         self.targets = (
             ntcore.NetworkTableInstance.getDefault()
             .getStructArrayTopic('/components/turret/targets', Pose3d)
             .publish()
         )
+        # We calculate the center of the goal based on the positions of
+        # AprilTags 20 and 26, then get a point right between them. That's
+        # basically dead center of the goal
         tag20: Pose3d = self.apriltags.getTagPose(20) or Pose3d()
         tag26: Pose3d = self.apriltags.getTagPose(26) or Pose3d()
         self.static_goal_center = Pose3d(
@@ -65,12 +90,10 @@ class TurretComponent:
         t = [self.static_goal_center ]
         self.targets.set(t)
 
-    @feedback
-    def at_position(self) -> bool:
-        # If we're within half a degree say we're at position
-        return abs(self.desired_angle - self.measured_angle) < 0.5
-
     def shoot_fuel(self) -> None:
+        # This method might turn on some motors on a real robot but for now
+        # we're just going to calculate what we would want the fuel to do upon
+        # ejection and then let the physics sim handle it.
         current_pose = self.drivetrain.get_pose()
         field_shot_angle = self.measured_angle - self.gyro.get_Rotation2d().radians()
         distance_to_goal = self.distance_to_goal * 0.90

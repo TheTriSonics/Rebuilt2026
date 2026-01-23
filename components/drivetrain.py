@@ -37,18 +37,6 @@ from ids import CancoderId, TalonId
 from utilities.game import is_match, is_red
 
 
-def angle_difference(angle1: float, angle2: float) -> float:
-    """
-    Calculate the smallest difference between two angles in radians.
-    Returns the absolute difference in radians.
-    """
-    # Normalize the difference to be between -π and π
-    diff = (angle1 - angle2) % (2 * math.pi)
-    if diff > math.pi:
-        diff = 2 * math.pi - diff
-    return diff
-
-
 class SwerveModule:
     # limit the acceleration of the commanded speeds of the robot to what is
     # actually achiveable without the wheels slipping. This is done to improve

@@ -9,7 +9,6 @@ from components.gyro import GyroComponent
 from components.turret import TurretComponent
 from utilities.scalers import rescale_js
 
-pn = wpilib.SmartDashboard.putNumber
 
 class MyRobot(magicbot.MagicRobot):
     # Declare components and controllers here
@@ -30,8 +29,8 @@ class MyRobot(magicbot.MagicRobot):
     def createObjects(self):
         # Create logging and such here; actual robot components are above
         self.data_log = wpilib.DataLogManager.getLog()
-        wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         self.field = wpilib.Field2d()
+        wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         wpilib.SmartDashboard.putData(self.field)
 
         self.driver_controller = wpilib.XboxController(0)
@@ -47,28 +46,12 @@ class MyRobot(magicbot.MagicRobot):
     def teleopInit(self):
         ...
 
-    @feedback
-    def get_drive_x(self) -> float:
-        drive_x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
-        return drive_x
-
-    @feedback
-    def get_drive_y(self) -> float:
-        drive_y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
-        return drive_y
-
-    @feedback
-    def get_drive_rot(self) -> float:
-        drive_rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
-        return drive_rot
-
     def teleopPeriodic(self):
-        x, y, rot = (
-            self.get_drive_x(),
-            self.get_drive_y(),
-            self.get_drive_rot(),
-        )
+        x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
+        y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
+        rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
         self.drivetrain.drive_field(x, y, rot)
+
         if self.driver_controller.getAButtonPressed():
             self.turret.shoot_fuel()
 
