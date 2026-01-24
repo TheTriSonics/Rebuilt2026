@@ -12,15 +12,15 @@ manipulator = 'Arm'
 
 
 class TalonId:
-    DRIVE_FL = CANDevice(11, drive)
-    DRIVE_FR = CANDevice(12, drive)
-    DRIVE_BR = CANDevice(13, drive)
-    DRIVE_BL = CANDevice(14, drive)
+    DRIVE_FL = CANDevice(24, drive)
+    DRIVE_FR = CANDevice(11, drive)
+    DRIVE_BR = CANDevice(23, drive)
+    DRIVE_BL = CANDevice(12, drive)
 
-    TURN_FL = CANDevice(21, drive)
-    TURN_FR = CANDevice(22, drive)
-    TURN_BR = CANDevice(23, drive)
-    TURN_BL = CANDevice(24, drive)
+    TURN_FL = CANDevice(14, drive)
+    TURN_FR = CANDevice(21, drive)
+    TURN_BR = CANDevice(13, drive)
+    TURN_BL = CANDevice(22, drive)
 
     MANIP_ARM = CANDevice(25, manipulator)
     MANIP_WRIST = CANDevice(26, manipulator)
@@ -36,10 +36,10 @@ class TalonId:
 
 
 class CancoderId:
-    SWERVE_FL = CANDevice(31, drive)
-    SWERVE_FR = CANDevice(32, drive)
+    SWERVE_FL = CANDevice(35, drive)
+    SWERVE_FR = CANDevice(31, drive)
     SWERVE_BR = CANDevice(33, drive)
-    SWERVE_BL = CANDevice(34, drive)
+    SWERVE_BL = CANDevice(32, drive)
 
     MANIP_ARM = CANDevice(35, manipulator)
     MANIP_WRIST = CANDevice(36, manipulator)

@@ -511,7 +511,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
     { name = "phoenix6" },
-    { name = "robotpy" },
+    { name = "robotpy", extra = ["apriltag"] },
     { name = "robotpy-apriltag" },
     { name = "wpilib" },
 ]
@@ -525,7 +525,7 @@ dev = [
 requires-dist = [
     { name = "numpy", specifier = ">=2.4.1" },
     { name = "phoenix6", specifier = ">=26.1.0" },
-    { name = "robotpy", specifier = ">=2026.2.1" },
+    { name = "robotpy", extras = ["apriltag"], specifier = ">=2026.2.1" },
     { name = "robotpy-apriltag", specifier = ">=2026.2.1" },
     { name = "wpilib", specifier = ">=2026.2.1" },
 ]
@@ -553,6 +553,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a7/27/256554beed5e96f32734c46394a125134e62f9222d6a866710d4c981f27e/robotpy-2026.2.1.tar.gz", hash = "sha256:0d641238b132a29a8be90bc2c34495ee68198e16d9d4af616a77e535d4f8fef0", size = 6031, upload-time = "2026-01-16T19:31:22.508Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/6a/2223d82bd55a1caf24e873d4ab895c13f124f647d2989c2bee9f0f489a51/robotpy-2026.2.1-py3-none-any.whl", hash = "sha256:7cd1fdc1f1efda1cf3a8b50223d48cfdaf2b8c37b3983e7e844ae398327caefb", size = 2026, upload-time = "2026-01-16T19:31:20.814Z" },
+]
+
+[package.optional-dependencies]
+apriltag = [
+    { name = "numpy", marker = "platform_machine == 'roborio'" },
+    { name = "robotpy-apriltag" },
 ]
 
 [[package]]
