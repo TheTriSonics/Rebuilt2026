@@ -18,7 +18,7 @@ from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.units import kilogram_square_meters
 
 from components.drivetrain import SwerveModule
-from generated.tuner_constants_NoBot import TunerConstants
+from generated.tuner_constants_swerve import TunerConstants
 
 """
 from photonlibpy.simulation.visionSystemSim import VisionSystemSim

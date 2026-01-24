@@ -30,9 +30,8 @@ from wpimath.kinematics import (
     SwerveModuleState,
 )
 from wpimath.trajectory import TrapezoidProfileRadians
-
 from components.gyro import GyroComponent
-from generated.tuner_constants_NoBot import TunerConstants
+from generated.tuner_constants_swerve import TunerConstants
 from ids import CancoderId, TalonId
 from utilities.game import is_match, is_red
 

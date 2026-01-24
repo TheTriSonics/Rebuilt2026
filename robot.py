@@ -50,7 +50,7 @@ class MyRobot(magicbot.MagicRobot):
         x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
         y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
         rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
-        self.drivetrain.drive_field(x, y, rot)
+        self.drivetrain.drive_local(x, y, rot)
 
         if self.driver_controller.getAButtonPressed():
             self.turret.shoot_fuel()
