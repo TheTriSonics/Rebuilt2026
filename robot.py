@@ -19,8 +19,8 @@ class MyRobot(magicbot.MagicRobot):
     drivetrain: DrivetrainComponent
     turret: TurretComponent
 
-    max_speed = tunable(5.0)
-    max_rotation = tunable(math.tau)
+    max_speed = tunable(8.0)
+    max_rotation = tunable(4*math.tau)
 
     fuel_launch_vel = tunable(2.0)
     fuel_launch_zvel = tunable(5.0)

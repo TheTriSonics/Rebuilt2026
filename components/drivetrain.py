@@ -37,10 +37,6 @@ from utilities.game import is_match, is_red
 
 
 class SwerveModule:
-    # limit the acceleration of the commanded speeds of the robot to what is
-    # actually achiveable without the wheels slipping. This is done to improve
-    # odometry
-    accel_limit = 15  # m/s^2
 
     def __init__(
         self,
@@ -59,6 +55,10 @@ class SwerveModule:
         """
         x, y: where the module is relative to the center of the robot
         *_id: can ids of steer and drive motors and absolute encoder
+        *: signifies anything after this must be a named parameter
+        busname: name of CAN bus the module is on
+        drive_reversed: Should the drive motor be reversed?
+        steer_reversed: Should the steer motor be reversed?
         """
         self.name = name
         self.busname = busname
@@ -109,8 +109,13 @@ class SwerveModule:
             else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
 
+        wheel_circumference = TunerConstants._wheel_radius * math.tau
+        # sensor_to_mechanism_ratio converts motor rotations to meters
+        # = motor_rotations_per_meter = 1 / meters_per_motor_rotation
+        # = 1 / (wheel_circumference * drive_ratio)
+        # where drive_ratio = wheel_rotations / motor_rotations (output/input)
         drive_gear_ratio_config = FeedbackConfigs().with_sensor_to_mechanism_ratio(
-            TunerConstants._drive_gear_ratio
+            1 / (wheel_circumference * (1 / TunerConstants._drive_gear_ratio))
         )
 
         # configuration for motor pid and feedforward
@@ -142,35 +147,35 @@ class SwerveModule:
         return self.drive.get_velocity().value
 
     def get_distance_traveled(self) -> float:
-        return self.drive.get_position().value * math.tau*TunerConstants._wheel_radius
+        return self.drive.get_position().value  #  * math.tau*TunerConstants._wheel_radius
 
     def set(self, desired_state: SwerveModuleState):
+        no_steer = False
+        no_drive = False
         self.state = desired_state
         current_angle = self.get_rotation()
         self.state.optimize(current_angle)
 
-        if abs(self.state.speed) < 0.01:
-            self.drive.set_control(self.stop_request)
-
         target_displacement = self.state.angle - current_angle
         target_angle = self.state.angle.radians()
 
-        steer_output = self.steer_pid.calculate(current_angle.radians(), target_angle)
-       
         diff = self.state.angle - current_angle
-        if (abs(diff.degrees()) < 1):
-            self.steer.set_control(DutyCycleOut(0))
-            ...
-        else:
-            self.steer.set_control(DutyCycleOut(steer_output))
-            ...
+        if no_steer is False:
+            if (abs(diff.degrees()) < 1):
+                self.steer.set_control(DutyCycleOut(0))
+            else:
+                steer_output = self.steer_pid.calculate(current_angle.radians(), target_angle)
+                self.steer.set_control(DutyCycleOut(steer_output))
 
-        # rescale the speed target based on how close we are to being correctly
-        # aligned
-        target_speed = self.state.speed * target_displacement.cos() ** 2
+        if no_drive is False:
+            # rescale the speed target based on how close we are to being correctly
+            # aligned with where we want to go
+            target_speed = self.state.speed * target_displacement.cos() ** 2
+            if abs(self.state.speed) < 0.01:
+                self.drive.set_control(self.stop_request)
+            else:
+                self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
-        # original position change/100ms, new m/s -> rot/s
-        # self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
     def get_position(self) -> SwerveModulePosition:
         return SwerveModulePosition(self.get_distance_traveled(), self.get_rotation())
@@ -187,8 +192,6 @@ class DrivetrainComponent:
 
     HEADING_TOLERANCE = math.radians(1)
 
-    # maxiumum speed for any wheel
-    max_wheel_speed = TunerConstants.speed_at_12_volts
 
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
 
@@ -198,8 +201,14 @@ class DrivetrainComponent:
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
+        FALCON_MAX_RPM = 200
         self.vx = 0
         self.vy = 0
+        # maxiumum speed for any wheel
+        wheel_circumference = TunerConstants._wheel_radius * math.tau
+        drive_motor_rev_to_meters = (1 / TunerConstants._drive_gear_ratio) * wheel_circumference
+        self.max_wheel_speed = drive_motor_rev_to_meters * FALCON_MAX_RPM
+        print(f'Max wheel speed: {self.max_wheel_speed} m/s')
         # Buffers for weighted moving average of velocity
         self._velocity_samples = 10
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
@@ -385,7 +394,7 @@ class DrivetrainComponent:
         desired_speeds = self.chassis_speeds
         desired_states = self.kinematics.toSwerveModuleStates(desired_speeds)
         desired_states = self.kinematics.desaturateWheelSpeeds(
-            desired_states, attainableMaxSpeed=5
+            desired_states, attainableMaxSpeed=self.max_wheel_speed
         )
 
         for state, module in zip(desired_states, self.modules, strict=True):

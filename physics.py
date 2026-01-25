@@ -95,11 +95,17 @@ class PhysicsEngine:
             SwerveModule, SwerveModule, SwerveModule, SwerveModule
         ] = robot.drivetrain.modules
 
+        # Calculate drive_motor_rev_to_meters: how many meters the robot travels per motor revolution
+        # drive_ratio = motor_rotations / wheel_rotations, so:
+        # meters_per_motor_rev = wheel_circumference / drive_ratio
+        wheel_circumference = TunerConstants._wheel_radius * math.tau
+        drive_motor_rev_to_meters = wheel_circumference / TunerConstants._drive_gear_ratio
+
         # Motors
         self.wheels = [
             SimpleTalonFXMotorSim(
                 module.drive,
-                units_per_rev=1 / 0.0503,
+                units_per_rev=1 / drive_motor_rev_to_meters,
                 kV=2.7,
             )
             for module in robot.drivetrain.modules
