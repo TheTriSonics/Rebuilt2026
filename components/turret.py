@@ -78,6 +78,12 @@ class TurretComponent:
             .getStructArrayTopic('/components/turret/targets', Pose3d)
             .publish()
         )
+
+        self.position = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic('/components/turret/position', Pose3d)
+            .publish()
+        )
         # We calculate the center of the goal based on the positions of
         # AprilTags 20 and 26, then get a point right between them. That's
         # basically dead center of the goal
@@ -133,8 +139,14 @@ class TurretComponent:
             Translation3d(futurex, futurey, self.static_goal_center.translation().z),
             Rotation3d(0, 0, 0),
         )
-        self.targets.set([goal_viz])
+        self.position.set(goal_viz)
 
         # Just hack this for now, later this is where we'd want to drive the
         # motor to the proper setpoint.
         self.measured_angle = self.desired_angle
+        field_shot_angle = self.measured_angle - self.gyro.get_Rotation2d().radians()
+        turret_viz = Pose3d(
+            Translation3d(curr_pose.translation().x, curr_pose.translation().y, _shooter_height+0.5),
+            Rotation3d(0, 0, field_shot_angle),
+        )
+        self.position.set(turret_viz)
