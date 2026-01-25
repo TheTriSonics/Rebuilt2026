@@ -32,7 +32,6 @@ from wpimath.kinematics import (
 from wpimath.trajectory import TrapezoidProfileRadians
 from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
-from ids import CancoderId, TalonId
 from utilities.game import is_match, is_red
 
 
@@ -208,7 +207,6 @@ class DrivetrainComponent:
         wheel_circumference = TunerConstants._wheel_radius * math.tau
         drive_motor_rev_to_meters = (1 / TunerConstants._drive_gear_ratio) * wheel_circumference
         self.max_wheel_speed = drive_motor_rev_to_meters * FALCON_MAX_RPM
-        print(f'Max wheel speed: {self.max_wheel_speed} m/s')
         # Buffers for weighted moving average of velocity
         self._velocity_samples = 10
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
@@ -216,8 +214,8 @@ class DrivetrainComponent:
         # Weights for exponential weighting (most recent sample has highest weight)
         self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
 
-        self.publisher = (ntcore.NetworkTableInstance.getDefault()
-                                                .getStructTopic("MyPose", Pose2d)
+        self.fused_pose_pub = (ntcore.NetworkTableInstance.getDefault()
+                                                .getStructTopic("FusedPose", Pose2d)
                                                 .publish()
         )
         self.heading_controller = ProfiledPIDControllerRadians(
@@ -238,52 +236,52 @@ class DrivetrainComponent:
                 "Front Left",
                 TunerConstants._front_left_x_pos,
                 TunerConstants._front_left_y_pos,
-                TalonId.DRIVE_FL.id,
-                TalonId.TURN_FL.id,
-                CancoderId.SWERVE_FL.id,
-                busname=TalonId.DRIVE_FL.bus,
+                TunerConstants._front_left_drive_motor_id,
+                TunerConstants._front_left_steer_motor_id,
+                TunerConstants._front_left_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._front_left_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=False,
+                steer_reversed=TunerConstants._front_left_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_left_side,
             ),
             # Front Right
             SwerveModule(
                 "Front Right",
                 TunerConstants._front_right_x_pos,
                 TunerConstants._front_right_y_pos,
-                TalonId.DRIVE_FR.id,
-                TalonId.TURN_FR.id,
-                CancoderId.SWERVE_FR.id,
-                busname=TalonId.DRIVE_FR.bus,
+                TunerConstants._front_right_drive_motor_id,
+                TunerConstants._front_right_steer_motor_id,
+                TunerConstants._front_right_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._front_right_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=True,
+                steer_reversed=TunerConstants._front_right_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_right_side,
             ),
             # Back Left
             SwerveModule(
                 "Back Left",
                 TunerConstants._back_left_x_pos,
                 TunerConstants._back_left_y_pos,
-                TalonId.DRIVE_BL.id,
-                TalonId.TURN_BL.id,
-                CancoderId.SWERVE_BL.id,
-                busname=TalonId.DRIVE_BL.bus,
+                TunerConstants._back_left_drive_motor_id,
+                TunerConstants._back_left_steer_motor_id,
+                TunerConstants._back_left_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._back_left_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=False,
+                steer_reversed=TunerConstants._back_left_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_left_side,
             ),
             # Back Right
             SwerveModule(
                 "Back Right",
                 TunerConstants._back_right_x_pos,
                 TunerConstants._back_right_y_pos,
-                TalonId.DRIVE_BR.id,
-                TalonId.TURN_BR.id,
-                CancoderId.SWERVE_BR.id,
-                busname=TalonId.DRIVE_BR.bus,
+                TunerConstants._back_right_drive_motor_id,
+                TunerConstants._back_right_steer_motor_id,
+                TunerConstants._back_right_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._back_right_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=True,
+                steer_reversed=TunerConstants._back_right_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_right_side,
             ),
         )
 
@@ -328,7 +326,6 @@ class DrivetrainComponent:
         return self.gyro.get_Rotation2d()
 
     def setup(self) -> None:
-        # TODO update with new game info
         initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(0))
 
         self.estimator = SwerveDrive4PoseEstimator(
@@ -345,10 +342,6 @@ class DrivetrainComponent:
 
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""
-        pn = wpilib.SmartDashboard.putNumber
-        pn('direct dx', vx)
-        pn('direct dy', vy)
-        pn('direct do', omega)
         current_heading = self.get_rotation()
         self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
             vx, vy, omega, current_heading
@@ -432,7 +425,7 @@ class DrivetrainComponent:
         self.vx = sum(v * w for v, w in zip(self._vx_samples, weights, strict=True)) / total_weight
         self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
 
-        self.publisher.set(curr_pose)
+        self.fused_pose_pub.set(curr_pose)
         if self.send_modules:
             self.setpoints_publisher.set([module.state for module in self.modules])
             self.measurements_publisher.set([module.get() for module in self.modules])
@@ -441,7 +434,7 @@ class DrivetrainComponent:
         self.estimator.resetPosition(
             self.gyro.get_Rotation2d(), self.get_module_positions(), pose
         )
-        self.publisher.set(pose)
+        self.fused_pose_pub.set(pose)
 
     def reset_yaw(self) -> None:
         """Sets pose to current pose but with a heading of forwards"""
@@ -449,14 +442,7 @@ class DrivetrainComponent:
         default_heading = math.pi if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d(default_heading)))
 
-    def reset_odometry(self) -> None:
-        """Reset odometry to current team's podium"""
-        # TODO update with new game info
-        pass
-
-    def get_module_positions(
-        self,
-    ) -> tuple[
+    def get_module_positions(self) -> tuple[
         SwerveModulePosition,
         SwerveModulePosition,
         SwerveModulePosition,

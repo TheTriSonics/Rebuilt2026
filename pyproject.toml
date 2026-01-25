@@ -58,6 +58,7 @@ select = [
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
+    "I001",   # unsorted imports
 ]
 
 [tool.ruff.lint.isort]
