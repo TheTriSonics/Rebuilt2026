@@ -129,8 +129,8 @@ class TurretComponent:
         t = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
         # Figure out where to move the goal relative to its actual position so
         # that the chassis' velocity is accounted for when aiming at the goal
-        futurex = self.static_goal_center.translation().x - robotvx * t
-        futurey = self.static_goal_center.translation().y - robotvy * t
+        futurex: float = self.static_goal_center.translation().x - robotvx * t
+        futurey: float = self.static_goal_center.translation().y - robotvy * t
 
         # Calculate the angle to the goal's center from the current pose
         dx = futurex - curr_pose.translation().x
@@ -143,7 +143,7 @@ class TurretComponent:
             Translation3d(futurex, futurey, self.static_goal_center.translation().z),
             Rotation3d(0, 0, 0),
         )
-        self.position.set(goal_viz)
+        self.targets.set([goal_viz])
 
         # Just hack this for now, later this is where we'd want to drive the
         # motor to the proper setpoint.
