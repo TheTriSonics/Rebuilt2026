@@ -1,6 +1,5 @@
 import math
 from collections import deque
-from logging import Logger
 
 import magicbot
 import ntcore
@@ -193,8 +192,6 @@ class DrivetrainComponent:
 
 
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
-
-    logger: Logger
 
     send_modules = magicbot.tunable(False)
     snapping_to_heading = magicbot.tunable(False)

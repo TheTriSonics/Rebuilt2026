@@ -1,16 +1,14 @@
 import math
-
-import magicbot
 import wpilib
-from magicbot import feedback, tunable
 
+from magicbot import tunable, MagicRobot
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from components.turret import TurretComponent
 from utilities.scalers import rescale_js
 
 
-class MyRobot(magicbot.MagicRobot):
+class MyRobot(MagicRobot):
     # Declare components and controllers here
     # Controllers (must be declared before components)
 
@@ -19,12 +17,10 @@ class MyRobot(magicbot.MagicRobot):
     drivetrain: DrivetrainComponent
     turret: TurretComponent
 
+    # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
+    # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
-
-    fuel_launch_vel = tunable(2.0)
-    fuel_launch_zvel = tunable(5.0)
-
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -54,6 +50,7 @@ class MyRobot(magicbot.MagicRobot):
 
         if self.driver_controller.getAButtonPressed():
             self.turret.shoot_fuel()
+
         if self.driver_controller.getRawButtonPressed(8):
             print('toggle drive mode')
             if self.drive_method == self.drivetrain.drive_field:
