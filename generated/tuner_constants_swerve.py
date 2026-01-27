@@ -18,9 +18,9 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
     _steer_gains = (
         configs.Slot0Configs()
-        .with_k_p(0.5)
+        .with_k_p(0.0)
         .with_k_i(0)
-        .with_k_d(0.5)
+        .with_k_d(0.0)
         .with_k_s(0.1)
         .with_k_v(0.0)
         .with_k_a(0)
@@ -32,7 +32,7 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
     _drive_gains = (
         configs.Slot0Configs()
-        .with_k_p(0.1)
+        .with_k_p(1.0)
         .with_k_i(0)
         .with_k_d(0)
         .with_k_s(0)
@@ -75,7 +75,7 @@ class TunerConstants:
 
     # CAN bus that the devices are located on;
     # All swerve devices must share the same CAN bus
-    canbus = CANBus("canivore", "./logs/example.hoot")
+    canbus = CANBus("Drive", "./logs/example.hoot")
 
     # Theoretical free speed (m/s) at 12 V applied output;
     # This needs to be tuned to your individual robot

@@ -79,9 +79,9 @@ class SwerveModule:
         # The SDS Mk4i rotation has one pair of gears.
         steer_motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
         steer_motor_config.inverted = (
-            InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+            InvertedValue.CLOCKWISE_POSITIVE
             if steer_reversed
-            else InvertedValue.CLOCKWISE_POSITIVE
+            else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
 
         steer_gear_ratio_config = FeedbackConfigs().with_sensor_to_mechanism_ratio(
@@ -193,7 +193,7 @@ class DrivetrainComponent:
 
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
 
-    send_modules = magicbot.tunable(False)
+    send_modules = magicbot.tunable(True)
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
