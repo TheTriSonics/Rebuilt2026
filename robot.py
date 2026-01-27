@@ -1,16 +1,14 @@
 import math
-
-import magicbot
 import wpilib
-from magicbot import feedback, tunable
 
+from magicbot import tunable, MagicRobot
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from components.turret import TurretComponent
 from utilities.scalers import rescale_js
 
 
-class MyRobot(magicbot.MagicRobot):
+class MyRobot(MagicRobot):
     # Declare components and controllers here
     # Controllers (must be declared before components)
 
@@ -19,12 +17,10 @@ class MyRobot(magicbot.MagicRobot):
     drivetrain: DrivetrainComponent
     turret: TurretComponent
 
-    max_speed = tunable(5.0)
-    max_rotation = tunable(math.tau)
-
-    fuel_launch_vel = tunable(2.0)
-    fuel_launch_zvel = tunable(5.0)
-
+    # Robot's max speed in X/Y plane
+    max_speed = tunable(8.0)
+    # Robot's max rotation speed in radians per second
+    max_rotation = tunable(4*math.tau)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -32,8 +28,6 @@ class MyRobot(magicbot.MagicRobot):
         self.field = wpilib.Field2d()
         wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         wpilib.SmartDashboard.putData(self.field)
-
-        self.driver_controller = wpilib.XboxController(0)
 
     def autonomousInit(self): ...
 
@@ -44,16 +38,25 @@ class MyRobot(magicbot.MagicRobot):
         ...
 
     def teleopInit(self):
+        self.driver_controller = wpilib.XboxController(0)
+        self.drive_method = self.drivetrain.drive_field
         ...
 
     def teleopPeriodic(self):
         x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
         y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
         rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
-        self.drivetrain.drive_local(x, y, rot)
+        self.drive_method(x, y, rot)
 
         if self.driver_controller.getAButtonPressed():
             self.turret.shoot_fuel()
+
+        if self.driver_controller.getRawButtonPressed(8):
+            print('toggle drive mode')
+            if self.drive_method == self.drivetrain.drive_field:
+                self.drive_method = self.drivetrain.drive_local
+            else:
+                self.drive_method = self.drivetrain.drive_field
 
     def disabledPeriodic(self):
         ...

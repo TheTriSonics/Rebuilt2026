@@ -12,16 +12,6 @@ manipulator = 'Arm'
 
 
 class TalonId:
-    DRIVE_FL = CANDevice(24, drive)
-    DRIVE_FR = CANDevice(11, drive)
-    DRIVE_BR = CANDevice(23, drive)
-    DRIVE_BL = CANDevice(12, drive)
-
-    TURN_FL = CANDevice(14, drive)
-    TURN_FR = CANDevice(21, drive)
-    TURN_BR = CANDevice(13, drive)
-    TURN_BL = CANDevice(22, drive)
-
     MANIP_ARM = CANDevice(25, manipulator)
     MANIP_WRIST = CANDevice(26, manipulator)
     MANIP_INTAKE = CANDevice(27, manipulator)
@@ -36,18 +26,12 @@ class TalonId:
 
 
 class CancoderId:
-    SWERVE_FL = CANDevice(35, drive)
-    SWERVE_FR = CANDevice(31, drive)
-    SWERVE_BR = CANDevice(33, drive)
-    SWERVE_BL = CANDevice(32, drive)
-
     MANIP_ARM = CANDevice(35, manipulator)
     MANIP_WRIST = CANDevice(36, manipulator)
 
 
 class CanId:
     """CAN IDs for miscellaneous devices."""
-    PIGEON = CANDevice(41, drive)
     CANDI = CANDevice(42, manipulator)
 
 

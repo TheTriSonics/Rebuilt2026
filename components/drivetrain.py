@@ -1,6 +1,5 @@
 import math
 from collections import deque
-from logging import Logger
 
 import magicbot
 import ntcore
@@ -32,15 +31,10 @@ from wpimath.kinematics import (
 from wpimath.trajectory import TrapezoidProfileRadians
 from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
-from ids import CancoderId, TalonId
 from utilities.game import is_match, is_red
 
 
 class SwerveModule:
-    # limit the acceleration of the commanded speeds of the robot to what is
-    # actually achiveable without the wheels slipping. This is done to improve
-    # odometry
-    accel_limit = 15  # m/s^2
 
     def __init__(
         self,
@@ -59,6 +53,10 @@ class SwerveModule:
         """
         x, y: where the module is relative to the center of the robot
         *_id: can ids of steer and drive motors and absolute encoder
+        *: signifies anything after this must be a named parameter
+        busname: name of CAN bus the module is on
+        drive_reversed: Should the drive motor be reversed?
+        steer_reversed: Should the steer motor be reversed?
         """
         self.name = name
         self.busname = busname
@@ -109,8 +107,13 @@ class SwerveModule:
             else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
 
+        wheel_circumference = TunerConstants._wheel_radius * math.tau
+        # sensor_to_mechanism_ratio converts motor rotations to meters
+        # = motor_rotations_per_meter = 1 / meters_per_motor_rotation
+        # = 1 / (wheel_circumference * drive_ratio)
+        # where drive_ratio = wheel_rotations / motor_rotations (output/input)
         drive_gear_ratio_config = FeedbackConfigs().with_sensor_to_mechanism_ratio(
-            TunerConstants._drive_gear_ratio
+            1 / (wheel_circumference * (1 / TunerConstants._drive_gear_ratio))
         )
 
         # configuration for motor pid and feedforward
@@ -142,35 +145,35 @@ class SwerveModule:
         return self.drive.get_velocity().value
 
     def get_distance_traveled(self) -> float:
-        return self.drive.get_position().value * math.tau*TunerConstants._wheel_radius
+        return self.drive.get_position().value  #  * math.tau*TunerConstants._wheel_radius
 
     def set(self, desired_state: SwerveModuleState):
+        no_steer = False
+        no_drive = False
         self.state = desired_state
         current_angle = self.get_rotation()
         self.state.optimize(current_angle)
 
-        if abs(self.state.speed) < 0.01:
-            self.drive.set_control(self.stop_request)
-
         target_displacement = self.state.angle - current_angle
         target_angle = self.state.angle.radians()
 
-        steer_output = self.steer_pid.calculate(current_angle.radians(), target_angle)
-       
         diff = self.state.angle - current_angle
-        if (abs(diff.degrees()) < 1):
-            self.steer.set_control(DutyCycleOut(0))
-            ...
-        else:
-            self.steer.set_control(DutyCycleOut(steer_output))
-            ...
+        if no_steer is False:
+            if (abs(diff.degrees()) < 1):
+                self.steer.set_control(DutyCycleOut(0))
+            else:
+                steer_output = self.steer_pid.calculate(current_angle.radians(), target_angle)
+                self.steer.set_control(DutyCycleOut(steer_output))
 
-        # rescale the speed target based on how close we are to being correctly
-        # aligned
-        target_speed = self.state.speed * target_displacement.cos() ** 2
+        if no_drive is False:
+            # rescale the speed target based on how close we are to being correctly
+            # aligned with where we want to go
+            target_speed = self.state.speed * target_displacement.cos() ** 2
+            if abs(self.state.speed) < 0.01:
+                self.drive.set_control(self.stop_request)
+            else:
+                self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
-        # original position change/100ms, new m/s -> rot/s
-        # self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
     def get_position(self) -> SwerveModulePosition:
         return SwerveModulePosition(self.get_distance_traveled(), self.get_rotation())
@@ -187,19 +190,20 @@ class DrivetrainComponent:
 
     HEADING_TOLERANCE = math.radians(1)
 
-    # maxiumum speed for any wheel
-    max_wheel_speed = TunerConstants.speed_at_12_volts
 
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
-
-    logger: Logger
 
     send_modules = magicbot.tunable(False)
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
+        FALCON_MAX_RPM = 200
         self.vx = 0
         self.vy = 0
+        # maxiumum speed for any wheel
+        wheel_circumference = TunerConstants._wheel_radius * math.tau
+        drive_motor_rev_to_meters = (1 / TunerConstants._drive_gear_ratio) * wheel_circumference
+        self.max_wheel_speed = drive_motor_rev_to_meters * FALCON_MAX_RPM
         # Buffers for weighted moving average of velocity
         self._velocity_samples = 10
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
@@ -207,8 +211,8 @@ class DrivetrainComponent:
         # Weights for exponential weighting (most recent sample has highest weight)
         self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
 
-        self.publisher = (ntcore.NetworkTableInstance.getDefault()
-                                                .getStructTopic("MyPose", Pose2d)
+        self.fused_pose_pub = (ntcore.NetworkTableInstance.getDefault()
+                                                .getStructTopic("FusedPose", Pose2d)
                                                 .publish()
         )
         self.heading_controller = ProfiledPIDControllerRadians(
@@ -229,52 +233,52 @@ class DrivetrainComponent:
                 "Front Left",
                 TunerConstants._front_left_x_pos,
                 TunerConstants._front_left_y_pos,
-                TalonId.DRIVE_FL.id,
-                TalonId.TURN_FL.id,
-                CancoderId.SWERVE_FL.id,
-                busname=TalonId.DRIVE_FL.bus,
+                TunerConstants._front_left_drive_motor_id,
+                TunerConstants._front_left_steer_motor_id,
+                TunerConstants._front_left_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._front_left_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=False,
+                steer_reversed=TunerConstants._front_left_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_left_side,
             ),
             # Front Right
             SwerveModule(
                 "Front Right",
                 TunerConstants._front_right_x_pos,
                 TunerConstants._front_right_y_pos,
-                TalonId.DRIVE_FR.id,
-                TalonId.TURN_FR.id,
-                CancoderId.SWERVE_FR.id,
-                busname=TalonId.DRIVE_FR.bus,
+                TunerConstants._front_right_drive_motor_id,
+                TunerConstants._front_right_steer_motor_id,
+                TunerConstants._front_right_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._front_right_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=True,
+                steer_reversed=TunerConstants._front_right_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_right_side,
             ),
             # Back Left
             SwerveModule(
                 "Back Left",
                 TunerConstants._back_left_x_pos,
                 TunerConstants._back_left_y_pos,
-                TalonId.DRIVE_BL.id,
-                TalonId.TURN_BL.id,
-                CancoderId.SWERVE_BL.id,
-                busname=TalonId.DRIVE_BL.bus,
+                TunerConstants._back_left_drive_motor_id,
+                TunerConstants._back_left_steer_motor_id,
+                TunerConstants._back_left_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._back_left_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=False,
+                steer_reversed=TunerConstants._back_left_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_left_side,
             ),
             # Back Right
             SwerveModule(
                 "Back Right",
                 TunerConstants._back_right_x_pos,
                 TunerConstants._back_right_y_pos,
-                TalonId.DRIVE_BR.id,
-                TalonId.TURN_BR.id,
-                CancoderId.SWERVE_BR.id,
-                busname=TalonId.DRIVE_BR.bus,
+                TunerConstants._back_right_drive_motor_id,
+                TunerConstants._back_right_steer_motor_id,
+                TunerConstants._back_right_encoder_id,
+                busname=TunerConstants.canbus.name,
                 mag_offset=TunerConstants._back_right_encoder_offset,
-                steer_reversed=True,
-                drive_reversed=True,
+                steer_reversed=TunerConstants._back_right_steer_motor_inverted,
+                drive_reversed=TunerConstants._invert_right_side,
             ),
         )
 
@@ -319,7 +323,6 @@ class DrivetrainComponent:
         return self.gyro.get_Rotation2d()
 
     def setup(self) -> None:
-        # TODO update with new game info
         initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(0))
 
         self.estimator = SwerveDrive4PoseEstimator(
@@ -336,10 +339,6 @@ class DrivetrainComponent:
 
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""
-        pn = wpilib.SmartDashboard.putNumber
-        pn('direct dx', vx)
-        pn('direct dy', vy)
-        pn('direct do', omega)
         current_heading = self.get_rotation()
         self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
             vx, vy, omega, current_heading
@@ -385,7 +384,7 @@ class DrivetrainComponent:
         desired_speeds = self.chassis_speeds
         desired_states = self.kinematics.toSwerveModuleStates(desired_speeds)
         desired_states = self.kinematics.desaturateWheelSpeeds(
-            desired_states, attainableMaxSpeed=5
+            desired_states, attainableMaxSpeed=self.max_wheel_speed
         )
 
         for state, module in zip(desired_states, self.modules, strict=True):
@@ -423,7 +422,7 @@ class DrivetrainComponent:
         self.vx = sum(v * w for v, w in zip(self._vx_samples, weights, strict=True)) / total_weight
         self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
 
-        self.publisher.set(curr_pose)
+        self.fused_pose_pub.set(curr_pose)
         if self.send_modules:
             self.setpoints_publisher.set([module.state for module in self.modules])
             self.measurements_publisher.set([module.get() for module in self.modules])
@@ -432,7 +431,7 @@ class DrivetrainComponent:
         self.estimator.resetPosition(
             self.gyro.get_Rotation2d(), self.get_module_positions(), pose
         )
-        self.publisher.set(pose)
+        self.fused_pose_pub.set(pose)
 
     def reset_yaw(self) -> None:
         """Sets pose to current pose but with a heading of forwards"""
@@ -440,14 +439,7 @@ class DrivetrainComponent:
         default_heading = math.pi if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d(default_heading)))
 
-    def reset_odometry(self) -> None:
-        """Reset odometry to current team's podium"""
-        # TODO update with new game info
-        pass
-
-    def get_module_positions(
-        self,
-    ) -> tuple[
+    def get_module_positions(self) -> tuple[
         SwerveModulePosition,
         SwerveModulePosition,
         SwerveModulePosition,

@@ -29,7 +29,7 @@ components = [
 ]
 
 requires = [
-    "phoenix6~=26.1",
+    "phoenix6>=26.1.0",
     # "photonlibpy",
     # "robotpy-ctre",  # Phoenix 5
     # "robotpy-navx",
@@ -58,6 +58,7 @@ select = [
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
+    "I001",   # unsorted imports
 ]
 
 [tool.ruff.lint.isort]
