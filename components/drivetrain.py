@@ -9,14 +9,12 @@ from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
     FeedbackConfigs,
-    MagnetSensorConfigs,
     MotorOutputConfigs,
 )
-from phoenix6.controls import DutyCycleOut, VelocityVoltage, VoltageOut
+from phoenix6.controls import DutyCycleOut, PositionVoltage, VelocityVoltage, VoltageOut
 from phoenix6.hardware import CANcoder, TalonFX
-from phoenix6.signals import InvertedValue, NeutralModeValue
+from phoenix6.signals import FeedbackSensorSourceValue, InvertedValue, NeutralModeValue
 from wpimath.controller import (
-    PIDController,
     ProfiledPIDControllerRadians,
     SimpleMotorFeedforwardMeters,
 )
@@ -68,10 +66,10 @@ class SwerveModule:
         self.steer = TalonFX(steer_id, self.busname)
         self.drive = TalonFX(drive_id, self.busname)
         self.encoder = CANcoder(encoder_id, self.busname)
+        
+        # Configure CANcoder for FusedCANCoder - use builder pattern
         enc_config = CANcoderConfiguration()
-        mag_config = MagnetSensorConfigs()
-        mag_config.with_magnet_offset(mag_offset)
-        enc_config.with_magnet_sensor(mag_config)
+        enc_config.magnet_sensor.with_magnet_offset(mag_offset)
         self.encoder.configurator.apply(enc_config)  # type: ignore
 
         steer_motor_config = MotorOutputConfigs()
@@ -84,9 +82,12 @@ class SwerveModule:
             else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
 
-        steer_gear_ratio_config = FeedbackConfigs().with_sensor_to_mechanism_ratio(
-            TunerConstants._steer_gear_ratio
-        )
+        # Configure FusedCANCoder feedback
+        steer_feedback_config = FeedbackConfigs()
+        steer_feedback_config.feedback_remote_sensor_id = encoder_id
+        steer_feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
+        steer_feedback_config.sensor_to_mechanism_ratio = 1.0
+        steer_feedback_config.rotor_to_sensor_ratio = TunerConstants._steer_gear_ratio
 
         # configuration for motor pid
         steer_pid = TunerConstants._steer_gains
@@ -95,7 +96,7 @@ class SwerveModule:
 
         self.steer.configurator.apply(steer_motor_config)
         self.steer.configurator.apply(steer_pid, 0.01)
-        self.steer.configurator.apply(steer_gear_ratio_config)
+        self.steer.configurator.apply(steer_feedback_config)
         self.steer.configurator.apply(steer_closed_loop_config)
 
         # Configure drive motor
@@ -126,15 +127,15 @@ class SwerveModule:
 
         self.central_angle = Rotation2d(x, y)
 
-        self.steer_pid = PIDController(0.3, 0, 0)
-        self.steer_pid.enableContinuousInput(-math.pi, math.pi)
-
+        # Create Phoenix 6 control requests
+        self.steer_request = PositionVoltage(0).with_slot(0)
         self.drive_request = VelocityVoltage(0)
         self.stop_request = VoltageOut(0)
 
     def get_angle_absolute(self) -> float:
-        """Gets steer angle (rot) from absolute encoder"""
-        return self.encoder.get_absolute_position().value * math.tau
+        """Gets steer angle (rot) from absolute encoder (now fused with motor)"""
+        # With FusedCANCoder, we get the position directly from the steer motor
+        return self.steer.get_position().value * math.tau
 
     def get_rotation(self) -> Rotation2d:
         """Get the steer angle as a Rotation2d"""
@@ -155,15 +156,15 @@ class SwerveModule:
         self.state.optimize(current_angle)
 
         target_displacement = self.state.angle - current_angle
-        target_angle = self.state.angle.radians()
+        target_angle_rotations = self.state.angle.radians() / math.tau
 
         diff = self.state.angle - current_angle
         if no_steer is False:
             if (abs(diff.degrees()) < 1):
                 self.steer.set_control(DutyCycleOut(0))
             else:
-                steer_output = self.steer_pid.calculate(current_angle.radians(), target_angle)
-                self.steer.set_control(DutyCycleOut(steer_output))
+                # Use Phoenix 6 closed-loop position control with FusedCANCoder
+                self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
 
         if no_drive is False:
             # rescale the speed target based on how close we are to being correctly
