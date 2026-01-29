@@ -45,7 +45,7 @@ class MyRobot(MagicRobot):
     def teleopPeriodic(self):
         x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
         y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
-        rot = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
+        rot = -rescale_js(self.driver_controller.getRightX(), 0.10, 2.0) * self.max_rotation
         self.drive_method(x, y, rot)
 
         if self.driver_controller.getAButtonPressed():

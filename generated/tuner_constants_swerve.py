@@ -18,11 +18,11 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
     _steer_gains = (
         configs.Slot0Configs()
-        .with_k_p(0.0)
+        .with_k_p(100.0)
         .with_k_i(0)
         .with_k_d(0.0)
-        .with_k_s(0.1)
-        .with_k_v(0.0)
+        .with_k_s(0.3)
+        .with_k_v(2.0)
         .with_k_a(0)
         .with_static_feedforward_sign(
             signals.StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -32,14 +32,15 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
     _drive_gains = (
         configs.Slot0Configs()
-        .with_k_p(1.0)
+        .with_k_p(2.0)
         .with_k_i(0)
         .with_k_d(0)
-        .with_k_s(0)
-        .with_k_v(0.124)
+        .with_k_s(0.3)
+        .with_k_v(0.1)
     )
 
     # The closed-loop output type to use for the steer motors;
+
     # This affects the PID/FF gains for the steer motors
     _steer_closed_loop_output = swerve.ClosedLoopOutputType.VOLTAGE
     # The closed-loop output type to use for the drive motors;

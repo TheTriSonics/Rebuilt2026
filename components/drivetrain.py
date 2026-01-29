@@ -157,7 +157,7 @@ class SwerveModule:
 
         target_displacement = self.state.angle - current_angle
         target_angle_rotations = self.state.angle.radians() / math.tau
-
+        wpilib.SmartDashboard.putNumber("tar", target_angle_rotations)
         diff = self.state.angle - current_angle
         if no_steer is False:
             if (abs(diff.degrees()) < 1):
