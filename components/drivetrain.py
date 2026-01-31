@@ -17,6 +17,7 @@ from phoenix6.signals import FeedbackSensorSourceValue, InvertedValue, NeutralMo
 from wpimath.controller import (
     ProfiledPIDControllerRadians,
     SimpleMotorFeedforwardMeters,
+    PIDController,
 )
 from wpimath.estimator import SwerveDrive4PoseEstimator
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
@@ -216,6 +217,10 @@ class DrivetrainComponent:
                                                 .getStructTopic("FusedPose", Pose2d)
                                                 .publish()
         )
+        self.target_pose_pub = (ntcore.NetworkTableInstance.getDefault()
+                                                .getStructTopic("targetPose", Pose2d)
+                                                .publish()
+        )
         self.heading_controller = ProfiledPIDControllerRadians(
             0.5, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
@@ -227,6 +232,8 @@ class DrivetrainComponent:
         self.default_xy_pid = (10.0, 1.0, 0.0)
         self.aggressive_xy_pid = (20.0, 0.0, 0.0)
         self.heading_pid = (15.0, 0.0, 0.0)
+        self.path_pid_control = PIDController(10,0,0)
+        self.path_heading_pid_control = PIDController(8.2,0,0)
 
         self.modules = (
             # Front Left
@@ -344,7 +351,17 @@ class DrivetrainComponent:
         self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
             vx, vy, omega, current_heading
         )
+    def drive_to_pose(self, target_pose: Pose2d):
+        self.drive_to_position(target_pose.x, target_pose.y, target_pose.rotation().radians())
 
+    def drive_to_position(self, x: float, y: float, o: float) -> None:
+        robot_pose = self.get_pose()
+        xvel = self.path_pid_control.calculate(robot_pose.x, x)
+        yvel = self.path_pid_control.calculate(robot_pose.y, y)
+        ovel = self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), o)
+        self.drive_field(xvel, yvel, ovel)
+        
+    
     def get_robot_speeds(self) -> tuple[float, float]:
         vx = self.chassis_speeds.vx
         vy = self.chassis_speeds.vy
