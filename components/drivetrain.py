@@ -4,7 +4,6 @@ from collections import deque
 import magicbot
 import ntcore
 import wpilib
-from magicbot import feedback
 from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
@@ -67,7 +66,7 @@ class SwerveModule:
         self.steer = TalonFX(steer_id, self.busname)
         self.drive = TalonFX(drive_id, self.busname)
         self.encoder = CANcoder(encoder_id, self.busname)
-        
+
         # Configure CANcoder for FusedCANCoder - use builder pattern
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(mag_offset)
@@ -76,7 +75,6 @@ class SwerveModule:
         steer_motor_config = MotorOutputConfigs()
         steer_motor_config.neutral_mode = NeutralModeValue.BRAKE
         # The SDS Mk4i rotation has one pair of gears.
-        steer_motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
         steer_motor_config.inverted = (
             InvertedValue.CLOCKWISE_POSITIVE
             if steer_reversed
@@ -135,7 +133,6 @@ class SwerveModule:
 
     def get_angle_absolute(self) -> float:
         """Gets steer angle (rot) from absolute encoder (now fused with motor)"""
-        # With FusedCANCoder, we get the position directly from the steer motor
         return self.steer.get_position().value * math.tau
 
     def get_rotation(self) -> Rotation2d:
@@ -147,7 +144,7 @@ class SwerveModule:
         return self.drive.get_velocity().value
 
     def get_distance_traveled(self) -> float:
-        return self.drive.get_position().value  #  * math.tau*TunerConstants._wheel_radius
+        return self.drive.get_position().value
 
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
@@ -316,9 +313,7 @@ class DrivetrainComponent:
     def get_chassis_speeds(self) -> ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.get_module_states())
 
-    def get_module_states(
-        self,
-    ) -> tuple[
+    def get_module_states(self) -> tuple[
         SwerveModuleState,
         SwerveModuleState,
         SwerveModuleState,
@@ -365,12 +360,11 @@ class DrivetrainComponent:
         yvel = self.path_pid_control.calculate(robot_pose.y, y)
         ovel = self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), o)
         self.drive_field(xvel, yvel, ovel)
-        
-    
+
     def get_robot_speeds(self) -> tuple[float, float]:
         vx = self.chassis_speeds.vx
         vy = self.chassis_speeds.vy
-        total_speed = math.sqrt(vx*vx + vy*vy)
+        total_speed = math.sqrt(vx * vx + vy * vy)
         return total_speed, self.chassis_speeds.omega
 
     def halt(self):
@@ -482,7 +476,3 @@ class DrivetrainComponent:
     def get_rotation(self) -> Rotation2d:
         """Get the current heading of the robot."""
         return self.get_pose().rotation()
-
-    @feedback
-    def at_desired_heading(self) -> bool:
-        return self.heading_controller.atGoal()
