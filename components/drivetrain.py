@@ -192,35 +192,40 @@ class DrivetrainComponent:
 
     HEADING_TOLERANCE = math.radians(1)
 
-
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
 
     send_modules = magicbot.tunable(True)
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
-        FALCON_MAX_RPM = 200
-        self.vx = 0
-        self.vy = 0
+        # Theoretical max RPM that a Kraken X60 can reach
+        DRIVE_MOTOR_MAX_RPM = 200
+
         # maxiumum speed for any wheel
         wheel_circumference = TunerConstants._wheel_radius * math.tau
-        drive_motor_rev_to_meters = (1 / TunerConstants._drive_gear_ratio) * wheel_circumference
-        self.max_wheel_speed = drive_motor_rev_to_meters * FALCON_MAX_RPM
-        # Buffers for weighted moving average of velocity
+        drive_motor_rev_to_meters = wheel_circumference / TunerConstants._drive_gear_ratio
+        self.max_wheel_speed = drive_motor_rev_to_meters * DRIVE_MOTOR_MAX_RPM
+
+        # Placeholders for current robot velocity
+        self.vx = 0
+        self.vy = 0
+        # Buffers for weighted moving average of velocity; used to populate
+        # vx and vy
         self._velocity_samples = 10
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
         self._vy_samples: deque[float] = deque(maxlen=self._velocity_samples)
         # Weights for exponential weighting (most recent sample has highest weight)
         self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
 
-        self.fused_pose_pub = (ntcore.NetworkTableInstance.getDefault()
-                                                .getStructTopic("FusedPose", Pose2d)
-                                                .publish()
+        # Plotting the location of this in AdvantageScope shows the robot's
+        # estimated position on the field
+        self.fused_pose_pub = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic("FusedPose", Pose2d)
+            .publish()
         )
-        self.target_pose_pub = (ntcore.NetworkTableInstance.getDefault()
-                                                .getStructTopic("targetPose", Pose2d)
-                                                .publish()
-        )
+
+        # Used to lock the robot onto a heading; currently not used.
         self.heading_controller = ProfiledPIDControllerRadians(
             0.5, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
@@ -228,13 +233,12 @@ class DrivetrainComponent:
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
         self.snap_heading: float | None = None
 
-        # Leaving the old values here, using some more docile ones for driver practice temporarily
-        self.default_xy_pid = (10.0, 1.0, 0.0)
-        self.aggressive_xy_pid = (20.0, 0.0, 0.0)
-        self.heading_pid = (15.0, 0.0, 0.0)
-        self.path_pid_control = PIDController(10,0,0)
-        self.path_heading_pid_control = PIDController(8.2,0,0)
+        # Used for path following and driving directly to a specific point
+        self.path_pid_control = PIDController(10, 0, 0)
+        self.path_heading_pid_control = PIDController(8.2, 0, 0)
 
+        # Define each of the four swerve modules using the SwerveModule class
+        # also found in this file.
         self.modules = (
             # Front Left
             SwerveModule(
@@ -351,6 +355,7 @@ class DrivetrainComponent:
         self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
             vx, vy, omega, current_heading
         )
+
     def drive_to_pose(self, target_pose: Pose2d):
         self.drive_to_position(target_pose.x, target_pose.y, target_pose.rotation().radians())
 
