@@ -513,7 +513,6 @@ dependencies = [
     { name = "phoenix6" },
     { name = "robotpy", extra = ["apriltag"] },
     { name = "robotpy-apriltag" },
-    { name = "sleipnirgroup-choreolib" },
     { name = "wpilib" },
 ]
 
@@ -528,7 +527,6 @@ requires-dist = [
     { name = "phoenix6", specifier = ">=26.1.0" },
     { name = "robotpy", extras = ["apriltag"], specifier = ">=2026.2.1" },
     { name = "robotpy-apriltag", specifier = ">=2026.2.1" },
-    { name = "sleipnirgroup-choreolib", specifier = ">=2026.0.1" },
     { name = "wpilib", specifier = ">=2026.2.1" },
 ]
 
@@ -858,19 +856,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/aa/9f89c719c467dfaf8ad799b9bae0df494513fb21d31a6059cb5870e57e74/ruff-0.14.14-py3-none-win32.whl", hash = "sha256:b530c191970b143375b6a68e6f743800b2b786bbcf03a7965b06c4bf04568167", size = 10502442, upload-time = "2026-01-22T22:30:38.93Z" },
     { url = "https://files.pythonhosted.org/packages/87/44/90fa543014c45560cae1fffc63ea059fb3575ee6e1cb654562197e5d16fb/ruff-0.14.14-py3-none-win_amd64.whl", hash = "sha256:3dde1435e6b6fe5b66506c1dff67a421d0b7f6488d466f651c07f4cab3bf20fd", size = 11630486, upload-time = "2026-01-22T22:30:10.852Z" },
     { url = "https://files.pythonhosted.org/packages/9e/6a/40fee331a52339926a92e17ae748827270b288a35ef4a15c9c8f2ec54715/ruff-0.14.14-py3-none-win_arm64.whl", hash = "sha256:56e6981a98b13a32236a72a8da421d7839221fa308b223b9283312312e5ac76c", size = 10920448, upload-time = "2026-01-22T22:30:15.417Z" },
-]
-
-[[package]]
-name = "sleipnirgroup-choreolib"
-version = "2026.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "wpilib" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/90/54/e0a140e60cfc420867b4879a2879bb9aa9c24d4ad205a3f6ffd406ddb5d5/sleipnirgroup_choreolib-2026.0.1.tar.gz", hash = "sha256:9a343aec9716ea26889c08ced3798d141c3c73dd6b1680ddd210c51130a13048", size = 9318, upload-time = "2026-01-12T01:21:21.563Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/5c/d314a1b8e9b9b040fc62e5f1c737d3b5d54e075c10b29070fd1b6bbc4e89/sleipnirgroup_choreolib-2026.0.1-py3-none-any.whl", hash = "sha256:cf015218deca4255ad57c88bb9365fdef1d334b6e5c59580a676211d02e9e90d", size = 10644, upload-time = "2026-01-12T01:21:20.147Z" },
 ]
 
 [[package]]

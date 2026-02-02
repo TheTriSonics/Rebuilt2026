@@ -10,7 +10,6 @@ dependencies = [
     "robotpy[apriltag]>=2026.2.1",
     "robotpy-apriltag>=2026.2.1",
     "wpilib>=2026.2.1",
-    "sleipnirgroup-choreolib>=2026.0.1",
 ]
 [tool.robotpy]
 

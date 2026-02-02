@@ -31,8 +31,6 @@ from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
 from utilities.game import is_match, is_red
 
-from choreo.trajectory import SwerveSample
-
 
 class SwerveModule:
 
@@ -362,15 +360,6 @@ class DrivetrainComponent:
         yvel = self.path_pid_control.calculate(robot_pose.y, y)
         ovel = self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), o)
         self.drive_field(xvel, yvel, ovel)
-
-    def follow_trajectory(self, sample: SwerveSample) -> None:
-        pose = self.get_pose()
-        dx = sample.vx + self.path_pid_control.calculate(pose.x, sample.x)
-        dy = sample.vy + self.path_pid_control.calculate(pose.y, sample.y)
-        do = sample.omega + self.path_heading_pid_control.calculate(
-            pose.rotation().radians(), sample.heading
-        )
-        self.drive_field(dx, dy, do)
 
     def get_robot_speeds(self) -> tuple[float, float]:
         vx = self.chassis_speeds.vx
