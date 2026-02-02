@@ -1,4 +1,5 @@
 import wpilib
+from sys import platform
 
 
 # This will default to the blue alliance if a proper link to the driver station has not yet been established
@@ -12,6 +13,9 @@ def is_match() -> bool:
 
 def is_sim() -> bool:
     return wpilib.RobotBase.isSimulation()
+
+def is_linux_sim() -> bool:
+    return is_sim() and platform.startswith("linux")
 
 
 def is_auton() -> bool:
