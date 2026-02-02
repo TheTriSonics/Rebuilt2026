@@ -48,8 +48,8 @@ class Tanker(StateMachine):
         if initial_call:
             # Clear out any trajectory we're runnning
             ...
-        x = self.stick_x if is_red() else -self.stick_x
-        y = self.stick_y if is_red() else -self.stick_y
+        x = -self.stick_x if is_red() else self.stick_x
+        y = -self.stick_y if is_red() else self.stick_y
         self.drivetrain.drive_field(x, y, self.stick_o)
 
     def go_drive_local(self):
