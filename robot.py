@@ -9,6 +9,7 @@ from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d
 
 from controllers.tanker import Tanker
+from utilities.game import is_linux_sim
 
 
 class MyRobot(MagicRobot):
@@ -52,9 +53,15 @@ class MyRobot(MagicRobot):
 
         x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
         y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
-        omega = -rescale_js(self.driver_controller.getRightX(), 0.10, 2.0) * self.max_rotation
+        if not is_linux_sim():
+            omega = -rescale_js(self.driver_controller.getRightX(), 0.10, 2.0) * self.max_rotation
+        else:
+            omega = -rescale_js(self.driver_controller.getRawAxis(3), 0.10, 2.0) * self.max_rotation
 
         self.tanker.set_stick_values(x, y, omega)
+
+        if self.driver_controller.getXButtonPressed():
+            self.tanker.go_follow_trajectory("PathTest")
 
         # Let's check to see if button B is pressed and if so create a point
         # 1 meter away from where we are to drive to
