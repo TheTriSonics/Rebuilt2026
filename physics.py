@@ -121,7 +121,13 @@ class PhysicsEngine:
             for module in robot.drivetrain.modules
         ]
 
-        self.manip_motors: list[Falcon500MotorSim] = []
+        self.manip_motors: list[Falcon500MotorSim] = [
+            Falcon500MotorSim(
+                self.robot.climber.climber,
+                gearing=1,
+                moi=0.0009972 * 4,
+            )
+        ]
 
 
         self.current_yaw = 0.0
@@ -163,6 +169,8 @@ class PhysicsEngine:
             wheel.update(tm_diff)
         for steer in self.steer:
             steer.update(tm_diff)
+        for m in self.manip_motors:
+            m.update(tm_diff)
 
         for module in self.robot.drivetrain.modules:
             # Set the cancoder to be what the module wants it to be.
@@ -172,8 +180,6 @@ class PhysicsEngine:
             module.encoder.sim_state.set_raw_position(
                 raw - module.mag_offset
             )
-        for m in self.manip_motors:
-            m.update(tm_diff)
 
         speeds = self.kinematics.toChassisSpeeds((
             self.swerve_modules[0].get(),
