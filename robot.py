@@ -79,6 +79,9 @@ class MyRobot(MagicRobot):
         if self.driver_controller.getAButtonPressed():
             self.turret.shoot_fuel()
 
+        if self.driver_controller.getXButtonPressed():
+            self.tanker.go_follow_path('test_path')
+
     def disabledPeriodic(self):
         ...
 

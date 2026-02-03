@@ -5,6 +5,7 @@ from magicbot import StateMachine, state
 
 from components.drivetrain import DrivetrainComponent
 from utilities.game import is_red
+from choreo import load_swerve_trajectory
 
 class Tanker(StateMachine):
     # Position tolerance thresholds
@@ -84,3 +85,26 @@ class Tanker(StateMachine):
             self.go_drive_field()
 
 
+    def go_follow_path(self, path_name:str) -> None:
+        #load choreo path
+        self.traj = load_swerve_trajectory(path_name)
+        sample = self.traj.sample_at(0.0, is_red())
+        assert sample
+        sp = sample.get_pose()
+        self.drivetrain.set_pose(sp)
+
+        if self.current_state != self.follow_path.name:
+            self.next_state_now(self.follow_path)
+
+    @state(must_finish=True)
+    def follow_path(self, initial_call: bool, state_tm: float):
+       pose = self.drivetrain.get_pose()
+       end_pose = self.traj.get_final_pose(is_red())
+       assert end_pose
+       dist = pose.relativeTo(end_pose).translation().norm()
+       angle_diff = pose.relativeTo(end_pose).rotation().degrees()
+       if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
+           self.go_drive_field()
+       sample = self.traj.sample_at(state_tm, is_red())
+       assert sample
+       self.drivetrain.follow_path(sample)

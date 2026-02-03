@@ -30,6 +30,7 @@ from wpimath.trajectory import TrapezoidProfileRadians
 from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
 from utilities.game import is_match, is_red
+from choreo.trajectory import SwerveSample
 
 
 class SwerveModule:
@@ -359,6 +360,13 @@ class DrivetrainComponent:
         xvel = self.path_pid_control.calculate(robot_pose.x, x)
         yvel = self.path_pid_control.calculate(robot_pose.y, y)
         ovel = self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), o)
+        self.drive_field(xvel, yvel, ovel)
+
+    def follow_path(self, sample: SwerveSample) -> None:
+        robot_pose = self.get_pose()
+        xvel = sample.vx + self.path_pid_control.calculate(robot_pose.x, sample.x)
+        yvel = sample.vy + self.path_pid_control.calculate(robot_pose.y, sample.y)
+        ovel = sample.omega + self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), sample.heading)
         self.drive_field(xvel, yvel, ovel)
 
     def get_robot_speeds(self) -> tuple[float, float]:
