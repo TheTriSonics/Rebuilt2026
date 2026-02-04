@@ -15,6 +15,7 @@ class TalonId:
     ROTATE = CANDevice(25, shooter)
     ROLLER = CANDevice(26, shooter)
     CLIMBER = CANDevice(27, shooter)
+    SINGULATER = CANDevice(28,shooter)
 
 
 

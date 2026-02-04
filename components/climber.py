@@ -32,6 +32,7 @@ class ClimberComponent:
     target_speed = tunable(0.0)
 
 
+
     climber = TalonFX(ids.TalonId.CLIMBER.id, ids.TalonId.CLIMBER.bus)
     power = VelocityVoltage(0)
 

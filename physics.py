@@ -129,7 +129,6 @@ class PhysicsEngine:
             )
         ]
 
-
         self.current_yaw = 0.0
         self.gyro = robot.gyro.pigeon.sim_state  # Access the Pigeon 2's sim state
         self.gyro.set_supply_voltage(12.0)  # Set the supply voltage for simulation
@@ -180,6 +179,8 @@ class PhysicsEngine:
             module.encoder.sim_state.set_raw_position(
                 raw - module.mag_offset
             )
+        for m in self.manip_motors:
+            m.update(tm_diff)
 
         speeds = self.kinematics.toChassisSpeeds((
             self.swerve_modules[0].get(),

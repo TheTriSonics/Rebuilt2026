@@ -6,6 +6,7 @@ from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from components.turret import TurretComponent, clamp_angle
 from components.climber import ClimberComponent
+from components.singulater import SingulaterComponent
 from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d
 
@@ -24,6 +25,7 @@ class MyRobot(MagicRobot):
     drivetrain: DrivetrainComponent
     turret: TurretComponent
     climber: ClimberComponent
+    singulater: SingulaterComponent
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
@@ -89,6 +91,15 @@ class MyRobot(MagicRobot):
         if self.driver_controller.getLeftBumperPressed():
             self.climber.set_speed(100)
             self.climber.raise_climber()
+
+        if self.driver_controller.getRightBumperPressed():
+            self.singulater.singulater_forward
+
+        if self.driver_controller.getPOV(180):
+            self.singulater.singulater_reverse
+
+
+
 
     def disabledPeriodic(self):
         ...
