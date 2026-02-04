@@ -121,7 +121,16 @@ class PhysicsEngine:
             for module in robot.drivetrain.modules
         ]
 
-        self.manip_motors: list[Falcon500MotorSim] = []
+        self.manip_motors: list[Falcon500MotorSim] = [
+            Falcon500MotorSim(
+                self.robot.climber.climber,
+                gearing=1 / TunerConstants._steer_gear_ratio,
+                # measured from MKCad CAD
+                # moi=0.0009972,
+                moi=0.0009972 * 4,
+            )
+        
+        ]
 
 
         self.current_yaw = 0.0
@@ -172,6 +181,7 @@ class PhysicsEngine:
             module.encoder.sim_state.set_raw_position(
                 raw - module.mag_offset
             )
+            
         for m in self.manip_motors:
             m.update(tm_diff)
 
