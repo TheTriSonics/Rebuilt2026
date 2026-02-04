@@ -12,6 +12,7 @@ from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d
 
 from controllers.tanker import Tanker
+from utilities.game import is_sim
 
 
 
