@@ -1,6 +1,5 @@
 from magicbot import tunable
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
-from phoenix6.hardware import CANcoder, TalonFX
+from phoenix6.hardware import TalonFX
 from phoenix6.controls import DutyCycleOut
 import ids as ids
 

@@ -1,7 +1,7 @@
 #needs to spin both directions, speed control,
 
 from magicbot import tunable
-from phoenix6.hardware import CANcoder, TalonFX
+from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityVoltage
 import ids as ids
 

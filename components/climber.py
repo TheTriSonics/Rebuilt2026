@@ -1,7 +1,6 @@
 from magicbot import tunable
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
-from phoenix6.hardware import CANcoder, TalonFX
-from phoenix6.controls import DutyCycleOut, VelocityVoltage
+from phoenix6.hardware import TalonFX
+from phoenix6.controls import VelocityVoltage
 import ids as ids
 
 from phoenix6.signals import (
