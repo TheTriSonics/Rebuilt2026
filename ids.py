@@ -14,7 +14,7 @@ shooter = 'Shoot'
 class TalonId:
     ROTATE = CANDevice(25, shooter)
     ROLLER = CANDevice(26, shooter)
-
+    KICKER = CANDevice(27, shooter)
 
 
 class CancoderId:
