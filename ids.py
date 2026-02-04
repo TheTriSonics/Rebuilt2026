@@ -14,17 +14,19 @@ shooter = 'Shoot'
 class TalonId:
     ROTATE = CANDevice(25, shooter)
     ROLLER = CANDevice(26, shooter)
+    CLIMBER =CANDevice(27,shooter)
+    SINGULATER =CANDevice(28,shooter)
+
 
 
 
 class CancoderId:
-    MANIP_ARM = CANDevice(35, manipulator)
-    MANIP_WRIST = CANDevice(36, manipulator)
+    ...
 
 
 class CanId:
     """CAN IDs for miscellaneous devices."""
-    CANDI = CANDevice(42, manipulator)
+    ...
 
 
 class DigitalIn:
