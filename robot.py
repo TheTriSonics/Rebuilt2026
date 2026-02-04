@@ -7,7 +7,7 @@ from components.gyro import GyroComponent
 from components.turret import TurretComponent, clamp_angle
 from components.kicker import KickerComponent
 from components.climber import ClimberComponent
-from components.singulater import SingulaterComponent
+from components.singulator import SingulatorComponent
 from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d
 
@@ -27,7 +27,7 @@ class MyRobot(MagicRobot):
     turret: TurretComponent
     kicker: KickerComponent
     climber: ClimberComponent
-    singulater: SingulaterComponent
+    singulator: SingulatorComponent
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
@@ -95,12 +95,12 @@ class MyRobot(MagicRobot):
             self.climber.raise_climber()
 
         if self.driver_controller.getRightBumperPressed():
-            self.singulater.singulater_forward
+            # TODO: Fix error
+            self.singulator.singulator_forward
 
         if self.driver_controller.getPOV(180):
-            self.singulater.singulater_reverse
-
-
+            # TODO: Fix error
+            self.singulator.singulator_reverse
 
 
         if self.driver_controller.getRightTriggerAxis() > 0.55:

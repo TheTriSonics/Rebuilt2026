@@ -16,7 +16,7 @@ class TalonId:
     ROLLER = CANDevice(26, shooter)
     KICKER = CANDevice(27, shooter)
     CLIMBER = CANDevice(28, shooter)
-    SINGULATER = CANDevice(29, shooter)
+    SINGULATOR = CANDevice(29, shooter)
 
 
 class CancoderId:

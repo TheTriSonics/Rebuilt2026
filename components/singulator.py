@@ -5,9 +5,9 @@ from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityVoltage
 import ids as ids
 
-class SingulaterComponent:
+class SingulatorComponent:
 
-    singulater = TalonFX(ids.TalonId.SINGULATER.id, ids.TalonId.SINGULATER.bus)
+    singulator = TalonFX(ids.TalonId.SINGULATOR.id, ids.TalonId.SINGULATOR.bus)
 
     target_speed = tunable(0.0)
     forward_speed = tunable(0.0)
@@ -17,18 +17,18 @@ class SingulaterComponent:
     def __init__(self):
         ...
 
-    def singulater_off(self):
+    def singulator_off(self):
          self.set_speed(0)
 
-    def singulater_forward(self):
+    def singulator_forward(self):
         self.set_speed(self.forward_speed)
 
-    def singulater_reverse(self):
+    def singulator_reverse(self):
         self.set_speed(self.reverse_speed)
 
     def set_speed(self, speed: float) -> None:
         self.target_speed = speed
 
     def execute(self) -> None:
-        self.singulater.set_control(VelocityVoltage(0).with_velocity(self.target_speed))
+        self.singulator.set_control(VelocityVoltage(0).with_velocity(self.target_speed))
     
