@@ -5,6 +5,7 @@ from magicbot import tunable, MagicRobot
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from components.turret import TurretComponent, clamp_angle
+from components.kicker import KickerComponent
 from components.climber import ClimberComponent
 from components.singulater import SingulaterComponent
 from utilities.scalers import rescale_js
@@ -24,6 +25,7 @@ class MyRobot(MagicRobot):
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
     turret: TurretComponent
+    kicker: KickerComponent
     climber: ClimberComponent
     singulater: SingulaterComponent
 
@@ -99,6 +101,17 @@ class MyRobot(MagicRobot):
             self.singulater.singulater_reverse
 
 
+
+
+        if self.driver_controller.getRightTriggerAxis() > 0.55:
+            self.kicker.kicker_forward()
+        elif self.driver_controller.getRightTriggerAxis() < 0.45:
+            self.kicker.kicker_off()
+
+        if self.driver_controller.getLeftTriggerAxis() > 0.55:
+            self.kicker.kicker_reverse()
+        elif self.driver_controller.getLeftTriggerAxis() < 0.45:
+            self.kicker.kicker_off()
 
 
     def disabledPeriodic(self):
