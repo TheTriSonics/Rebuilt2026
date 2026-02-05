@@ -56,6 +56,7 @@ class MyRobot(MagicRobot):
     def teleopInit(self):
         self.tanker.engage()
         self.tanker.go_drive_field()
+        self.turret.set_hub_target()
         self.driver_controller = RebuiltDriver()
         self.operator_controller = wpilib.XboxController(1)
 

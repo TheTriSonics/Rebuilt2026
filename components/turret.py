@@ -9,6 +9,7 @@ from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
+from utilities.game import is_red
 
 _G = 9.81
 _shooter_height = 0.15  # meters
@@ -84,11 +85,16 @@ class TurretComponent:
             .getStructTopic('/components/turret/position', Pose3d)
             .publish()
         )
+        self.set_hub_target()
+
+    def set_hub_target(self) -> None:
         # We calculate the center of the goal based on the positions of
         # AprilTags 20 and 26, then get a point right between them. That's
         # basically dead center of the goal
-        tag20: Pose3d = self.apriltags.getTagPose(20) or Pose3d()
-        tag26: Pose3d = self.apriltags.getTagPose(26) or Pose3d()
+        tag1 = 10 if is_red() else 20
+        tag2 = 4 if is_red() else 26
+        tag20: Pose3d = self.apriltags.getTagPose(tag1) or Pose3d()
+        tag26: Pose3d = self.apriltags.getTagPose(tag2) or Pose3d()
         self.static_goal_center = Pose3d(
             Translation3d((tag20.x + tag26.x)/2, tag20.y, tag20.z),
             Rotation3d(0, 0, 0),
