@@ -126,7 +126,19 @@ class PhysicsEngine:
                 self.robot.climber.climber,
                 gearing=1,
                 moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.intake.rotate,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.intake.roller,
+                gearing=1,
+                moi=0.0009972 * 4,
             )
+
+
         ]
 
         self.current_yaw = 0.0

@@ -8,8 +8,10 @@ from components.turret import TurretComponent, clamp_angle
 from components.kicker import KickerComponent
 from components.climber import ClimberComponent
 from components.singulator import SingulatorComponent
+from components.Intake import IntakeComponent
 from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d
+from hid.xbox_driver import RebuiltDriver
 
 from controllers.tanker import Tanker
 from utilities.game import is_sim
@@ -28,6 +30,7 @@ class MyRobot(MagicRobot):
     kicker: KickerComponent
     climber: ClimberComponent
     singulator: SingulatorComponent
+    intake: IntakeComponent
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
@@ -53,54 +56,45 @@ class MyRobot(MagicRobot):
     def teleopInit(self):
         self.tanker.engage()
         self.tanker.go_drive_field()
-        self.driver_controller = wpilib.XboxController(0)
+        self.driver_controller = RebuiltDriver()
+        self.operator_controller = wpilib.XboxController(1)
 
     def teleopPeriodic(self):
         pose = self.drivetrain.get_pose()
 
-        x = -rescale_js(self.driver_controller.getLeftY(), 0.05, 1.0) * self.max_speed
-        y = -rescale_js(self.driver_controller.getLeftX(), 0.05, 1.0) * self.max_speed
-        omega = -rescale_js(self.driver_controller.getRightX(), 0.10, 2.0) * self.max_rotation
+        x = -rescale_js(self.driver_controller.get_left_y(), 0.05, 1.0) * self.max_speed
+        y = -rescale_js(self.driver_controller.get_left_x(), 0.05, 1.0) * self.max_speed
+        omega = -rescale_js(self.driver_controller.get_right_x(), 0.10, 2.0) * self.max_rotation
 
         self.tanker.set_stick_values(x, y, omega)
 
-        # Let's check to see if button B is pressed and if so create a point
-        # 1 meter away from where we are to drive to
-        if self.driver_controller.getBButtonPressed():
-            self.target_x = pose.x + 1.0
-            self.target_y = pose.y
-            self.target_o = clamp_angle(pose.rotation().radians() + math.pi)
-            target_pose = Pose2d(self.target_x, self.target_y, self.target_o)
-            self.tanker.go_drive_pose(target_pose)
-
-
-        # Toggle between field relative and robot relative
-        if self.driver_controller.getRawButtonPressed(8):
-            # Menu / hamburger button
-            self.tanker.toggle_mode()
-
         # Force the drive mode to field relative and put the driver in control,
         # aborts any drive to point or trajectory following
-        if self.driver_controller.getYButtonPressed():
+        if self.driver_controller.field_centric():
             self.tanker.go_drive_field()
 
-        if self.driver_controller.getAButtonPressed():
+        if self.driver_controller.robot_centric():
+            self.tanker.go_drive_local()
+
+        if self.driver_controller.shooter():
             self.turret.shoot_fuel()
 
-        if self.driver_controller.getXButtonPressed():
-            self.tanker.go_follow_path('test_path')
-        
+        if self.driver_controller.intake_on():
+            self.intake.intake_on()
+        else:
+            self.intake.intake_off()
+        """
         if self.driver_controller.getLeftBumperPressed():
             self.climber.set_speed(100)
             self.climber.raise_climber()
 
         if self.driver_controller.getRightBumperPressed():
             # TODO: Fix error
-            self.singulator.singulator_forward
+            self.singulator.singulator_forward()
 
         if self.driver_controller.getPOV(180):
             # TODO: Fix error
-            self.singulator.singulator_reverse
+            self.singulator.singulator_reverse()
 
 
         if self.driver_controller.getRightTriggerAxis() > 0.55:
@@ -112,7 +106,7 @@ class MyRobot(MagicRobot):
             self.kicker.kicker_reverse()
         elif self.driver_controller.getLeftTriggerAxis() < 0.45:
             self.kicker.kicker_off()
-
+        """
 
     def disabledPeriodic(self):
         ...
