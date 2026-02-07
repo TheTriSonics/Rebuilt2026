@@ -2,7 +2,7 @@
 
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
-from phoenix6.controls import VelocityVoltage
+from phoenix6.controls import VelocityVoltage, DutyCycleOut
 import ids as ids
 
 class SingulatorComponent:
@@ -10,8 +10,8 @@ class SingulatorComponent:
     singulator = TalonFX(ids.TalonId.SINGULATOR.id, ids.TalonId.SINGULATOR.bus)
 
     target_speed = tunable(0.0)
-    forward_speed = tunable(0.0)
-    reverse_speed = tunable(0.0)
+    forward_speed = tunable(0.5)
+    reverse_speed = tunable(-0.5)
 
 
     def __init__(self):
@@ -30,5 +30,5 @@ class SingulatorComponent:
         self.target_speed = speed
 
     def execute(self) -> None:
-        self.singulator.set_control(VelocityVoltage(0).with_velocity(self.target_speed))
+        self.singulator.set_control(DutyCycleOut(self.target_speed))
     

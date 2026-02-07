@@ -104,8 +104,3 @@ class IntakeComponent:
         self.rotate.set_position(self.target_position)
 
         self.roller.set_control(DutyCycleOut(self.target_speed))
-
-    
-    
-                       
-     

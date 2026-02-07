@@ -11,6 +11,7 @@ from components.singulator import SingulatorComponent
 from components.intake import IntakeComponent
 from utilities.scalers import rescale_js
 from hid.xbox_driver import RebuiltDriver
+from hid.xbox_operator import RebuiltOperator
 from controllers.tanker import Tanker
 
 
@@ -55,7 +56,7 @@ class MyRobot(MagicRobot):
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
         self.driver_controller = RebuiltDriver()
-        self.operator_controller = wpilib.XboxController(1)
+        self.operator_controller = RebuiltOperator()
 
     def teleopPeriodic(self):
         pose = self.drivetrain.get_pose()
@@ -85,16 +86,15 @@ class MyRobot(MagicRobot):
         if self.driver_controller.getLeftBumperPressed():
             self.climber.set_speed(100)
             self.climber.raise_climber()
+        """
 
-        if self.driver_controller.getRightBumperPressed():
-            # TODO: Fix error
+        if self.operator_controller.singulator_on():
             self.singulator.singulator_forward()
 
-        if self.driver_controller.getPOV(180):
-            # TODO: Fix error
+        if self.operator_controller.singulator_revserse():
             self.singulator.singulator_reverse()
 
-
+        """
         if self.driver_controller.getRightTriggerAxis() > 0.55:
             self.kicker.kicker_forward()
         elif self.driver_controller.getRightTriggerAxis() < 0.45:
