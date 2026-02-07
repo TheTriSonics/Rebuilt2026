@@ -28,10 +28,10 @@ class RebuiltOperator:
         return False or gb('/hid/operator/singulator_on', False)
 
     def shooter_revserse(self) -> bool:
-        return False or gb('/hid/operator/shooter_revserse', False)
+        return False or gb('/hid/operator/shooter_reverse', False)
 
     def intake_revserse(self) -> bool:
-        return False or gb('/hid/operator/intake_revserse', False)
+        return False or gb('/hid/operator/intake_reverse', False)
 
     def singulator_revserse(self) -> bool:
-        return False or gb('/hid/operator/singulator_revserse', False)
+        return False or gb('/hid/operator/singulator_reverse', False)

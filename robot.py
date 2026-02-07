@@ -90,9 +90,10 @@ class MyRobot(MagicRobot):
 
         if self.operator_controller.singulator_on():
             self.singulator.singulator_forward()
-
-        if self.operator_controller.singulator_revserse():
+        elif self.operator_controller.singulator_revserse():
             self.singulator.singulator_reverse()
+        else:
+            self.singulator.singulator_off()
 
         """
         if self.driver_controller.getRightTriggerAxis() > 0.55:

@@ -136,6 +136,11 @@ class PhysicsEngine:
                 self.robot.intake.roller,
                 gearing=1,
                 moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.singulator.singulator,
+                gearing=1,
+                moi=0.0009972 * 4,
             )
 
 
