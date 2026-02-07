@@ -4,17 +4,14 @@ import wpilib
 from magicbot import tunable, MagicRobot
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
-from components.turret import TurretComponent, clamp_angle
+from components.turret import TurretComponent
 from components.kicker import KickerComponent
 from components.climber import ClimberComponent
 from components.singulator import SingulatorComponent
-from components.Intake import IntakeComponent
+from components.intake import IntakeComponent
 from utilities.scalers import rescale_js
-from wpimath.geometry import Pose2d
 from hid.xbox_driver import RebuiltDriver
-
 from controllers.tanker import Tanker
-from utilities.game import is_sim
 
 
 
