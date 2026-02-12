@@ -34,7 +34,7 @@ class RebuiltDriver():
         return self.controller.getLeftTriggerAxis() > 0.1
     
     def go_to_point(self):
-        return self.controller.getAButtonPressed()
+        return self.controller.getXButtonPressed()
     
 
 
