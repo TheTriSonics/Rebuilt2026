@@ -8,15 +8,15 @@ class CANDevice:
 
 
 drive = 'Drive'
-shooter = 'Shoot'
+shooter = 'Drive'
 
 
 class TalonId:
-    ROTATE = CANDevice(25, shooter)
-    ROLLER = CANDevice(26, shooter)
-    KICKER = CANDevice(27, shooter)
-    CLIMBER = CANDevice(28, shooter)
-    SINGULATOR = CANDevice(29, shooter)
+    ROTATE = CANDevice(50, shooter)
+    ROLLER = CANDevice(51, shooter)
+    KICKER = CANDevice(52, shooter)
+    CLIMBER = CANDevice(53, shooter)
+    SINGULATOR = CANDevice(54, shooter)
 
 
 class CancoderId:

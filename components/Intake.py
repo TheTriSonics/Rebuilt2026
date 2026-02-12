@@ -30,7 +30,7 @@ class IntakeComponent:
     
     target_speed = tunable(0.0)
 
-    intake_speed = tunable(10.0)
+    intake_speed = tunable(0.0)
     outtake_speed = tunable(0.0)
 
 
@@ -94,6 +94,9 @@ class IntakeComponent:
 
     def intake_off(self) -> None:
         self.set_speed(0)
+
+    def intake_reverse(self) -> None:
+        self.set_speed(-self.intake_speed)
 
     def execute(self) -> None:
         if self.target_position > self.upper_limit:

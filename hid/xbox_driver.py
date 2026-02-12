@@ -30,6 +30,12 @@ class RebuiltDriver():
     def intake_on(self):
         return self.controller.getRightTriggerAxis() > 0.1
     
+    def intake_reverse(self):
+        return self.controller.getLeftTriggerAxis() > 0.1
     
+    def go_to_point(self):
+        return self.controller.getAButtonPressed()
+    
+
 
     

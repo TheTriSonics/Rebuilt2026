@@ -10,11 +10,14 @@ from components.climber import ClimberComponent
 from components.singulator import SingulatorComponent
 from components.Intake import IntakeComponent
 from utilities.scalers import rescale_js
-from wpimath.geometry import Pose2d
+from wpimath.geometry import Pose2d, Rotation2d
+from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
 from hid.xbox_driver import RebuiltDriver
+from hid.xbox_operator import RebuiltOperator
 
 from controllers.tanker import Tanker
 from utilities.game import is_sim
+from math import cos, sin
 
 
 
@@ -32,10 +35,13 @@ class MyRobot(MagicRobot):
     singulator: SingulatorComponent
     intake: IntakeComponent
 
+    apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
+
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
+    target_tag = tunable(21)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -58,7 +64,7 @@ class MyRobot(MagicRobot):
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
         self.driver_controller = RebuiltDriver()
-        self.operator_controller = wpilib.XboxController(1)
+        self.operator_controller = RebuiltOperator()
 
     def teleopPeriodic(self):
         pose = self.drivetrain.get_pose()
@@ -82,8 +88,26 @@ class MyRobot(MagicRobot):
 
         if self.driver_controller.intake_on():
             self.intake.intake_on()
+        elif self.driver_controller.intake_reverse():
+            self.intake.intake_reverse()
+        elif self.operator_controller.intake_on():
+            self.intake.intake_on()
+        elif self.operator_controller.intake_reverse():
+            self.intake.intake_reverse()
         else:
             self.intake.intake_off()
+
+        if self.driver_controller.go_to_point():
+            target_pose = self.apriltags.getTagPose(self.target_tag)
+            assert target_pose
+            twod_pose = target_pose.toPose2d()
+            dist_away = 2.0
+            newx = target_pose.x + dist_away * cos(twod_pose.rotation().radians())
+            newy = target_pose.y + dist_away * sin(twod_pose.rotation().radians())
+            target_pose = Pose2d(newx, newy, twod_pose.rotation().rotateBy(Rotation2d.fromDegrees(180)))
+            self.tanker.go_drive_pose(target_pose)
+        
+
         """
         if self.driver_controller.getLeftBumperPressed():
             self.climber.set_speed(100)
@@ -108,6 +132,9 @@ class MyRobot(MagicRobot):
         elif self.driver_controller.getLeftTriggerAxis() < 0.45:
             self.kicker.kicker_off()
         """
+
+        """if self.operator_controller.status == 'on':
+            self.turret.shoot_fuel()"""
 
     def disabledPeriodic(self):
         ...
