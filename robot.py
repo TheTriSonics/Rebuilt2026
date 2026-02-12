@@ -3,6 +3,7 @@ import wpilib
 
 from magicbot import tunable, MagicRobot
 from components.drivetrain import DrivetrainComponent
+from components.vision import VisionComponent
 from components.gyro import GyroComponent
 from components.turret import TurretComponent
 from components.kicker import KickerComponent
@@ -27,6 +28,7 @@ class MyRobot(MagicRobot):
     tanker: Tanker
 
     # Components
+    vision: VisionComponent
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
     turret: TurretComponent

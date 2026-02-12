@@ -8,11 +8,11 @@ import numpy as np
 import phoenix6
 import phoenix6.unmanaged
 import wpilib
+import robotpy_apriltag
 from pyfrc.physics.core import PhysicsInterface
 from wpilib.simulation import DCMotorSim
 
-# import robotpy_apriltag
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Rotation2d
 from wpimath.kinematics import SwerveDrive4Kinematics
 from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.units import kilogram_square_meters
@@ -20,11 +20,9 @@ from wpimath.units import kilogram_square_meters
 from components.drivetrain import SwerveModule
 from generated.tuner_constants_swerve import TunerConstants
 
-"""
 from photonlibpy.simulation.visionSystemSim import VisionSystemSim
 from photonlibpy.simulation.photonCameraSim import PhotonCameraSim
 from photonlibpy.simulation.simCameraProperties import SimCameraProperties
-"""
 
 if typing.TYPE_CHECKING:
     from robot import MyRobot
@@ -145,6 +143,22 @@ class PhysicsEngine:
         self.gyro = robot.gyro.pigeon.sim_state  # Access the Pigeon 2's sim state
         self.gyro.set_supply_voltage(12.0)  # Set the supply voltage for simulation
 
+        self.apriltag_layout = robotpy_apriltag.AprilTagFieldLayout.loadField(
+            robotpy_apriltag.AprilTagField.k2025ReefscapeWelded
+        )
+
+        self.vision_sim = VisionSystemSim("ardu_cam-1")
+        self.vision_sim.addAprilTags(self.apriltag_layout)
+        properties_fr = SimCameraProperties.OV9281_1280_720()
+        properties_fr.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
+
+        self.camera_fr = PhotonCameraSim(robot.vision.camera_fr, properties_fr)
+        self.camera_fr.setMaxSightRange(4.0)
+        self.vision_sim.addCamera(
+            self.camera_fr,
+            self.robot.vision.camera_fr_offset,
+        )
+
 
 
     def update_sim(self, now: float, tm_diff: float) -> None:
@@ -208,5 +222,5 @@ class PhysicsEngine:
         self.gyro.set_raw_yaw(self.current_yaw + yaw_jitter)
 
         self.physics_controller.drive(speeds, tm_diff)
-        # self.vision_sim.update(self.robot.drivetrain.get_pose())
+        self.vision_sim.update(self.robot.drivetrain.get_pose())
 
