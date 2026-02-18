@@ -30,8 +30,8 @@ class IntakeComponent:
     
     target_speed = tunable(0.0)
 
-    intake_speed = tunable(0.0)
-    outtake_speed = tunable(0.0)
+    intake_speed = tunable(-0.7)
+    outtake_speed = tunable(0.7)
 
 
 
@@ -43,8 +43,6 @@ class IntakeComponent:
     # The SDS Mk4i rotation has one pair of gears.
     motor_config.inverted = (
         InvertedValue.CLOCKWISE_POSITIVE
-        if False
-        else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
     )
     feedback_config = FeedbackConfigs()
     feedback_config.sensor_to_mechanism_ratio = 1.0

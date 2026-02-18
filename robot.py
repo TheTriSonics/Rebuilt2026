@@ -10,6 +10,7 @@ from components.kicker import KickerComponent
 from components.climber import ClimberComponent
 from components.singulator import SingulatorComponent
 from components.intake import IntakeComponent
+from components.leds import LEDComponent
 from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d, Rotation2d
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
@@ -36,6 +37,7 @@ class MyRobot(MagicRobot):
     climber: ClimberComponent
     singulator: SingulatorComponent
     intake: IntakeComponent
+    leds: LEDComponent
 
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
@@ -92,10 +94,10 @@ class MyRobot(MagicRobot):
             self.intake.intake_on()
         elif self.driver_controller.intake_reverse():
             self.intake.intake_reverse()
-        elif self.operator_controller.intake_on():
-            self.intake.intake_on()
-        elif self.operator_controller.intake_reverse():
-            self.intake.intake_reverse()
+        # elif self.operator_controller.intake_on():
+        #     self.intake.intake_on()
+        # elif self.operator_controller.intake_reverse():
+        #     self.intake.intake_reverse()
         else:
             self.intake.intake_off()
 
