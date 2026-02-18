@@ -29,7 +29,6 @@ class TalonId:
     SINGULATOR = CANDevice(54, shooter)
     SHOOTER_FRONT = CANDevice(55, shooter)
     SHOOTER_REAR = CANDevice(56, shooter)
-    
 
 
 class CancoderId:
