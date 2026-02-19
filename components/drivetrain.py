@@ -160,19 +160,23 @@ class SwerveModule:
         diff = self.state.angle - current_angle
         if no_steer is False:
             if (abs(diff.degrees()) < 1):
-                self.steer.set_control(DutyCycleOut(0))
+                # self.steer.set_control(DutyCycleOut(0))
+                ...
             else:
+                ...
                 # Use Phoenix 6 closed-loop position control with FusedCANCoder
-                self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
+                # self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
 
         if no_drive is False:
             # rescale the speed target based on how close we are to being correctly
             # aligned with where we want to go
             target_speed = self.state.speed * target_displacement.cos() ** 2
             if abs(self.state.speed) < 0.01:
-                self.drive.set_control(self.stop_request)
+                # self.drive.set_control(self.stop_request)
+                ...
             else:
-                self.drive.set_control(self.drive_request.with_velocity(target_speed))
+                ...
+                # self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
 
     def get_position(self) -> SwerveModulePosition:

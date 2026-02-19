@@ -102,7 +102,7 @@ class IntakeComponent:
         elif self.target_position < self.lower_limit:
             self.target_position = self.lower_limit
 
-        self.rotate.set_position(self.target_position)
+        # self.rotate.set_position(self.target_position)
 
         self.roller.set_control(DutyCycleOut(self.target_speed))
 
