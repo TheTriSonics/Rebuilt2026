@@ -27,13 +27,10 @@ class IntakeComponent:
     lower_position = tunable(5.0)
     target_position = upper_position
     
-    
     target_speed = tunable(0.0)
 
     intake_speed = tunable(-0.7)
     outtake_speed = tunable(0.7)
-
-
 
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
     roller = TalonFX(ids.TalonId.ROLLER.id, ids.TalonId.ROLLER.bus)
@@ -69,12 +66,8 @@ class IntakeComponent:
     rotate.configurator.apply(feedback_config)
     rotate.configurator.apply(closed_loop_config)
 
-
-
-
     def __init__(self):
         ...
-
 
     def lower_intake(self) -> None:
         # This method would lower the intake out.
@@ -105,8 +98,3 @@ class IntakeComponent:
         # self.rotate.set_position(self.target_position)
 
         self.roller.set_control(DutyCycleOut(self.target_speed))
-
-    
-    
-                       
-     

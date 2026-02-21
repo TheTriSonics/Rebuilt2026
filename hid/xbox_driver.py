@@ -36,6 +36,9 @@ class RebuiltDriver():
     def go_to_point(self):
         return self.controller.getXButtonPressed()
     
+    def reset_yaw(self):
+        return self.controller.getPOV(180)
+    
 
 
     

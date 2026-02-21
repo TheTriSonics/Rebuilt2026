@@ -29,7 +29,7 @@ class MyRobot(MagicRobot):
     tanker: Tanker
 
     # Components
-    vision: VisionComponent
+    # vision: VisionComponent
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
     turret: TurretComponent
@@ -110,6 +110,9 @@ class MyRobot(MagicRobot):
             newy = target_pose.y + dist_away * sin(twod_pose.rotation().radians())
             target_pose = Pose2d(newx, newy, twod_pose.rotation().rotateBy(Rotation2d.fromDegrees(180)))
             self.tanker.go_drive_pose(target_pose)
+
+        if self.driver_controller.reset_yaw():
+            omega = 0
 
         
         

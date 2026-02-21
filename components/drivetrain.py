@@ -303,17 +303,17 @@ class DrivetrainComponent:
             self.modules[3].translation,
         )
 
-        nt = ntcore.NetworkTableInstance.getDefault().getTable("/components/drivetrain")
-        module_states_table = nt.getSubTable("module_states")
-        if not is_match():
-            self.setpoints_publisher = module_states_table.getStructArrayTopic(
-                "setpoints", SwerveModuleState
-            ).publish()
-            self.measurements_publisher = module_states_table.getStructArrayTopic(
-                "measured", SwerveModuleState
-            ).publish()
+        # nt = ntcore.NetworkTableInstance.getDefault().getTable("/components/drivetrain")
+        # module_states_table = nt.getSubTable("module_states")
+        # if not is_match():
+        #     self.setpoints_publisher = module_states_table.getStructArrayTopic(
+        #         "setpoints", SwerveModuleState
+        #     ).publish()
+        #     self.measurements_publisher = module_states_table.getStructArrayTopic(
+        #         "measured", SwerveModuleState
+        #     ).publish()
 
-            wpilib.SmartDashboard.putData("Heading PID", self.heading_controller)
+        #     wpilib.SmartDashboard.putData("Heading PID", self.heading_controller)
 
     def get_chassis_speeds(self) -> ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.get_module_states())
@@ -452,9 +452,9 @@ class DrivetrainComponent:
         self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
 
         self.fused_pose_pub.set(curr_pose)
-        if self.send_modules:
-            self.setpoints_publisher.set([module.state for module in self.modules])
-            self.measurements_publisher.set([module.get() for module in self.modules])
+        # if self.send_modules:
+        #     self.setpoints_publisher.set([module.state for module in self.modules])
+        #     self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
         self.estimator.resetPosition(

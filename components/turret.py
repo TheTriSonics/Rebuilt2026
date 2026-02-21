@@ -61,6 +61,10 @@ class TurretComponent:
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
+    # Shooter PIDs 
+    # Shooter front: kP 4.0, kS 2.15, kV 0.14 
+    # Shooter Rear: kP 4.5, kS 2, kV 0.11
+
     # These are set to tunables just so they show up on the dashboard for now
     distance_to_goal = tunable(0.0)
     desired_angle = tunable(0.0)
