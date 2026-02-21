@@ -38,7 +38,7 @@ class RebuiltOperator():
         return self.controller.getLeftTriggerAxis() > 0.1
     
     def shooter_shoot(self):
-        return self.controller.getYButtonPressed()
+        return self.controller.getRightBumper()
     
     def turret_movement(self):
         return self.controller.getRightX()

@@ -23,7 +23,7 @@ class ShooterComponent:
     def __init__(self):
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.COAST
-        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+        motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
         # Shooter front: kP 4.0, kS 2.15, kV 0.14
         front_pid = (

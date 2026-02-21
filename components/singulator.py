@@ -2,9 +2,9 @@
 
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
-from phoenix6.controls import VelocityVoltage
-from phoenix6.configs import CurrentLimitsConfigs, FeedbackConfigs, Slot0Configs
-from phoenix6.signals import FeedbackSensorSourceValue, StaticFeedforwardSignValue
+from phoenix6.controls import VelocityVoltage, DutyCycleOut
+from phoenix6.configs import CurrentLimitsConfigs, FeedbackConfigs, Slot0Configs, MotorOutputConfigs
+from phoenix6.signals import FeedbackSensorSourceValue, StaticFeedforwardSignValue, NeutralModeValue
 import ids
 
 class SingulatorComponent:
@@ -12,28 +12,32 @@ class SingulatorComponent:
     singulator = TalonFX(ids.TalonId.SINGULATOR.id, ids.TalonId.SINGULATOR.bus)
 
     target_speed = 0.0  # rotations per second
-    forward_speed = tunable(200.0)
+    forward_speed = tunable(400.0)
     reverse_speed = tunable(-200.0)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(80.0)
+    stator_current_limit = tunable(120.0)
     supply_current_limit = tunable(120.0)
     supply_current_lower_limit = tunable(120.0)
     supply_current_lower_time = tunable(0.0)
 
 
     def __init__(self):
+        motor_config = MotorOutputConfigs()
+        motor_config.neutral_mode = NeutralModeValue.COAST
+        self.singulator.configurator.apply(motor_config)
+
         feedback_config = FeedbackConfigs()
         feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.ROTOR_SENSOR
         self.singulator.configurator.apply(feedback_config)
 
         singulator_pid = (
             Slot0Configs()
-            .with_k_p(20.0)
+            .with_k_p(200.0)
             .with_k_i(0.0)
             .with_k_d(0.0)
-            .with_k_s(2.25)
-            .with_k_v(0.12)
+            .with_k_s(6.25)
+            .with_k_v(2.12)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_VELOCITY_SIGN
             )
@@ -57,7 +61,7 @@ class SingulatorComponent:
         self.singulator.configurator.apply(current_limits_config)
 
     def singulator_off(self):
-         self.set_speed(0)
+         self.set_speed(0.0)
 
     def singulator_forward(self):
         self.set_speed(self.forward_speed)
@@ -72,5 +76,8 @@ class SingulatorComponent:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
-        self.singulator.set_control(self.velocity_request.with_velocity(self.target_speed))
+        if abs(self.target_speed) > 0.02:
+            self.singulator.set_control(self.velocity_request.with_velocity(self.target_speed))
+        else:
+            self.singulator.set_control(DutyCycleOut(0.0))
     
