@@ -99,6 +99,10 @@ class MyRobot(MagicRobot):
         if self.driver_controller.robot_centric():
             self.tanker.go_drive_local()
 
+        self.turret.set_manual_speed(
+            rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
+        )
+
         if self.driver_controller.shooter():
             self.turret.shoot_fuel()
             self.shooter.spin_up(self.shooter_rps)
