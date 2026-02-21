@@ -2,12 +2,12 @@ from magicbot import feedback
 from phoenix6.hardware import Pigeon2
 from wpimath.geometry import Rotation2d
 
-from generated.tuner_constants_swerve import TunerConstants
+from ids import CanId
 
 
 class GyroComponent:
     def __init__(self):
-        self.pigeon = Pigeon2(TunerConstants._pigeon_id, TunerConstants.canbus.name)
+        self.pigeon = Pigeon2(CanId.PIGEON.id, CanId.PIGEON.bus)
 
     def reset_heading(self, heading: float = 0.0) -> None:
         self.pigeon.set_yaw(heading)
