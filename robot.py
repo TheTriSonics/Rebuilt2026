@@ -99,9 +99,9 @@ class MyRobot(MagicRobot):
         if self.driver_controller.robot_centric():
             self.tanker.go_drive_local()
 
-        self.turret.set_manual_speed(
-            rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
-        )
+        operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
+        driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
+        self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
 
         if self.driver_controller.shooter():
             self.turret.shoot_fuel()

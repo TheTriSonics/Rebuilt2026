@@ -2,6 +2,8 @@ from collections import deque
 from dataclasses import dataclass
 from math import atan2, cos, pi, sin, sqrt, tau
 
+import math
+import wpilib
 import ntcore
 from magicbot import tunable
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
@@ -91,7 +93,7 @@ class TurretComponent:
     # These are set to tunables just so they show up on the dashboard for now
     distance_to_goal = tunable(0.0)
     desired_angle = tunable(0.0)
-    measured_angle = tunable(0.0)
+    measured_angle = 0.0
     manual_speed = tunable(0.0)
 
     config_limits = tunable(False)
@@ -129,6 +131,12 @@ class TurretComponent:
         motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         self.turret_motor.configurator.apply(motor_config)
 
+        if not CANCODER_INSTALLED:
+            # Use the internal rotor sensor for position feedback
+            feedback_config = FeedbackConfigs()
+            feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.ROTOR_SENSOR
+            self.turret_motor.configurator.apply(feedback_config)
+
         if CANCODER_INSTALLED:
             # CANCoder + position control setup
             self.turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
@@ -165,6 +173,38 @@ class TurretComponent:
             self.position_request = PositionVoltage(0).with_slot(0)
 
         self.set_hub_target()
+
+        # Top-down Mechanism2d visualization of turret heading.
+        # Canvas is 2m x 2m, root at center. The barrel ligament rotates
+        # to show where the turret is pointed.
+        self.turret_mech = wpilib.Mechanism2d(2, 2, wpilib.Color8Bit(20, 20, 20))
+        turret_root = self.turret_mech.getRoot("TurretCenter", 1, 1)
+
+        # Base — short thick stub to represent the turret body
+        self.turret_base = turret_root.appendLigament(
+            "Base", 0.15, 0, 30, wpilib.Color8Bit(80, 80, 80)
+        )
+        # Barrel — longer ligament that rotates to show aim direction
+        self.turret_barrel = turret_root.appendLigament(
+            "Barrel", 0.7, 90, 8, wpilib.Color8Bit(0, 255, 0)
+        )
+        # Desired angle indicator — thinner, shows where we want to aim
+        self.turret_desired = turret_root.appendLigament(
+            "Desired", 0.8, 90, 3, wpilib.Color8Bit(255, 255, 0)
+        )
+
+        wpilib.SmartDashboard.putData("Turret", self.turret_mech)
+
+        self.visual_angle_pub = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getDoubleTopic('/components/turret/visual_angle')
+            .publish()
+        )
+        self.measured_position_pub = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getDoubleTopic('/components/turret/measured_position')
+            .publish()
+        )
 
     def setup(self):
         self._apply_current_limits()
@@ -231,6 +271,8 @@ class TurretComponent:
         if not CANCODER_INSTALLED:
             # No encoder — manual DutyCycleOut from operator stick
             self.turret_motor.set_control(DutyCycleOut(self.manual_speed))
+            # Read back motor position for visualization
+            self.measured_angle = self.turret_motor.get_position().value * tau
         else:
             # CANCoder installed — use stick to adjust target position,
             # then drive with closed-loop position control
@@ -273,3 +315,15 @@ class TurretComponent:
                 Rotation3d(0, 0, field_shot_angle),
             )
             self.position.set(turret_viz)
+
+        # Update Mechanism2d visualization
+        raw_position = self.turret_motor.get_position().value
+        self.measured_position_pub.set(raw_position)
+        visual_angle_deg = math.degrees(self.measured_angle)
+        self.visual_angle_pub.set(visual_angle_deg)
+        self.turret_barrel.setAngle(visual_angle_deg)
+        self.turret_desired.setAngle(math.degrees(self.desired_angle))
+        if self.manual_speed != 0:
+            self.turret_barrel.setColor(wpilib.Color8Bit(255, 128, 0))
+        else:
+            self.turret_barrel.setColor(wpilib.Color8Bit(0, 255, 0))
