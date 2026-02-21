@@ -141,6 +141,11 @@ class MyRobot(MagicRobot):
         else:
             self.singulator.singulator_off()
 
+        if self.operator_controller.kicker_on():
+            self.kicker.kicker_forward()
+        else:
+            self.kicker.kicker_off()
+
         
         
 

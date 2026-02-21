@@ -8,15 +8,15 @@ from magicbot import tunable
 class KickerComponent:
     kicker = TalonFX(ids.TalonId.KICKER.id, ids.TalonId.KICKER.bus)
 
-    target_speed = tunable(0.0)
-    forward_speed = tunable(0.50)
+    target_speed = 0.0
+    forward_speed = tunable(1.00)
     reverse_speed = tunable(-0.50)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(1.0)
-    supply_current_limit = tunable(10.0)
-    supply_current_lower_limit = tunable(5.0)
-    supply_current_lower_time = tunable(1.0)
+    stator_current_limit = tunable(80.0)
+    supply_current_limit = tunable(120.0)
+    supply_current_lower_limit = tunable(120.0)
+    supply_current_lower_time = tunable(0.0)
 
     def setup(self):
         self._apply_current_limits()
