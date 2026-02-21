@@ -2,6 +2,7 @@ import math
 import wpilib
 
 from magicbot import tunable, MagicRobot
+from components.battery_monitor import BatteryMonitorComponent
 from components.drivetrain import DrivetrainComponent
 from components.vision import VisionComponent
 from components.gyro import GyroComponent
@@ -38,6 +39,7 @@ class MyRobot(MagicRobot):
     singulator: SingulatorComponent
     intake: IntakeComponent
     leds: LEDComponent
+    battery_monitor: BatteryMonitorComponent
 
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
@@ -71,6 +73,8 @@ class MyRobot(MagicRobot):
         self.turret.set_hub_target()
 
     def teleopPeriodic(self):
+        if self.battery_monitor.is_stop_active():
+            return  # We do NOTHING if the battery is too low. No more robot for you!
         pose = self.drivetrain.get_pose()
 
         x = -rescale_js(self.driver_controller.get_left_y(), 0.05, 1.0) * self.max_speed
