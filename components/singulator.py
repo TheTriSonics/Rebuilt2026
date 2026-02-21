@@ -2,17 +2,18 @@
 
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
-from phoenix6.controls import DutyCycleOut
-from phoenix6.configs import CurrentLimitsConfigs
+from phoenix6.controls import VelocityVoltage
+from phoenix6.configs import CurrentLimitsConfigs, FeedbackConfigs, Slot0Configs
+from phoenix6.signals import FeedbackSensorSourceValue, StaticFeedforwardSignValue
 import ids
 
 class SingulatorComponent:
 
     singulator = TalonFX(ids.TalonId.SINGULATOR.id, ids.TalonId.SINGULATOR.bus)
 
-    target_speed = 0.0
-    forward_speed = tunable(0.8)
-    reverse_speed = tunable(-0.8)
+    target_speed = 0.0  # rotations per second
+    forward_speed = tunable(20.0)
+    reverse_speed = tunable(-20.0)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(40.0)
@@ -20,6 +21,25 @@ class SingulatorComponent:
     supply_current_lower_limit = tunable(100.0)
     supply_current_lower_time = tunable(0.0)
 
+
+    def __init__(self):
+        feedback_config = FeedbackConfigs()
+        feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.ROTOR_SENSOR
+        self.singulator.configurator.apply(feedback_config)
+
+        singulator_pid = (
+            Slot0Configs()
+            .with_k_p(2.0)
+            .with_k_i(0.0)
+            .with_k_d(0.0)
+            .with_k_s(0.25)
+            .with_k_v(0.12)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_VELOCITY_SIGN
+            )
+        )
+        self.singulator.configurator.apply(singulator_pid)
+        self.velocity_request = VelocityVoltage(0).with_slot(0)
 
     def setup(self):
         self._apply_current_limits()
@@ -52,5 +72,5 @@ class SingulatorComponent:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
-        self.singulator.set_control(DutyCycleOut(self.target_speed))
+        self.singulator.set_control(self.velocity_request.with_velocity(self.target_speed))
     
