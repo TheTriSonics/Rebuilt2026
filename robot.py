@@ -53,6 +53,8 @@ class MyRobot(MagicRobot):
         self.field = wpilib.Field2d()
         wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         wpilib.SmartDashboard.putData(self.field)
+        self.driver_controller = RebuiltDriver()
+        self.operator_controller = RebuiltOperator()
 
     def autonomousInit(self):
         self.tanker.engage()
@@ -67,8 +69,6 @@ class MyRobot(MagicRobot):
         self.tanker.engage()
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
-        self.driver_controller = RebuiltDriver()
-        self.operator_controller = RebuiltOperator()
 
     def teleopPeriodic(self):
         pose = self.drivetrain.get_pose()

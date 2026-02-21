@@ -42,9 +42,9 @@ class LEDComponent:
     def execute(self) -> None:
         
 
-        if(wpilib.DriverStation.isDSAttached == False and wpilib.DriverStation.isDisabled == True):
-             self.setColor(self.RED)
-        elif(wpilib.DriverStation.isDSAttached == True and wpilib.DriverStation.isDisabled == True):
+        if not wpilib.DriverStation.isDSAttached() and wpilib.DriverStation.isDisabled():
+            self.setColor(self.RED)
+        elif wpilib.DriverStation.isDSAttached() and wpilib.DriverStation.isDisabled():
             self.setColor(self.BLUE)
         
         else:
