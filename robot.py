@@ -102,6 +102,8 @@ class MyRobot(MagicRobot):
         if self.driver_controller.shooter():
             self.turret.shoot_fuel()
             self.shooter.spin_up(self.shooter_rps)
+        else:
+            self.shooter.stop()
 
         if self.driver_controller.intake_on():
             self.intake.intake_on()

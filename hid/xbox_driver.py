@@ -14,6 +14,8 @@ class RebuiltDriver:
         self.controller = XboxController(0)
 
     def get_right_x(self):
+        if is_linux_sim():
+            return self.controller.getRawAxis(3)
         return self.controller.getRightX()
 
     def get_right_y(self):
@@ -21,7 +23,7 @@ class RebuiltDriver:
 
     def get_left_x(self):
         if is_linux_sim():
-            return self.controller.getRawAxis(3)
+            return self.controller.getRawAxis(0)
         return self.controller.getLeftX()
 
     def get_left_y(self):
@@ -34,7 +36,7 @@ class RebuiltDriver:
         return self.controller.getRawButtonPressed(7)
 
     def shooter(self):
-        return self.controller.getRightBumperButtonPressed()
+        return self.controller.getRightBumperButton()
 
     def intake_on(self):
         return self.controller.getRightTriggerAxis() > 0.1

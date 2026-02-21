@@ -15,9 +15,9 @@ class ShooterComponent:
     active = tunable(False)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(1.0)
-    supply_current_limit = tunable(10.0)
-    supply_current_lower_limit = tunable(5.0)
+    stator_current_limit = tunable(40.0)
+    supply_current_limit = tunable(40.0)
+    supply_current_lower_limit = tunable(40.0)
     supply_current_lower_time = tunable(1.0)
 
     def __init__(self):
