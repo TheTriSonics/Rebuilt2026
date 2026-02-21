@@ -12,13 +12,13 @@ class SingulatorComponent:
     singulator = TalonFX(ids.TalonId.SINGULATOR.id, ids.TalonId.SINGULATOR.bus)
 
     target_speed = 0.0  # rotations per second
-    forward_speed = tunable(20.0)
-    reverse_speed = tunable(-20.0)
+    forward_speed = tunable(200.0)
+    reverse_speed = tunable(-200.0)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(40.0)
-    supply_current_limit = tunable(100.0)
-    supply_current_lower_limit = tunable(100.0)
+    stator_current_limit = tunable(80.0)
+    supply_current_limit = tunable(120.0)
+    supply_current_lower_limit = tunable(120.0)
     supply_current_lower_time = tunable(0.0)
 
 
@@ -29,10 +29,10 @@ class SingulatorComponent:
 
         singulator_pid = (
             Slot0Configs()
-            .with_k_p(2.0)
+            .with_k_p(20.0)
             .with_k_i(0.0)
             .with_k_d(0.0)
-            .with_k_s(0.25)
+            .with_k_s(2.25)
             .with_k_v(0.12)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_VELOCITY_SIGN
