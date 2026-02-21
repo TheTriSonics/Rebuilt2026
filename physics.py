@@ -144,21 +144,39 @@ class PhysicsEngine:
         self.gyro.set_supply_voltage(12.0)  # Set the supply voltage for simulation
 
         self.apriltag_layout = robotpy_apriltag.AprilTagFieldLayout.loadField(
-            robotpy_apriltag.AprilTagField.k2025ReefscapeWelded
+            robotpy_apriltag.AprilTagField.k2026RebuiltWelded
         )
 
         self.vision_sim = VisionSystemSim("ardu_cam-1")
         self.vision_sim.addAprilTags(self.apriltag_layout)
+
         properties_fr = SimCameraProperties.OV9281_1280_720()
         properties_fr.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
-
         self.camera_fr = PhotonCameraSim(robot.vision.camera_fr, properties_fr)
         self.camera_fr.setMaxSightRange(4.0)
+
+        properties_fl = SimCameraProperties.OV9281_1280_720()
+        properties_fl.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
+        self.camera_fl = PhotonCameraSim(robot.vision.camera_fl, properties_fl)
+        self.camera_fl.setMaxSightRange(4.0)
+
+        properties_back = SimCameraProperties.OV9281_1280_720()
+        properties_back.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
+        self.camera_back = PhotonCameraSim(robot.vision.camera_back, properties_back)
+        self.camera_back.setMaxSightRange(4.0)
+
         self.vision_sim.addCamera(
             self.camera_fr,
             self.robot.vision.camera_fr_offset,
         )
-
+        self.vision_sim.addCamera(
+            self.camera_fl,
+            self.robot.vision.camera_fl_offset,
+        )
+        self.vision_sim.addCamera(
+            self.camera_back,
+            self.robot.vision.camera_back_offset,
+        )
 
 
     def update_sim(self, now: float, tm_diff: float) -> None:

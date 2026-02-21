@@ -18,31 +18,65 @@ class VisionComponent:
         self.timer = Timer()
         # Front cameras are backwards in left/right orientation!
         self.camera_fr = PhotonCamera("fr")
+        self.camera_fl = PhotonCamera("fl")
+        self.camera_back = PhotonCamera("back")
 
         self.camera_fr_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(0.0),
-                units.inchesToMeters(0.0),
-                units.inchesToMeters(0.0),
+                units.inchesToMeters(10.0), # Forward/backward offset
+                units.inchesToMeters(-11.0), # Left/right offset, right is negative
+                units.inchesToMeters(15.0), # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 0.0, 0.0),
+            Rotation3d.fromDegrees(0.0, 10.0, -15.0),  # roll, pitch, yaw
+        )
+        self.camera_fl_offset = Transform3d(
+            Translation3d(
+                units.inchesToMeters(10.0), # Forward/backward offset
+                units.inchesToMeters(11.0), # Left/right offset, right is negative
+                units.inchesToMeters(15.0), # Up/down offset
+            ),
+            Rotation3d.fromDegrees(0.0, 10.0, 15.0),  # roll, pitch, yaw
+        )
+        self.camera_back_offset = Transform3d(
+            Translation3d(
+                units.inchesToMeters(-10.0), # Forward/backward offset
+                units.inchesToMeters(0.0), # Left/right offset, right is negative
+                units.inchesToMeters(15.0), # Up/down offset
+            ),
+            Rotation3d.fromDegrees(0.0, 10.0, 0.0),  # roll, pitch, yaw
         )
         field = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
         self.pose_estimator_fr = PhotonPoseEstimator(field, self.camera_fr_offset)
+        self.pose_estimator_fl = PhotonPoseEstimator(field, self.camera_fl_offset)
+        self.pose_estimator_back = PhotonPoseEstimator(field, self.camera_back_offset)
 
         self.publisher_fr = (
             ntcore.NetworkTableInstance.getDefault()
             .getStructTopic("/components/vision/pose_fr", Pose2d)
             .publish()
         )
+        self.publisher_fl = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic("/components/vision/pose_fl", Pose2d)
+            .publish()
+        )
+        self.publisher_back = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic("/components/vision/pose_back", Pose2d)
+            .publish()
+        )
 
-        self.cameras = [self.camera_fr]
+        self.cameras = [self.camera_fr, self.camera_fl, self.camera_back]  # Add back camera when we have one working
         self.pose_estimators = [
             self.pose_estimator_fr,
+            self.pose_estimator_fl,
+            self.pose_estimator_back,
         ]
         self.publishers = [
             self.publisher_fr,
+            self.publisher_fl,
+            self.publisher_back,
         ]
 
     def execute(self) -> None:
