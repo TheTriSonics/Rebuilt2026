@@ -40,6 +40,10 @@ class CancoderId:
     TURRET = CANDevice(35, drive)
 
 
+class CANdleId:
+    CANDLE = CANDevice(5, drive)
+
+
 class CanId:
     """CAN IDs for miscellaneous devices."""
     PIGEON = CANDevice(41, drive)

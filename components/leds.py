@@ -1,15 +1,13 @@
 import wpilib
-import magicbot
 
 from phoenix6.hardware import CANdle
-from phoenix6.controls import EmptyAnimation,SolidColor,RainbowAnimation
+from phoenix6.controls import EmptyAnimation, SolidColor, RainbowAnimation
 from phoenix6.configs import CANdleConfiguration
-from phoenix6.signals import StripTypeValue,RGBWColor
+from phoenix6.signals import StripTypeValue, RGBWColor
 
 from components.intake import IntakeComponent
 from controllers.tanker import Tanker
-
-
+import ids
 
 
 class LEDComponent:
@@ -20,10 +18,10 @@ class LEDComponent:
     GREEN = RGBWColor(0, 255, 0)
     BLUE = RGBWColor(0, 0, 255)
     YELLOW = RGBWColor(255, 255, 0)
-    OFF = RGBWColor(0,0,0,0)
+    OFF = RGBWColor(0, 0, 0, 0)
 
     def __init__(self):
-        self.candle = CANdle(5, "Drive")
+        self.candle = CANdle(ids.CANdleId.CANDLE.id, ids.CANdleId.CANDLE.bus)
 
         cfg = CANdleConfiguration()
         cfg.led.strip_type = StripTypeValue.GRB
@@ -33,21 +31,16 @@ class LEDComponent:
 
         for i in range(0, 8):
             self.candle.set_control(EmptyAnimation(i))
-        
-        self.candle.set_control(RainbowAnimation(0,307,0,1.0))
 
-    def setColor(self, color: RGBWColor) -> None:
-        self.candle.set_control(SolidColor(0,307,color))
+        self.candle.set_control(RainbowAnimation(0, 307, 0, 1.0))
+
+    def set_color(self, color: RGBWColor) -> None:
+        self.candle.set_control(SolidColor(0, 307, color))
 
     def execute(self) -> None:
-        
-
         if not wpilib.DriverStation.isDSAttached() and wpilib.DriverStation.isDisabled():
-            self.setColor(self.RED)
+            self.set_color(self.RED)
         elif wpilib.DriverStation.isDSAttached() and wpilib.DriverStation.isDisabled():
-            self.setColor(self.BLUE)
-        
+            self.set_color(self.BLUE)
         else:
-            self.setColor(self.OFF)
-
-
+            self.set_color(self.OFF)
