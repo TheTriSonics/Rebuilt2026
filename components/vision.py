@@ -16,26 +16,26 @@ class VisionComponent:
 
     def __init__(self) -> None:
         self.timer = Timer()
-        # Front cameras are backwards in left/right orientation!
+<<<<<<< HEAD
         self.camera_rr = PhotonCamera("Rear_Right")
         self.camera_rl = PhotonCamera("Rear_Left")
         self.camera_back = PhotonCamera("Rear")
 
         self.camera_rr_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(10.0), # Forward/backward offset
-                units.inchesToMeters(-11.0), # Left/right offset, right is negative
-                units.inchesToMeters(15.0), # Up/down offset
+                units.inchesToMeters(-11.0),    # Forward/backward offset
+                units.inchesToMeters(11.625),   # Left/right offset, right is negative
+                units.inchesToMeters(6.0),      # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 25.0, -90.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
         )
-        self.camera_rl_offset = Transform3d(
+        self.camera_br_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(10.0), # Forward/backward offset
-                units.inchesToMeters(11.0), # Left/right offset, right is negative
-                units.inchesToMeters(15.0), # Up/down offset
+                units.inchesToMeters(-11.0),    # Forward/backward offset
+                units.inchesToMeters(-11.625),  # Left/right offset, right is negative
+                units.inchesToMeters(6.0),      # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 10.0, 15.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, -22.0, -90.0),  # roll, pitch, yaw
         )
         self.camera_back_offset = Transform3d(
             Translation3d(
@@ -57,12 +57,12 @@ class VisionComponent:
 
         self.publisher_rr = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_fr", Pose2d)
+            .getStructTopic("/components/vision/pose_bl", Pose2d)
             .publish()
         )
-        self.publisher_rl = (
+        self.publisher_br = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_fl", Pose2d)
+            .getStructTopic("/components/vision/pose_br", Pose2d)
             .publish()
         )
         self.publisher_back = (

@@ -177,15 +177,15 @@ class PhysicsEngine:
         # Luma P1: OV9281 global shutter, 1280x800, 80h/56v FOV, ~89.6 diagonal
         luma_p1_fov_diag = Rotation2d.fromDegrees(89.6)
 
-        properties_fr = SimCameraProperties.OV9281_1280_720()
-        properties_fr.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_fr = PhotonCameraSim(robot.vision.camera_fr, properties_fr)
-        self.camera_fr.setMaxSightRange(4.0)
+        properties_bl = SimCameraProperties.OV9281_1280_720()
+        properties_bl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        self.camera_bl = PhotonCameraSim(robot.vision.camera_bl, properties_bl)
+        self.camera_bl.setMaxSightRange(4.0)
 
-        properties_fl = SimCameraProperties.OV9281_1280_720()
-        properties_fl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_fl = PhotonCameraSim(robot.vision.camera_fl, properties_fl)
-        self.camera_fl.setMaxSightRange(4.0)
+        properties_br = SimCameraProperties.OV9281_1280_720()
+        properties_br.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        self.camera_br = PhotonCameraSim(robot.vision.camera_br, properties_br)
+        self.camera_br.setMaxSightRange(4.0)
 
         properties_back = SimCameraProperties.OV9281_1280_720()
         properties_back.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
@@ -193,12 +193,12 @@ class PhysicsEngine:
         self.camera_back.setMaxSightRange(4.0)
 
         self.vision_sim.addCamera(
-            self.camera_fr,
-            self.robot.vision.camera_fr_offset,
+            self.camera_bl,
+            self.robot.vision.camera_bl_offset,
         )
         self.vision_sim.addCamera(
-            self.camera_fl,
-            self.robot.vision.camera_fl_offset,
+            self.camera_br,
+            self.robot.vision.camera_br_offset,
         )
         self.vision_sim.addCamera(
             self.camera_back,
