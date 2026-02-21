@@ -173,18 +173,21 @@ class PhysicsEngine:
         self.vision_sim = VisionSystemSim("ardu_cam-1")
         self.vision_sim.addAprilTags(self.apriltag_layout)
 
+        # Luma P1: OV9281 global shutter, 1280x800, 80h/56v FOV, ~89.6 diagonal
+        luma_p1_fov_diag = Rotation2d.fromDegrees(89.6)
+
         properties_fr = SimCameraProperties.OV9281_1280_720()
-        properties_fr.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
+        properties_fr.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
         self.camera_fr = PhotonCameraSim(robot.vision.camera_fr, properties_fr)
         self.camera_fr.setMaxSightRange(4.0)
 
         properties_fl = SimCameraProperties.OV9281_1280_720()
-        properties_fl.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
+        properties_fl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
         self.camera_fl = PhotonCameraSim(robot.vision.camera_fl, properties_fl)
         self.camera_fl.setMaxSightRange(4.0)
 
         properties_back = SimCameraProperties.OV9281_1280_720()
-        properties_back.setCalibrationFromFOV(1280, 720, Rotation2d.fromDegrees(115))
+        properties_back.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
         self.camera_back = PhotonCameraSim(robot.vision.camera_back, properties_back)
         self.camera_back.setMaxSightRange(4.0)
 
