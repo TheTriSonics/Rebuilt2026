@@ -9,7 +9,7 @@ class KickerComponent:
     kicker = TalonFX(ids.TalonId.KICKER.id, ids.TalonId.KICKER.bus)
 
     target_speed = 0.0
-    forward_speed = tunable(1.00)
+    forward_speed = tunable(0.50)
     reverse_speed = tunable(-0.50)
 
     config_limits = tunable(False)
