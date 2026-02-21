@@ -12,6 +12,7 @@ from components.climber import ClimberComponent
 from components.singulator import SingulatorComponent
 from components.intake import IntakeComponent
 from components.leds import LEDComponent
+from components.shooter import ShooterComponent
 from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d, Rotation2d
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
@@ -39,6 +40,7 @@ class MyRobot(MagicRobot):
     climber: ClimberComponent
     singulator: SingulatorComponent
     intake: IntakeComponent
+    shooter: ShooterComponent
     leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 

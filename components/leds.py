@@ -5,6 +5,10 @@ from phoenix6.controls import EmptyAnimation, SolidColor
 from phoenix6.configs import CANdleConfiguration
 from phoenix6.signals import StripTypeValue, RGBWColor
 
+from components.intake import IntakeComponent
+from components.kicker import KickerComponent
+from components.shooter import ShooterComponent
+from components.singulator import SingulatorComponent
 import ids
 
 
@@ -19,7 +23,7 @@ LED_VIZ_SPACING = 0.02
 LED_HEIGHT = 0.6
 
 # Labels for each bulb
-BULB_LABELS = ["Intake", "Kicker", "Singulator", "Turret", "Climber", "Drivetrain"]
+BULB_LABELS = ["Intake", "Kicker", "Singulator", "Shooter", "Turret", "Climber", "Drivetrain"]
 
 
 def _rgbw_to_color8bit(color: RGBWColor) -> wpilib.Color8Bit:
@@ -27,6 +31,10 @@ def _rgbw_to_color8bit(color: RGBWColor) -> wpilib.Color8Bit:
 
 
 class LEDComponent:
+    intake: IntakeComponent
+    kicker: KickerComponent
+    singulator: SingulatorComponent
+    shooter: ShooterComponent
 
     RED = RGBWColor(255, 0, 0)
     GREEN = RGBWColor(0, 255, 0)
@@ -34,16 +42,20 @@ class LEDComponent:
     YELLOW = RGBWColor(255, 255, 0)
     CYAN = RGBWColor(0, 255, 255)
     PURPLE = RGBWColor(128, 0, 255)
+    WHITE = RGBWColor(255, 255, 255)
+    GREY = RGBWColor(128, 128, 128)
+    BLACK = RGBWColor(0, 0, 0)
     OFF = RGBWColor(0, 0, 0, 0)
 
     # Bulb assignments
     BULB_INTAKE = 0
     BULB_KICKER = 1
     BULB_SINGULATOR = 2
-    BULB_TURRET = 3
-    BULB_CLIMBER = 4
-    BULB_DRIVETRAIN = 5
-    NUM_BULBS = 6
+    BULB_SHOOTER = 3
+    BULB_TURRET = 4
+    BULB_CLIMBER = 5
+    BULB_DRIVETRAIN = 6
+    NUM_BULBS = 7
 
     def __init__(self):
         self.candle = CANdle(ids.CANdleId.CANDLE.id, ids.CANdleId.CANDLE.bus)
@@ -89,9 +101,28 @@ class LEDComponent:
             for i in range(self.NUM_BULBS):
                 self.bulb_colors[i] = self.BLUE
         else:
-            self.bulb_colors[self.BULB_INTAKE] = self.GREEN
-            self.bulb_colors[self.BULB_KICKER] = self.YELLOW
-            self.bulb_colors[self.BULB_SINGULATOR] = self.CYAN
+            if self.intake.target_speed < 0:
+                self.bulb_colors[self.BULB_INTAKE] = self.GREEN
+            elif self.intake.target_speed > 0:
+                self.bulb_colors[self.BULB_INTAKE] = self.RED
+            else:
+                self.bulb_colors[self.BULB_INTAKE] = self.YELLOW
+            if self.kicker.target_speed != 0:
+                self.bulb_colors[self.BULB_KICKER] = self.GREEN
+            else:
+                self.bulb_colors[self.BULB_KICKER] = self.GREY
+            if self.singulator.target_speed > 0:
+                self.bulb_colors[self.BULB_SINGULATOR] = self.GREEN
+            elif self.singulator.target_speed < 0:
+                self.bulb_colors[self.BULB_SINGULATOR] = self.RED
+            else:
+                self.bulb_colors[self.BULB_SINGULATOR] = self.CYAN
+            if self.shooter.is_at_speed():
+                self.bulb_colors[self.BULB_SHOOTER] = self.GREEN
+            elif self.shooter.active:
+                self.bulb_colors[self.BULB_SHOOTER] = self.WHITE
+            else:
+                self.bulb_colors[self.BULB_SHOOTER] = self.BLACK
             self.bulb_colors[self.BULB_TURRET] = self.PURPLE
             self.bulb_colors[self.BULB_CLIMBER] = self.RED
             self.bulb_colors[self.BULB_DRIVETRAIN] = self.BLUE

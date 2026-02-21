@@ -146,6 +146,16 @@ class PhysicsEngine:
                 moi=0.0009972 * 4,
             ),
             Falcon500MotorSim(
+                self.robot.shooter.shooter_front,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.shooter.shooter_rear,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
                 self.robot.singulator.singulator,
                 gearing=1,
                 moi=0.0009972 * 4,

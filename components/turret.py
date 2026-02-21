@@ -88,6 +88,7 @@ class TurretComponent:
     desired_angle = tunable(0.0)
     measured_angle = tunable(0.0)
 
+
     config_limits = tunable(False)
     stator_current_limit = tunable(20.0)
     supply_current_limit = tunable(15.0)
@@ -99,6 +100,7 @@ class TurretComponent:
     # Turret motor and encoder
     turret_motor = TalonFX(ids.TalonId.TURRET_TURN.id, ids.TalonId.TURRET_TURN.bus)
     turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
+
 
     def __init__(self):
         # We'll keep track of 20 ball objects and let the physics sim handle
