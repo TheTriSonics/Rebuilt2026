@@ -51,6 +51,7 @@ class MyRobot(MagicRobot):
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
     target_tag = tunable(21)
+    shooter_rps = tunable(80.0)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -100,6 +101,7 @@ class MyRobot(MagicRobot):
 
         if self.driver_controller.shooter():
             self.turret.shoot_fuel()
+            self.shooter.spin_up(self.shooter_rps)
 
         if self.driver_controller.intake_on():
             self.intake.intake_on()
