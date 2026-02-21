@@ -133,6 +133,13 @@ class MyRobot(MagicRobot):
         if self.driver_controller.reset_yaw():
             omega = 0
 
+        if self.operator_controller.singulator_forward():
+            self.singulator.singulator_forward()
+        elif self.operator_controller.singulator_reverse():
+            self.singulator.singulator_reverse()
+        else:
+            self.singulator.singulator_off()
+
         
         
 
