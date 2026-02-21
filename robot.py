@@ -62,6 +62,7 @@ class MyRobot(MagicRobot):
 
         if is_sim():
             self.control_loop_wait_time = 0.1
+            wpilib.DriverStation.silenceJoystickConnectionWarning(True)
 
     def autonomousInit(self):
         self.tanker.engage()

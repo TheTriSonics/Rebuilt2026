@@ -3,7 +3,8 @@
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityVoltage
-from phoenix6.configs import CurrentLimitsConfigs
+from phoenix6.configs import CurrentLimitsConfigs, Slot0Configs
+from phoenix6.signals import StaticFeedforwardSignValue
 import ids
 
 class SingulatorComponent:
@@ -19,6 +20,20 @@ class SingulatorComponent:
     supply_current_limit = tunable(10.0)
     supply_current_lower_limit = tunable(5.0)
     supply_current_lower_time = tunable(1.0)
+
+    def __init__(self):
+        singulator_pid = (
+            Slot0Configs()
+            .with_k_p(0.5)
+            .with_k_i(0.0)
+            .with_k_d(0.0)
+            .with_k_s(0.1)
+            .with_k_v(0.12)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_VELOCITY_SIGN
+            )
+        )
+        self.singulator.configurator.apply(singulator_pid)
 
     def setup(self):
         self._apply_current_limits()
