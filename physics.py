@@ -134,9 +134,22 @@ class PhysicsEngine:
                 self.robot.intake.roller,
                 gearing=1,
                 moi=0.0009972 * 4,
-            )
-
-
+            ),
+            Falcon500MotorSim(
+                self.robot.turret.turret_motor,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.kicker.kicker,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.singulator.singulator,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
         ]
 
         self.current_yaw = 0.0

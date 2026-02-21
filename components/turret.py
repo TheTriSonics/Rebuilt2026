@@ -7,9 +7,27 @@ from magicbot import tunable
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
 from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
+from phoenix6.hardware import TalonFX, CANcoder
+from phoenix6.controls import PositionVoltage
+from phoenix6.configs import (
+    CANcoderConfiguration,
+    ClosedLoopGeneralConfigs,
+    CurrentLimitsConfigs,
+    FeedbackConfigs,
+    MotorOutputConfigs,
+    Slot0Configs,
+)
+from phoenix6.signals import (
+    FeedbackSensorSourceValue,
+    InvertedValue,
+    NeutralModeValue,
+    StaticFeedforwardSignValue,
+)
+
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from utilities.game import is_red
+import ids
 
 _G = 9.81
 _shooter_height = 0.15  # meters
@@ -61,8 +79,8 @@ class TurretComponent:
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
-    # Shooter PIDs 
-    # Shooter front: kP 4.0, kS 2.15, kV 0.14 
+    # Shooter PIDs
+    # Shooter front: kP 4.0, kS 2.15, kV 0.14
     # Shooter Rear: kP 4.5, kS 2, kV 0.11
 
     # These are set to tunables just so they show up on the dashboard for now
@@ -70,7 +88,17 @@ class TurretComponent:
     desired_angle = tunable(0.0)
     measured_angle = tunable(0.0)
 
+    config_limits = tunable(False)
+    stator_current_limit = tunable(20.0)
+    supply_current_limit = tunable(15.0)
+    supply_current_lower_limit = tunable(10.0)
+    supply_current_lower_time = tunable(1.0)
+
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
+
+    # Turret motor and encoder
+    turret_motor = TalonFX(ids.TalonId.TURRET_TURN.id, ids.TalonId.TURRET_TURN.bus)
+    turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
 
     def __init__(self):
         # We'll keep track of 20 ball objects and let the physics sim handle
@@ -89,7 +117,64 @@ class TurretComponent:
             .getStructTopic('/components/turret/position', Pose3d)
             .publish()
         )
+
+        # Configure CANCoder
+        enc_config = CANcoderConfiguration()
+        self.turret_encoder.configurator.apply(enc_config)
+
+        # Configure motor output
+        motor_config = MotorOutputConfigs()
+        motor_config.neutral_mode = NeutralModeValue.BRAKE
+        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+
+        # Configure feedback to use FusedCANCoder
+        feedback_config = FeedbackConfigs()
+        feedback_config.feedback_remote_sensor_id = ids.CancoderId.TURRET.id
+        feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
+        feedback_config.sensor_to_mechanism_ratio = 1.0
+        feedback_config.rotor_to_sensor_ratio = 1.0  # TODO: set actual gear ratio
+
+        # PID and feedforward for position hold
+        turret_pid = (
+            Slot0Configs()
+            .with_k_p(5.0)
+            .with_k_i(0.0)
+            .with_k_d(0.1)
+            .with_k_s(0.25)
+            .with_k_v(0.0)
+            .with_k_a(0.0)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+            )
+        )
+
+        closed_loop_config = ClosedLoopGeneralConfigs()
+        closed_loop_config.continuous_wrap = True
+
+        self.turret_motor.configurator.apply(motor_config)
+        self.turret_motor.configurator.apply(turret_pid, 0.01)
+        self.turret_motor.configurator.apply(feedback_config)
+        self.turret_motor.configurator.apply(closed_loop_config)
+
+        # Position control request
+        self.position_request = PositionVoltage(0).with_slot(0)
+
         self.set_hub_target()
+
+    def setup(self):
+        self._apply_current_limits()
+
+    def _apply_current_limits(self):
+        current_limits_config = (
+            CurrentLimitsConfigs()
+            .with_stator_current_limit(self.stator_current_limit)
+            .with_stator_current_limit_enable(True)
+            .with_supply_current_limit(self.supply_current_limit)
+            .with_supply_current_limit_enable(True)
+            .with_supply_current_lower_limit(self.supply_current_lower_limit)
+            .with_supply_current_lower_time(self.supply_current_lower_time)
+        )
+        self.turret_motor.configurator.apply(current_limits_config)
 
     def set_hub_target(self) -> None:
         # We calculate the center of the goal based on the positions of
@@ -131,6 +216,10 @@ class TurretComponent:
         )
 
     def execute(self) -> None:
+        if self.config_limits:
+            self._apply_current_limits()
+            self.config_limits = False
+
         curr_pose = self.drivetrain.get_pose()
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
@@ -155,9 +244,10 @@ class TurretComponent:
         )
         self.targets.set([goal_viz])
 
-        # Just hack this for now, later this is where we'd want to drive the
-        # motor to the proper setpoint.
-        self.measured_angle = self.desired_angle
+        # Drive the turret motor to the desired angle
+        target_rotations = self.desired_angle / tau
+        self.turret_motor.set_control(self.position_request.with_position(target_rotations))
+        self.measured_angle = self.turret_motor.get_position().value * tau
 
         # Now publishing a Pose3D so AdvanrtageScope can draw a cone in the
         # direction we're aiming.
