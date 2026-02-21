@@ -223,8 +223,6 @@ class PhysicsEngine:
             module.encoder.sim_state.set_raw_position(
                 raw - module.mag_offset
             )
-        for m in self.manip_motors:
-            m.update(tm_diff)
 
         speeds = self.kinematics.toChassisSpeeds((
             self.swerve_modules[0].get(),

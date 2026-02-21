@@ -29,6 +29,7 @@ class TalonId:
     SINGULATOR = CANDevice(54, shooter)
     SHOOTER_FRONT = CANDevice(55, shooter)
     SHOOTER_REAR = CANDevice(56, shooter)
+    TURRET_TURN = CANDevice(57, shooter)
 
 
 class CancoderId:
@@ -36,6 +37,7 @@ class CancoderId:
     SWERVE_FR = CANDevice(32, drive)
     SWERVE_BR = CANDevice(33, drive)
     SWERVE_BL = CANDevice(34, drive)
+    TURRET = CANDevice(35, drive)
 
 
 class CanId:

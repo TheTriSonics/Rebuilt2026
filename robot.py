@@ -33,6 +33,7 @@ class MyRobot(MagicRobot):
     # vision: VisionComponent
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
+    vision: VisionComponent
     turret: TurretComponent
     kicker: KickerComponent
     climber: ClimberComponent
@@ -55,8 +56,9 @@ class MyRobot(MagicRobot):
         self.field = wpilib.Field2d()
         wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         wpilib.SmartDashboard.putData(self.field)
-        self.driver_controller = RebuiltDriver()
-        self.operator_controller = RebuiltOperator()
+
+        if is_sim():
+            self.control_loop_wait_time = 0.1
 
     def autonomousInit(self):
         self.tanker.engage()
@@ -68,13 +70,16 @@ class MyRobot(MagicRobot):
         ...
 
     def teleopInit(self):
+        self.driver_controller = RebuiltDriver()
+        self.operator_controller = RebuiltOperator()
         self.tanker.engage()
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
 
     def teleopPeriodic(self):
         if self.battery_monitor.is_stop_active():
-            return  # We do NOTHING if the battery is too low. No more robot for you!
+            print('dead battery')
+            # return  # We do NOTHING if the battery is too low. No more robot for you!
         pose = self.drivetrain.get_pose()
 
         x = -rescale_js(self.driver_controller.get_left_y(), 0.05, 1.0) * self.max_speed
