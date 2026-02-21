@@ -161,23 +161,23 @@ class SwerveModule:
         diff = self.state.angle - current_angle
         if no_steer is False:
             if (abs(diff.degrees()) < 1):
-                # self.steer.set_control(DutyCycleOut(0))
+                self.steer.set_control(DutyCycleOut(0))
                 ...
             else:
                 ...
                 # Use Phoenix 6 closed-loop position control with FusedCANCoder
-                # self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
+                self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
 
         if no_drive is False:
             # rescale the speed target based on how close we are to being correctly
             # aligned with where we want to go
             target_speed = self.state.speed * target_displacement.cos() ** 2
             if abs(self.state.speed) < 0.01:
-                # self.drive.set_control(self.stop_request)
+                self.drive.set_control(self.stop_request)
                 ...
             else:
                 ...
-                # self.drive.set_control(self.drive_request.with_velocity(target_speed))
+                self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
 
     def get_position(self) -> SwerveModulePosition:
@@ -304,15 +304,15 @@ class DrivetrainComponent:
             self.modules[3].translation,
         )
 
-        # nt = ntcore.NetworkTableInstance.getDefault().getTable("/components/drivetrain")
-        # module_states_table = nt.getSubTable("module_states")
-        # if not is_match():
-        #     self.setpoints_publisher = module_states_table.getStructArrayTopic(
-        #         "setpoints", SwerveModuleState
-        #     ).publish()
-        #     self.measurements_publisher = module_states_table.getStructArrayTopic(
-        #         "measured", SwerveModuleState
-        #     ).publish()
+        nt = ntcore.NetworkTableInstance.getDefault().getTable("/components/drivetrain")
+        module_states_table = nt.getSubTable("module_states")
+        if not is_match():
+            self.setpoints_publisher = module_states_table.getStructArrayTopic(
+                "setpoints", SwerveModuleState
+            ).publish()
+            self.measurements_publisher = module_states_table.getStructArrayTopic(
+                "measured", SwerveModuleState
+            ).publish()
 
         #     wpilib.SmartDashboard.putData("Heading PID", self.heading_controller)
 
@@ -453,9 +453,9 @@ class DrivetrainComponent:
         self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
 
         self.fused_pose_pub.set(curr_pose)
-        # if self.send_modules:
-        #     self.setpoints_publisher.set([module.state for module in self.modules])
-        #     self.measurements_publisher.set([module.get() for module in self.modules])
+        if self.send_modules:
+            self.setpoints_publisher.set([module.state for module in self.modules])
+            self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
         self.estimator.resetPosition(
