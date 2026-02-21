@@ -1,7 +1,7 @@
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import DutyCycleOut
-import ids as ids
+import ids
 
 from phoenix6.signals import (
     InvertedValue,

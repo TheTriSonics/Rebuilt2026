@@ -1,7 +1,7 @@
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import DutyCycleOut
 from phoenix6.configs import CurrentLimitsConfigs
-import ids as ids
+import ids
 from magicbot import tunable
 
 

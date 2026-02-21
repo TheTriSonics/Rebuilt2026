@@ -4,15 +4,15 @@ from magicbot import tunable
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityVoltage
 from phoenix6.configs import CurrentLimitsConfigs
-import ids as ids
+import ids
 
 class SingulatorComponent:
 
     singulator = TalonFX(ids.TalonId.SINGULATOR.id, ids.TalonId.SINGULATOR.bus)
 
     target_speed = tunable(0.0)
-    forward_speed = tunable(0.0)
-    reverse_speed = tunable(0.0)
+    forward_speed = tunable(20.0)
+    reverse_speed = tunable(-20.0)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(1.0)

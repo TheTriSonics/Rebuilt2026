@@ -16,17 +16,17 @@ class RebuiltOperator():
     def hang_down(self):
         return self.controller.getLeftTriggerAxis() > 0.1
     
-    def sigulator_forward(self):
+    def singulator_forward(self):
         return self.controller.getAButtonPressed()
-    
-    def signulator_reverse(self):
+
+    def singulator_reverse(self):
         return self.controller.getBButtonPressed()
     
     def intake_up(self):
         return self.controller.getXButtonPressed()
     
     def intake_down(self):
-        return self.controller.getXButtonPressed()
+        return self.controller.getYButtonPressed()
     
     def intake_on(self):
         return self.controller.getRightTriggerAxis() > 0.1
@@ -38,10 +38,10 @@ class RebuiltOperator():
         return self.controller.getYButtonPressed()
     
     def turret_movement(self):
-        return self.controller.rightStick
-    
+        return self.controller.getRightX()
+
     def hood_movement(self):
-        return self.controller.leftStick
+        return self.controller.getLeftY()
     
     #def toggle(self):
         if self.controller.getAButtonPressed():

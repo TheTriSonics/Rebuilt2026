@@ -162,9 +162,7 @@ class SwerveModule:
         if no_steer is False:
             if (abs(diff.degrees()) < 1):
                 self.steer.set_control(DutyCycleOut(0))
-                ...
             else:
-                ...
                 # Use Phoenix 6 closed-loop position control with FusedCANCoder
                 self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
 
@@ -174,9 +172,7 @@ class SwerveModule:
             target_speed = self.state.speed * target_displacement.cos() ** 2
             if abs(self.state.speed) < 0.01:
                 self.drive.set_control(self.stop_request)
-                ...
             else:
-                ...
                 self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
 
@@ -389,7 +385,7 @@ class DrivetrainComponent:
         #     self.snap_to_heading(self.get_heading().radians())
         self.chassis_speeds = ChassisSpeeds(vx, vy, omega)
 
-    # Note that haeding should be in radians
+    # Note that heading should be in radians
     def snap_to_heading(self, heading: float) -> None:
         """set a heading target for the heading controller"""
         self.snapping_to_heading = True
