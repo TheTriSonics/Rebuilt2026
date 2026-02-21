@@ -1,6 +1,7 @@
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import DutyCycleOut
-import ids as ids 
+from phoenix6.configs import CurrentLimitsConfigs
+import ids as ids
 from magicbot import tunable
 
 
@@ -11,9 +12,26 @@ class KickerComponent:
     forward_speed = tunable(0.50)
     reverse_speed = tunable(-0.50)
 
+    config_limits = tunable(False)
+    stator_current_limit = tunable(1.0)
+    supply_current_limit = tunable(10.0)
+    supply_current_lower_limit = tunable(5.0)
+    supply_current_lower_time = tunable(1.0)
 
-    def __init__(self):
-        ...
+    def setup(self):
+        self._apply_current_limits()
+
+    def _apply_current_limits(self):
+        current_limits_config = (
+            CurrentLimitsConfigs()
+            .with_stator_current_limit(self.stator_current_limit)
+            .with_stator_current_limit_enable(True)
+            .with_supply_current_limit(self.supply_current_limit)
+            .with_supply_current_limit_enable(True)
+            .with_supply_current_lower_limit(self.supply_current_lower_limit)
+            .with_supply_current_lower_time(self.supply_current_lower_time)
+        )
+        self.kicker.configurator.apply(current_limits_config)
 
     def set_speed(self, speed: float) -> None:
         self.target_speed = speed
@@ -28,6 +46,7 @@ class KickerComponent:
         self.set_speed(self.reverse_speed)
 
     def execute(self) -> None:
+        if self.config_limits:
+            self._apply_current_limits()
+            self.config_limits = False
         self.kicker.set_control(DutyCycleOut(self.target_speed))
-    
-

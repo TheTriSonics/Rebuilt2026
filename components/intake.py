@@ -10,6 +10,7 @@ from phoenix6.signals import (
 )
 from phoenix6.configs import (
     ClosedLoopGeneralConfigs,
+    CurrentLimitsConfigs,
     FeedbackConfigs,
     MotorOutputConfigs,
     Slot0Configs,
@@ -31,6 +32,14 @@ class IntakeComponent:
 
     intake_speed = tunable(-0.7)
     outtake_speed = tunable(0.7)
+
+    config_limits = tunable(False)
+    stator_current_limit = tunable(1.0)
+    supply_current_limit = tunable(10.0)
+    supply_current_lower_limit = tunable(5.0)
+    supply_current_lower_time = tunable(1.0)
+
+
 
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
     roller = TalonFX(ids.TalonId.ROLLER.id, ids.TalonId.ROLLER.bus)
@@ -66,8 +75,24 @@ class IntakeComponent:
     rotate.configurator.apply(feedback_config)
     rotate.configurator.apply(closed_loop_config)
 
-    def __init__(self):
-        ...
+
+
+
+    def setup(self):
+        self._apply_current_limits()
+
+    def _apply_current_limits(self):
+        current_limits_config = (
+            CurrentLimitsConfigs()
+            .with_stator_current_limit(self.stator_current_limit)
+            .with_stator_current_limit_enable(True)
+            .with_supply_current_limit(self.supply_current_limit)
+            .with_supply_current_limit_enable(True)
+            .with_supply_current_lower_limit(self.supply_current_lower_limit)
+            .with_supply_current_lower_time(self.supply_current_lower_time)
+        )
+        self.roller.configurator.apply(current_limits_config)
+
 
     def lower_intake(self) -> None:
         # This method would lower the intake out.
@@ -90,6 +115,9 @@ class IntakeComponent:
         self.set_speed(-self.intake_speed)
 
     def execute(self) -> None:
+        if self.config_limits:
+            self._apply_current_limits()
+            self.config_limits = False
         if self.target_position > self.upper_limit:
             self.target_position = self.upper_limit
         elif self.target_position < self.lower_limit:
