@@ -2,7 +2,7 @@ from magicbot import tunable
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import Follower, VelocityVoltage, VoltageOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs
-from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
+from phoenix6.signals import InvertedValue, MotorAlignmentValue, NeutralModeValue, StaticFeedforwardSignValue
 
 import ids
 
@@ -50,7 +50,7 @@ class ShooterComponent:
 
         self.velocity_request = VelocityVoltage(0).with_slot(0)
         self.stop_request = VoltageOut(0)
-        self.follower_request = Follower(ids.TalonId.SHOOTER_FRONT.id, True)
+        self.follower_request = Follower(ids.TalonId.SHOOTER_FRONT.id, MotorAlignmentValue.OPPOSED)
 
     def setup(self):
         self._apply_current_limits()
