@@ -149,31 +149,26 @@ class SwerveModule:
         return self.drive.get_position().value
 
     def set(self, desired_state: SwerveModuleState):
-        no_steer = False
-        no_drive = False
         self.state = desired_state
         current_angle = self.get_rotation()
         self.state.optimize(current_angle)
 
         target_displacement = self.state.angle - current_angle
         target_angle_rotations = self.state.angle.radians() / math.tau
-        wpilib.SmartDashboard.putNumber("tar", target_angle_rotations)
         diff = self.state.angle - current_angle
-        if no_steer is False:
-            if (abs(diff.degrees()) < 1):
-                self.steer.set_control(DutyCycleOut(0))
-            else:
-                # Use Phoenix 6 closed-loop position control with FusedCANCoder
-                self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
+        if abs(diff.degrees()) < 1:
+            self.steer.set_control(DutyCycleOut(0))
+        else:
+            # Use Phoenix 6 closed-loop position control with FusedCANCoder
+            self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
 
-        if no_drive is False:
-            # rescale the speed target based on how close we are to being correctly
-            # aligned with where we want to go
-            target_speed = self.state.speed * target_displacement.cos() ** 2
-            if abs(self.state.speed) < 0.01:
-                self.drive.set_control(self.stop_request)
-            else:
-                self.drive.set_control(self.drive_request.with_velocity(target_speed))
+        # Rescale the speed target based on how close we are to being correctly
+        # aligned with where we want to go
+        target_speed = self.state.speed * target_displacement.cos() ** 2
+        if abs(self.state.speed) < 0.01:
+            self.drive.set_control(self.stop_request)
+        else:
+            self.drive.set_control(self.drive_request.with_velocity(target_speed))
 
 
     def get_position(self) -> SwerveModulePosition:

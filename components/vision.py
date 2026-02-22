@@ -1,6 +1,5 @@
 import math
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
-from wpilib import Timer
 import ntcore
 from wpimath.geometry import Pose2d, Translation3d, Rotation3d, Transform3d
 from photonlibpy.photonCamera import PhotonCamera
@@ -15,7 +14,6 @@ class VisionComponent:
     drivetrain: DrivetrainComponent
 
     def __init__(self) -> None:
-        self.timer = Timer()
         # Front cameras are backwards in left/right orientation!
         self.camera_fr = PhotonCamera("fr")
         self.camera_fl = PhotonCamera("fl")

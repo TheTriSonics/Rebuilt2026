@@ -19,7 +19,6 @@ from phoenix6.configs import (
 
 
 class IntakeComponent:
-    
 
     # These are set to tunables just so they show up on the dashboard for now
     upper_limit = tunable(100.0)
@@ -27,7 +26,7 @@ class IntakeComponent:
     upper_position = tunable(95.0)
     lower_position = tunable(5.0)
     target_position = upper_position
-    
+
     target_speed = tunable(0.0)
 
     intake_speed = tunable(-0.7)
@@ -39,44 +38,36 @@ class IntakeComponent:
     supply_current_lower_limit = tunable(5.0)
     supply_current_lower_time = tunable(1.0)
 
-
-
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
     roller = TalonFX(ids.TalonId.ROLLER.id, ids.TalonId.ROLLER.bus)
 
-    motor_config = MotorOutputConfigs()
-    motor_config.neutral_mode = NeutralModeValue.BRAKE
-    # The SDS Mk4i rotation has one pair of gears.
-    motor_config.inverted = (
-        InvertedValue.CLOCKWISE_POSITIVE
-    )
-    feedback_config = FeedbackConfigs()
-    feedback_config.sensor_to_mechanism_ratio = 1.0
-    feedback_config.rotor_to_sensor_ratio = 1.0
+    def __init__(self):
+        motor_config = MotorOutputConfigs()
+        motor_config.neutral_mode = NeutralModeValue.BRAKE
+        motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
-    # configuration for motor pid
+        feedback_config = FeedbackConfigs()
+        feedback_config.sensor_to_mechanism_ratio = 1.0
+        feedback_config.rotor_to_sensor_ratio = 1.0
 
-    pid = (
-        Slot0Configs()
-        .with_k_p(0.1)
-        .with_k_i(0)
-        .with_k_d(0.0)
-        .with_k_s(4.3)
-        .with_k_v(2.0)
-        .with_k_a(0)
-        .with_static_feedforward_sign(
-            StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+        pid = (
+            Slot0Configs()
+            .with_k_p(0.1)
+            .with_k_i(0)
+            .with_k_d(0.0)
+            .with_k_s(4.3)
+            .with_k_v(2.0)
+            .with_k_a(0)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+            )
         )
-    )
-    closed_loop_config = ClosedLoopGeneralConfigs()
+        closed_loop_config = ClosedLoopGeneralConfigs()
 
-    rotate.configurator.apply(motor_config)
-    rotate.configurator.apply(pid, 0.01)
-    rotate.configurator.apply(feedback_config)
-    rotate.configurator.apply(closed_loop_config)
-
-
-
+        self.rotate.configurator.apply(motor_config)
+        self.rotate.configurator.apply(pid, 0.01)
+        self.rotate.configurator.apply(feedback_config)
+        self.rotate.configurator.apply(closed_loop_config)
 
     def setup(self):
         self._apply_current_limits()

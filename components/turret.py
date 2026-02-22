@@ -306,10 +306,11 @@ class TurretComponent:
 
             # Publish visualization
             field_shot_angle = self.measured_angle - self.gyro.get_Rotation2d().radians()
+            dt_pose = self.drivetrain.get_pose()
             turret_viz = Pose3d(
                 Translation3d(
-                    self.drivetrain.get_pose().translation().x,
-                    self.drivetrain.get_pose().translation().y,
+                    dt_pose.translation().x,
+                    dt_pose.translation().y,
                     _shooter_height + 0.5
                 ),
                 Rotation3d(0, 0, field_shot_angle),

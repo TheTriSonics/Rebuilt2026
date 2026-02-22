@@ -105,6 +105,7 @@ class Tanker(StateMachine):
        angle_diff = pose.relativeTo(end_pose).rotation().degrees()
        if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
            self.go_drive_field()
+           return
        sample = self.traj.sample_at(state_tm, is_red())
        assert sample
        self.drivetrain.follow_path(sample)
