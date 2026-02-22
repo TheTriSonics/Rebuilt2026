@@ -114,7 +114,7 @@ class PhysicsEngine:
                 gearing=1 / TunerConstants._steer_gear_ratio,
                 # measured from MKCad CAD
                 # moi=0.0009972,
-                moi=0.0009972 * 4,
+                moi=0.0009972 * 1,
             )
             for module in robot.drivetrain.modules
         ]
@@ -143,17 +143,18 @@ class PhysicsEngine:
             Falcon500MotorSim(
                 self.robot.kicker.kicker,
                 gearing=1,
-                moi=0.0009972 * 4,
+                moi=0.0009972 * 2,
             ),
             Falcon500MotorSim(
                 self.robot.shooter.shooter_front,
                 gearing=1,
-                moi=0.0009972 * 4,
+                # 2x 3" Colson wheels (~0.1 kg each, r=0.0381m) + 10%
+                moi=0.00016,
             ),
             Falcon500MotorSim(
                 self.robot.shooter.shooter_rear,
                 gearing=1,
-                moi=0.0009972 * 4,
+                moi=0.00016,
             ),
             Falcon500MotorSim(
                 self.robot.singulator.singulator,
