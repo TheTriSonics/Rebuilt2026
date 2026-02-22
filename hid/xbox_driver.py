@@ -55,7 +55,3 @@ class RebuiltDriver:
 
     def turret_right(self) -> float:
         return -0.6 if self.controller.getPOV() == 90 else 0.0
-
-
-
-

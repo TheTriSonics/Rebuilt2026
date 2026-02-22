@@ -33,7 +33,6 @@ class MyRobot(MagicRobot):
     gaspump: GasPump
 
     # Components
-    # vision: VisionComponent
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
     vision: VisionComponent
@@ -86,8 +85,6 @@ class MyRobot(MagicRobot):
         if self.battery_monitor.is_stop_active():
             print('dead battery')
             # return  # We do NOTHING if the battery is too low. No more robot for you!
-        pose = self.drivetrain.get_pose()
-
         x = -rescale_js(self.driver_controller.get_left_y(), 0.05, 1.0) * self.max_speed
         y = -rescale_js(self.driver_controller.get_left_x(), 0.05, 1.0) * self.max_speed
         omega = -rescale_js(self.driver_controller.get_right_x(), 0.10, 2.0) * self.max_rotation
@@ -142,37 +139,6 @@ class MyRobot(MagicRobot):
             self.singulator.singulator_forward()
         elif self.operator_controller.singulator_reverse():
             self.singulator.singulator_reverse()
-
-
-
-
-        """
-        if self.driver_controller.getLeftBumperPressed():
-            self.climber.set_speed(100)
-            self.climber.raise_climber()
-
-        if self.driver_controller.getRightBumperPressed():
-            # TODO: Fix error
-            self.singulator.singulator_forward()
-
-        if self.driver_controller.getPOV(180):
-            # TODO: Fix error
-            self.singulator.singulator_reverse()
-
-
-        if self.driver_controller.getRightTriggerAxis() > 0.55:
-            self.kicker.kicker_forward()
-        elif self.driver_controller.getRightTriggerAxis() < 0.45:
-            self.kicker.kicker_off()
-
-        if self.driver_controller.getLeftTriggerAxis() > 0.55:
-            self.kicker.kicker_reverse()
-        elif self.driver_controller.getLeftTriggerAxis() < 0.45:
-            self.kicker.kicker_off()
-        """
-
-        """if self.operator_controller.status == 'on':
-            self.turret.shoot_fuel()"""
 
     def disabledPeriodic(self):
         ...
