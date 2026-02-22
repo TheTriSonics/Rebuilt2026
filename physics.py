@@ -8,11 +8,11 @@ import numpy as np
 import phoenix6
 import phoenix6.unmanaged
 import wpilib
+import robotpy_apriltag
 from pyfrc.physics.core import PhysicsInterface
 from wpilib.simulation import DCMotorSim
 
-# import robotpy_apriltag
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Rotation2d
 from wpimath.kinematics import SwerveDrive4Kinematics
 from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.units import kilogram_square_meters
@@ -20,11 +20,9 @@ from wpimath.units import kilogram_square_meters
 from components.drivetrain import SwerveModule
 from generated.tuner_constants_swerve import TunerConstants
 
-"""
 from photonlibpy.simulation.visionSystemSim import VisionSystemSim
 from photonlibpy.simulation.photonCameraSim import PhotonCameraSim
 from photonlibpy.simulation.simCameraProperties import SimCameraProperties
-"""
 
 if typing.TYPE_CHECKING:
     from robot import MyRobot
@@ -116,18 +114,96 @@ class PhysicsEngine:
                 gearing=1 / TunerConstants._steer_gear_ratio,
                 # measured from MKCad CAD
                 # moi=0.0009972,
-                moi=0.0009972 * 4,
+                moi=0.0009972 * 1,
             )
             for module in robot.drivetrain.modules
         ]
 
-        self.manip_motors: list[Falcon500MotorSim] = []
-
+        self.manip_motors: list[Falcon500MotorSim] = [
+            Falcon500MotorSim(
+                self.robot.climber.climber,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.intake.rotate,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.intake.roller,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.turret.turret_motor,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+            Falcon500MotorSim(
+                self.robot.kicker.kicker,
+                gearing=1,
+                moi=0.0009972 * 2,
+            ),
+            Falcon500MotorSim(
+                self.robot.shooter.shooter_front,
+                gearing=1,
+                # 2x 3" Colson wheels (~0.1 kg each, r=0.0381m) + 10%
+                moi=0.00016,
+            ),
+            Falcon500MotorSim(
+                self.robot.shooter.shooter_rear,
+                gearing=1,
+                moi=0.00016,
+            ),
+            Falcon500MotorSim(
+                self.robot.singulator.singulator,
+                gearing=1,
+                moi=0.0009972 * 4,
+            ),
+        ]
 
         self.current_yaw = 0.0
         self.gyro = robot.gyro.pigeon.sim_state  # Access the Pigeon 2's sim state
         self.gyro.set_supply_voltage(12.0)  # Set the supply voltage for simulation
 
+        self.apriltag_layout = robotpy_apriltag.AprilTagFieldLayout.loadField(
+            robotpy_apriltag.AprilTagField.k2026RebuiltWelded
+        )
+
+        self.vision_sim = VisionSystemSim("ardu_cam-1")
+        self.vision_sim.addAprilTags(self.apriltag_layout)
+
+        # Luma P1: OV9281 global shutter, 1280x800, 80h/56v FOV, ~89.6 diagonal
+        luma_p1_fov_diag = Rotation2d.fromDegrees(89.6)
+
+        properties_fr = SimCameraProperties.OV9281_1280_720()
+        properties_fr.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        self.camera_fr = PhotonCameraSim(robot.vision.camera_fr, properties_fr)
+        self.camera_fr.setMaxSightRange(4.0)
+
+        properties_fl = SimCameraProperties.OV9281_1280_720()
+        properties_fl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        self.camera_fl = PhotonCameraSim(robot.vision.camera_fl, properties_fl)
+        self.camera_fl.setMaxSightRange(4.0)
+
+        properties_back = SimCameraProperties.OV9281_1280_720()
+        properties_back.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        self.camera_back = PhotonCameraSim(robot.vision.camera_back, properties_back)
+        self.camera_back.setMaxSightRange(4.0)
+
+        self.vision_sim.addCamera(
+            self.camera_fr,
+            self.robot.vision.camera_fr_offset,
+        )
+        self.vision_sim.addCamera(
+            self.camera_fl,
+            self.robot.vision.camera_fl_offset,
+        )
+        self.vision_sim.addCamera(
+            self.camera_back,
+            self.robot.vision.camera_back_offset,
+        )
 
 
     def update_sim(self, now: float, tm_diff: float) -> None:
@@ -163,6 +239,8 @@ class PhysicsEngine:
             wheel.update(tm_diff)
         for steer in self.steer:
             steer.update(tm_diff)
+        for m in self.manip_motors:
+            m.update(tm_diff)
 
         for module in self.robot.drivetrain.modules:
             # Set the cancoder to be what the module wants it to be.
@@ -172,8 +250,6 @@ class PhysicsEngine:
             module.encoder.sim_state.set_raw_position(
                 raw - module.mag_offset
             )
-        for m in self.manip_motors:
-            m.update(tm_diff)
 
         speeds = self.kinematics.toChassisSpeeds((
             self.swerve_modules[0].get(),
@@ -189,5 +265,5 @@ class PhysicsEngine:
         self.gyro.set_raw_yaw(self.current_yaw + yaw_jitter)
 
         self.physics_controller.drive(speeds, tm_diff)
-        # self.vision_sim.update(self.robot.drivetrain.get_pose())
+        self.vision_sim.update(self.robot.drivetrain.get_pose())
 

@@ -4,21 +4,19 @@ from collections import deque
 import magicbot
 import ntcore
 import wpilib
-from magicbot import feedback
 from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
     FeedbackConfigs,
-    MagnetSensorConfigs,
     MotorOutputConfigs,
 )
-from phoenix6.controls import DutyCycleOut, VelocityVoltage, VoltageOut
+from phoenix6.controls import DutyCycleOut, PositionVoltage, VelocityVoltage, VoltageOut
 from phoenix6.hardware import CANcoder, TalonFX
-from phoenix6.signals import InvertedValue, NeutralModeValue
+from phoenix6.signals import FeedbackSensorSourceValue, InvertedValue, NeutralModeValue
 from wpimath.controller import (
-    PIDController,
     ProfiledPIDControllerRadians,
     SimpleMotorFeedforwardMeters,
+    PIDController,
 )
 from wpimath.estimator import SwerveDrive4PoseEstimator
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
@@ -32,6 +30,8 @@ from wpimath.trajectory import TrapezoidProfileRadians
 from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
 from utilities.game import is_match, is_red
+from choreo.trajectory import SwerveSample
+from ids import TalonId, CancoderId
 
 
 class SwerveModule:
@@ -68,25 +68,27 @@ class SwerveModule:
         self.steer = TalonFX(steer_id, self.busname)
         self.drive = TalonFX(drive_id, self.busname)
         self.encoder = CANcoder(encoder_id, self.busname)
+
+        # Configure CANcoder for FusedCANCoder - use builder pattern
         enc_config = CANcoderConfiguration()
-        mag_config = MagnetSensorConfigs()
-        mag_config.with_magnet_offset(mag_offset)
-        enc_config.with_magnet_sensor(mag_config)
+        enc_config.magnet_sensor.with_magnet_offset(mag_offset)
         self.encoder.configurator.apply(enc_config)  # type: ignore
 
         steer_motor_config = MotorOutputConfigs()
         steer_motor_config.neutral_mode = NeutralModeValue.BRAKE
         # The SDS Mk4i rotation has one pair of gears.
-        steer_motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
         steer_motor_config.inverted = (
             InvertedValue.CLOCKWISE_POSITIVE
             if steer_reversed
             else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
 
-        steer_gear_ratio_config = FeedbackConfigs().with_sensor_to_mechanism_ratio(
-            TunerConstants._steer_gear_ratio
-        )
+        # Configure FusedCANCoder feedback
+        steer_feedback_config = FeedbackConfigs()
+        steer_feedback_config.feedback_remote_sensor_id = encoder_id
+        steer_feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
+        steer_feedback_config.sensor_to_mechanism_ratio = 1.0
+        steer_feedback_config.rotor_to_sensor_ratio = TunerConstants._steer_gear_ratio
 
         # configuration for motor pid
         steer_pid = TunerConstants._steer_gains
@@ -95,7 +97,7 @@ class SwerveModule:
 
         self.steer.configurator.apply(steer_motor_config)
         self.steer.configurator.apply(steer_pid, 0.01)
-        self.steer.configurator.apply(steer_gear_ratio_config)
+        self.steer.configurator.apply(steer_feedback_config)
         self.steer.configurator.apply(steer_closed_loop_config)
 
         # Configure drive motor
@@ -126,15 +128,14 @@ class SwerveModule:
 
         self.central_angle = Rotation2d(x, y)
 
-        self.steer_pid = PIDController(0.3, 0, 0)
-        self.steer_pid.enableContinuousInput(-math.pi, math.pi)
-
+        # Create Phoenix 6 control requests
+        self.steer_request = PositionVoltage(0).with_slot(0)
         self.drive_request = VelocityVoltage(0)
         self.stop_request = VoltageOut(0)
 
     def get_angle_absolute(self) -> float:
-        """Gets steer angle (rot) from absolute encoder"""
-        return self.encoder.get_absolute_position().value * math.tau
+        """Gets steer angle (rot) from absolute encoder (now fused with motor)"""
+        return self.steer.get_position().value * math.tau
 
     def get_rotation(self) -> Rotation2d:
         """Get the steer angle as a Rotation2d"""
@@ -145,7 +146,7 @@ class SwerveModule:
         return self.drive.get_velocity().value
 
     def get_distance_traveled(self) -> float:
-        return self.drive.get_position().value  #  * math.tau*TunerConstants._wheel_radius
+        return self.drive.get_position().value
 
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
@@ -155,15 +156,15 @@ class SwerveModule:
         self.state.optimize(current_angle)
 
         target_displacement = self.state.angle - current_angle
-        target_angle = self.state.angle.radians()
-
+        target_angle_rotations = self.state.angle.radians() / math.tau
+        wpilib.SmartDashboard.putNumber("tar", target_angle_rotations)
         diff = self.state.angle - current_angle
         if no_steer is False:
             if (abs(diff.degrees()) < 1):
                 self.steer.set_control(DutyCycleOut(0))
             else:
-                steer_output = self.steer_pid.calculate(current_angle.radians(), target_angle)
-                self.steer.set_control(DutyCycleOut(steer_output))
+                # Use Phoenix 6 closed-loop position control with FusedCANCoder
+                self.steer.set_control(self.steer_request.with_position(target_angle_rotations))
 
         if no_drive is False:
             # rescale the speed target based on how close we are to being correctly
@@ -190,31 +191,40 @@ class DrivetrainComponent:
 
     HEADING_TOLERANCE = math.radians(1)
 
-
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
 
     send_modules = magicbot.tunable(True)
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
-        FALCON_MAX_RPM = 200
-        self.vx = 0
-        self.vy = 0
+        # Theoretical max RPM that a Kraken X60 can reach
+        DRIVE_MOTOR_MAX_RPM = 200
+
         # maxiumum speed for any wheel
         wheel_circumference = TunerConstants._wheel_radius * math.tau
-        drive_motor_rev_to_meters = (1 / TunerConstants._drive_gear_ratio) * wheel_circumference
-        self.max_wheel_speed = drive_motor_rev_to_meters * FALCON_MAX_RPM
-        # Buffers for weighted moving average of velocity
+        drive_motor_rev_to_meters = wheel_circumference / TunerConstants._drive_gear_ratio
+        self.max_wheel_speed = drive_motor_rev_to_meters * DRIVE_MOTOR_MAX_RPM
+
+        # Placeholders for current robot velocity
+        self.vx = 0
+        self.vy = 0
+        # Buffers for weighted moving average of velocity; used to populate
+        # vx and vy
         self._velocity_samples = 10
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
         self._vy_samples: deque[float] = deque(maxlen=self._velocity_samples)
         # Weights for exponential weighting (most recent sample has highest weight)
         self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
 
-        self.fused_pose_pub = (ntcore.NetworkTableInstance.getDefault()
-                                                .getStructTopic("FusedPose", Pose2d)
-                                                .publish()
+        # Plotting the location of this in AdvantageScope shows the robot's
+        # estimated position on the field
+        self.fused_pose_pub = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic("FusedPose", Pose2d)
+            .publish()
         )
+
+        # Used to lock the robot onto a heading; currently not used.
         self.heading_controller = ProfiledPIDControllerRadians(
             0.5, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
@@ -222,21 +232,22 @@ class DrivetrainComponent:
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
         self.snap_heading: float | None = None
 
-        # Leaving the old values here, using some more docile ones for driver practice temporarily
-        self.default_xy_pid = (10.0, 1.0, 0.0)
-        self.aggressive_xy_pid = (20.0, 0.0, 0.0)
-        self.heading_pid = (15.0, 0.0, 0.0)
+        # Used for path following and driving directly to a specific point
+        self.path_pid_control = PIDController(10, 0, 0)
+        self.path_heading_pid_control = PIDController(8.2, 0, 0)
 
+        # Define each of the four swerve modules using the SwerveModule class
+        # also found in this file.
         self.modules = (
             # Front Left
             SwerveModule(
                 "Front Left",
                 TunerConstants._front_left_x_pos,
                 TunerConstants._front_left_y_pos,
-                TunerConstants._front_left_drive_motor_id,
-                TunerConstants._front_left_steer_motor_id,
-                TunerConstants._front_left_encoder_id,
-                busname=TunerConstants.canbus.name,
+                TalonId.DRIVE_FL.id,
+                TalonId.TURN_FL.id,
+                CancoderId.SWERVE_FL.id,
+                busname=TalonId.DRIVE_FL.bus,
                 mag_offset=TunerConstants._front_left_encoder_offset,
                 steer_reversed=TunerConstants._front_left_steer_motor_inverted,
                 drive_reversed=TunerConstants._invert_left_side,
@@ -246,10 +257,10 @@ class DrivetrainComponent:
                 "Front Right",
                 TunerConstants._front_right_x_pos,
                 TunerConstants._front_right_y_pos,
-                TunerConstants._front_right_drive_motor_id,
-                TunerConstants._front_right_steer_motor_id,
-                TunerConstants._front_right_encoder_id,
-                busname=TunerConstants.canbus.name,
+                TalonId.DRIVE_FR.id,
+                TalonId.TURN_FR.id,
+                CancoderId.SWERVE_FR.id,
+                busname=TalonId.DRIVE_FR.bus,
                 mag_offset=TunerConstants._front_right_encoder_offset,
                 steer_reversed=TunerConstants._front_right_steer_motor_inverted,
                 drive_reversed=TunerConstants._invert_right_side,
@@ -259,10 +270,10 @@ class DrivetrainComponent:
                 "Back Left",
                 TunerConstants._back_left_x_pos,
                 TunerConstants._back_left_y_pos,
-                TunerConstants._back_left_drive_motor_id,
-                TunerConstants._back_left_steer_motor_id,
-                TunerConstants._back_left_encoder_id,
-                busname=TunerConstants.canbus.name,
+                TalonId.DRIVE_BL.id,
+                TalonId.TURN_BL.id,
+                CancoderId.SWERVE_BL.id,
+                busname=TalonId.DRIVE_BL.bus,
                 mag_offset=TunerConstants._back_left_encoder_offset,
                 steer_reversed=TunerConstants._back_left_steer_motor_inverted,
                 drive_reversed=TunerConstants._invert_left_side,
@@ -272,10 +283,10 @@ class DrivetrainComponent:
                 "Back Right",
                 TunerConstants._back_right_x_pos,
                 TunerConstants._back_right_y_pos,
-                TunerConstants._back_right_drive_motor_id,
-                TunerConstants._back_right_steer_motor_id,
-                TunerConstants._back_right_encoder_id,
-                busname=TunerConstants.canbus.name,
+                TalonId.DRIVE_BR.id,
+                TalonId.TURN_BR.id,
+                CancoderId.SWERVE_BR.id,
+                busname=TalonId.DRIVE_BR.bus,
                 mag_offset=TunerConstants._back_right_encoder_offset,
                 steer_reversed=TunerConstants._back_right_steer_motor_inverted,
                 drive_reversed=TunerConstants._invert_right_side,
@@ -299,14 +310,12 @@ class DrivetrainComponent:
                 "measured", SwerveModuleState
             ).publish()
 
-            wpilib.SmartDashboard.putData("Heading PID", self.heading_controller)
+        #     wpilib.SmartDashboard.putData("Heading PID", self.heading_controller)
 
     def get_chassis_speeds(self) -> ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.get_module_states())
 
-    def get_module_states(
-        self,
-    ) -> tuple[
+    def get_module_states(self) -> tuple[
         SwerveModuleState,
         SwerveModuleState,
         SwerveModuleState,
@@ -344,10 +353,27 @@ class DrivetrainComponent:
             vx, vy, omega, current_heading
         )
 
+    def drive_to_pose(self, target_pose: Pose2d):
+        self.drive_to_position(target_pose.x, target_pose.y, target_pose.rotation().radians())
+
+    def drive_to_position(self, x: float, y: float, o: float) -> None:
+        robot_pose = self.get_pose()
+        xvel = self.path_pid_control.calculate(robot_pose.x, x)
+        yvel = self.path_pid_control.calculate(robot_pose.y, y)
+        ovel = self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), o)
+        self.drive_field(xvel, yvel, ovel)
+
+    def follow_path(self, sample: SwerveSample) -> None:
+        robot_pose = self.get_pose()
+        xvel = sample.vx + self.path_pid_control.calculate(robot_pose.x, sample.x)
+        yvel = sample.vy + self.path_pid_control.calculate(robot_pose.y, sample.y)
+        ovel = sample.omega + self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), sample.heading)
+        self.drive_field(xvel, yvel, ovel)
+
     def get_robot_speeds(self) -> tuple[float, float]:
         vx = self.chassis_speeds.vx
         vy = self.chassis_speeds.vy
-        total_speed = math.sqrt(vx*vx + vy*vy)
+        total_speed = math.sqrt(vx * vx + vy * vy)
         return total_speed, self.chassis_speeds.omega
 
     def halt(self):
@@ -359,7 +385,7 @@ class DrivetrainComponent:
         #     self.snap_to_heading(self.get_heading().radians())
         self.chassis_speeds = ChassisSpeeds(vx, vy, omega)
 
-    # Note that haeding should be in radians
+    # Note that heading should be in radians
     def snap_to_heading(self, heading: float) -> None:
         """set a heading target for the heading controller"""
         self.snapping_to_heading = True
@@ -459,7 +485,3 @@ class DrivetrainComponent:
     def get_rotation(self) -> Rotation2d:
         """Get the current heading of the robot."""
         return self.get_pose().rotation()
-
-    @feedback
-    def at_desired_heading(self) -> bool:
-        return self.heading_controller.atGoal()

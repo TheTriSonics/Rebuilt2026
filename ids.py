@@ -8,31 +8,45 @@ class CANDevice:
 
 
 drive = 'Drive'
-manipulator = 'Arm'
+shooter = 'Drive'
 
 
 class TalonId:
-    MANIP_ARM = CANDevice(25, manipulator)
-    MANIP_WRIST = CANDevice(26, manipulator)
-    MANIP_INTAKE = CANDevice(27, manipulator)
+    DRIVE_FL = CANDevice(11, drive)
+    DRIVE_FR = CANDevice(12, drive)
+    DRIVE_BR = CANDevice(13, drive)
+    DRIVE_BL = CANDevice(14, drive)
 
-    CLIMB = CANDevice(51, manipulator)
+    TURN_FL = CANDevice(21, drive)
+    TURN_FR = CANDevice(22, drive)
+    TURN_BR = CANDevice(23, drive)
+    TURN_BL = CANDevice(24, drive)
 
-    UNUSED = CANDevice(51, drive)
-    UNUSED2 = CANDevice(52, drive)
-
-    MANIP_ELEVATOR_LEFT = CANDevice(61, drive)
-    MANIP_ELEVATOR_RIGHT = CANDevice(62, drive)
+    ROTATE = CANDevice(50, shooter)
+    ROLLER = CANDevice(51, shooter)
+    KICKER = CANDevice(52, shooter)
+    CLIMBER = CANDevice(53, shooter)
+    SINGULATOR = CANDevice(54, shooter)
+    SHOOTER_FRONT = CANDevice(55, shooter)
+    SHOOTER_REAR = CANDevice(56, shooter)
+    TURRET_TURN = CANDevice(57, shooter)
 
 
 class CancoderId:
-    MANIP_ARM = CANDevice(35, manipulator)
-    MANIP_WRIST = CANDevice(36, manipulator)
+    SWERVE_FL = CANDevice(31, drive)
+    SWERVE_FR = CANDevice(32, drive)
+    SWERVE_BR = CANDevice(33, drive)
+    SWERVE_BL = CANDevice(34, drive)
+    TURRET = CANDevice(35, drive)
+
+
+class CANdleId:
+    CANDLE = CANDevice(5, drive)
 
 
 class CanId:
     """CAN IDs for miscellaneous devices."""
-    CANDI = CANDevice(42, manipulator)
+    PIGEON = CANDevice(41, drive)
 
 
 class DigitalIn:

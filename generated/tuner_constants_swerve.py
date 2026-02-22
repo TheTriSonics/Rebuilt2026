@@ -18,11 +18,11 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
     _steer_gains = (
         configs.Slot0Configs()
-        .with_k_p(0.0)
+        .with_k_p(100.0)
         .with_k_i(0)
         .with_k_d(0.0)
-        .with_k_s(0.1)
-        .with_k_v(0.0)
+        .with_k_s(0.3)
+        .with_k_v(2.0)
         .with_k_a(0)
         .with_static_feedforward_sign(
             signals.StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -32,14 +32,15 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
     _drive_gains = (
         configs.Slot0Configs()
-        .with_k_p(1.0)
+        .with_k_p(2.0)
         .with_k_i(0)
         .with_k_d(0)
-        .with_k_s(0)
-        .with_k_v(0.124)
+        .with_k_s(0.3)
+        .with_k_v(0.1)
     )
 
     # The closed-loop output type to use for the steer motors;
+
     # This affects the PID/FF gains for the steer motors
     _steer_closed_loop_output = swerve.ClosedLoopOutputType.VOLTAGE
     # The closed-loop output type to use for the drive motors;
@@ -85,8 +86,8 @@ class TunerConstants:
     # This may need to be tuned to your individual robot
     _couple_ratio = 3.8181818181818183
 
-    _drive_gear_ratio = 6.109090909090909
-    _steer_gear_ratio = 13.371428571428572
+    _drive_gear_ratio = 5.54
+    _steer_gear_ratio = 25.0
     _wheel_radius: units.meter = inchesToMeters(2)
 
     _invert_left_side = False
@@ -138,44 +139,44 @@ class TunerConstants:
 
 
     # Front Left
-    _front_left_drive_motor_id = 24
-    _front_left_steer_motor_id = 14
-    _front_left_encoder_id = 35
-    _front_left_encoder_offset: units.rotation = -0.028076171875
-    _front_left_steer_motor_inverted = True
+    _front_left_drive_motor_id = 11
+    _front_left_steer_motor_id = 21
+    _front_left_encoder_id = 31
+    _front_left_encoder_offset: units.rotation = -0.17431640625
+    _front_left_steer_motor_inverted = False
     _front_left_encoder_inverted = False
 
     _front_left_x_pos: units.meter = inchesToMeters(11)
     _front_left_y_pos: units.meter = inchesToMeters(11.625)
 
     # Front Right
-    _front_right_drive_motor_id = 11
-    _front_right_steer_motor_id = 21
-    _front_right_encoder_id = 31
-    _front_right_encoder_offset: units.rotation = 0.198486328125
-    _front_right_steer_motor_inverted = True
+    _front_right_drive_motor_id = 12
+    _front_right_steer_motor_id = 22
+    _front_right_encoder_id = 32
+    _front_right_encoder_offset: units.rotation = -0.107421875
+    _front_right_steer_motor_inverted = False
     _front_right_encoder_inverted = False
 
     _front_right_x_pos: units.meter = inchesToMeters(11)
     _front_right_y_pos: units.meter = inchesToMeters(-11.625)
 
     # Back Left
-    _back_left_drive_motor_id = 12
-    _back_left_steer_motor_id = 22
-    _back_left_encoder_id = 32
-    _back_left_encoder_offset: units.rotation = -0.223876953125
-    _back_left_steer_motor_inverted = True
+    _back_left_drive_motor_id = 14
+    _back_left_steer_motor_id = 24
+    _back_left_encoder_id = 34
+    _back_left_encoder_offset: units.rotation = -0.055419921875
+    _back_left_steer_motor_inverted = False
     _back_left_encoder_inverted = False
 
     _back_left_x_pos: units.meter = inchesToMeters(-11)
     _back_left_y_pos: units.meter = inchesToMeters(11.625)
 
     # Back Right
-    _back_right_drive_motor_id = 23
-    _back_right_steer_motor_id = 13
+    _back_right_drive_motor_id = 13
+    _back_right_steer_motor_id = 23
     _back_right_encoder_id = 33
-    _back_right_encoder_offset: units.rotation = -0.07861328125
-    _back_right_steer_motor_inverted = True
+    _back_right_encoder_offset: units.rotation = -0.345703125
+    _back_right_steer_motor_inverted = False
     _back_right_encoder_inverted = False
 
     _back_right_x_pos: units.meter = inchesToMeters(-11)
