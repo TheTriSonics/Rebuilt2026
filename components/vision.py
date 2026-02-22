@@ -90,6 +90,11 @@ class VisionComponent:
         angular_baseline_std = self.angular_baseline_std_sim if is_sim() else self.angular_baseline_std
         setDevs = self.drivetrain.estimator.setVisionMeasurementStdDevs
 
+        # Collect candidate measurements from all cameras, then only apply
+        # the best two (lowest std_xy) to avoid spending too long in the
+        # Kalman filter update when all three cameras report at once.
+        candidates = []
+
         for cam, pose_est, pub in zip(
             self.cameras, self.pose_estimators, self.publishers
         ):
@@ -120,5 +125,10 @@ class VisionComponent:
                         std_factor = (avg_dist**2) / tag_count
                         std_xy = linear_baseline_std * std_factor
                         std_rot = angular_baseline_std * std_factor
-                        setDevs((std_xy, std_xy, std_rot))
-                        self.drivetrain.estimator.addVisionMeasurement(twod_pose, ts)
+                        candidates.append((std_xy, std_rot, twod_pose, ts))
+
+        # Apply only the two best measurements (lowest std_xy)
+        candidates.sort(key=lambda c: c[0])
+        for std_xy, std_rot, pose, ts in candidates[:2]:
+            setDevs((std_xy, std_xy, std_rot))
+            self.drivetrain.estimator.addVisionMeasurement(pose, ts)
