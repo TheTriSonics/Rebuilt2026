@@ -72,6 +72,18 @@ class SingulatorComponent:
     def set_speed(self, speed: float) -> None:
         self.target_speed = speed
 
+    def is_active(self) -> bool:
+        return self.target_speed != 0.0
+
+    def is_forward(self) -> bool:
+        return self.target_speed > 0.0
+
+    def is_reverse(self) -> bool:
+        return self.target_speed < 0.0
+
+    def is_off(self) -> bool:
+        return self.target_speed == 0.0
+
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()

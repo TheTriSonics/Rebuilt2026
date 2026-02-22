@@ -45,6 +45,15 @@ class KickerComponent:
     def kicker_reverse(self) -> None:
         self.set_speed(self.reverse_speed)
 
+    def is_active(self) -> bool:
+        return self.target_speed != 0.0
+
+    def is_reverse(self) -> bool:
+        return self.target_speed < 0.0
+
+    def is_off(self) -> bool:
+        return self.target_speed == 0.0
+
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()

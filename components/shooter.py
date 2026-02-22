@@ -76,6 +76,12 @@ class ShooterComponent:
         self.target_rps = 0.0
         self.active = False
 
+    def is_active(self) -> bool:
+        return self.active
+
+    def is_off(self) -> bool:
+        return not self.active
+
     def is_at_speed(self) -> bool:
         if not self.active or self.target_rps == 0.0:
             return False

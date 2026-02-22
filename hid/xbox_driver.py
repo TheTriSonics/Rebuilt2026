@@ -35,7 +35,7 @@ class RebuiltDriver:
     def robot_centric(self):
         return self.controller.getRawButtonPressed(7)
 
-    def shooter(self):
+    def shooter_shoot(self):
         return self.controller.getRightBumperButton()
 
     def intake_on(self):

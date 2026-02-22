@@ -20,6 +20,7 @@ from hid.xbox_driver import RebuiltDriver
 from hid.xbox_operator import RebuiltOperator
 
 from controllers.tanker import Tanker
+from controllers.gaspump import GasPump
 from utilities.game import is_sim
 from math import cos, sin
 
@@ -29,6 +30,7 @@ class MyRobot(MagicRobot):
     # Declare components and controllers here
     # Controllers (must be declared before components)
     tanker: Tanker
+    gaspump: GasPump
 
     # Components
     # vision: VisionComponent
@@ -51,7 +53,6 @@ class MyRobot(MagicRobot):
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
     target_tag = tunable(21)
-    shooter_rps = tunable(30.0)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -77,6 +78,7 @@ class MyRobot(MagicRobot):
         self.driver_controller = RebuiltDriver()
         self.operator_controller = RebuiltOperator()
         self.tanker.engage()
+        self.gaspump.engage()
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
 
@@ -128,26 +130,21 @@ class MyRobot(MagicRobot):
         if self.driver_controller.reset_yaw():
             omega = 0
 
+        if (self.operator_controller.shooter_shoot()
+            or
+            self.driver_controller.shooter_shoot()):
+            self.gaspump.shoot()
+        else:
+            self.gaspump.stop()
+
+        # Manual singulator overrides (for testing / clearing jams)
         if self.operator_controller.singulator_forward():
             self.singulator.singulator_forward()
         elif self.operator_controller.singulator_reverse():
             self.singulator.singulator_reverse()
-        else:
-            self.singulator.singulator_off()
 
-        if self.operator_controller.kicker_on():
-            self.kicker.kicker_forward()
-        else:
-            self.kicker.kicker_off()
-        
-        if self.operator_controller.shooter_shoot():
-            # self.turret.shoot_fuel()
-            self.shooter.spin_up(self.shooter_rps)
-        else:
-            self.shooter.stop()
 
-        
-        
+
 
         """
         if self.driver_controller.getLeftBumperPressed():

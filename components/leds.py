@@ -22,8 +22,10 @@ LED_VIZ_SIZE = 0.06
 LED_VIZ_SPACING = 0.02
 LED_HEIGHT = 0.6
 
-# Labels for each bulb
-BULB_LABELS = ["Intake", "Kicker", "Singulator", "Shooter", "Turret", "Climber", "Drivetrain"]
+# Bulb names in physical wiring order — index is derived automatically
+BULB_NAMES = ["Drivetrain", "Climber", "Turret", "Intake", "Singulator", "Kicker", "Shooter"]
+BULB = {name: i for i, name in enumerate(BULB_NAMES)}
+NUM_BULBS = len(BULB_NAMES)
 
 
 def _rgbw_to_color8bit(color: RGBWColor) -> wpilib.Color8Bit:
@@ -47,15 +49,6 @@ class LEDComponent:
     BLACK = RGBWColor(0, 0, 0)
     OFF = RGBWColor(0, 0, 0, 0)
 
-    # Bulb assignments
-    BULB_INTAKE = 0
-    BULB_KICKER = 1
-    BULB_SINGULATOR = 2
-    BULB_SHOOTER = 3
-    BULB_TURRET = 4
-    BULB_CLIMBER = 5
-    BULB_DRIVETRAIN = 6
-    NUM_BULBS = 7
 
     def __init__(self):
         self.candle = CANdle(ids.CANdleId.CANDLE.id, ids.CANdleId.CANDLE.bus)
@@ -69,18 +62,18 @@ class LEDComponent:
         for i in range(0, 8):
             self.candle.set_control(EmptyAnimation(i))
 
-        self.bulb_colors: list[RGBWColor] = [self.OFF] * self.NUM_BULBS
+        self.bulb_colors: list[RGBWColor] = [self.OFF] * NUM_BULBS
 
         # Build Mechanism2d visualization
-        total_width = self.NUM_BULBS * LED_VIZ_SIZE + (self.NUM_BULBS - 1) * LED_VIZ_SPACING
+        total_width = NUM_BULBS * LED_VIZ_SIZE + (NUM_BULBS - 1) * LED_VIZ_SPACING
         self.mech = wpilib.Mechanism2d(total_width, LED_HEIGHT + LED_VIZ_SIZE)
 
         self.bulb_ligaments: list[wpilib.MechanismLigament2d] = []
-        for i in range(self.NUM_BULBS):
+        for i in range(NUM_BULBS):
             x = i * (LED_VIZ_SIZE + LED_VIZ_SPACING)
-            root = self.mech.getRoot(BULB_LABELS[i], x, LED_HEIGHT)
+            root = self.mech.getRoot(BULB_NAMES[i], x, LED_HEIGHT)
             ligament = root.appendLigament(
-                BULB_LABELS[i],
+                BULB_NAMES[i],
                 LED_VIZ_SIZE,
                 90,
                 LED_VIZ_SIZE * 100,  # line width in pixels — scale up for visibility
@@ -94,38 +87,31 @@ class LEDComponent:
         self.bulb_colors[bulb] = color
 
     def execute(self) -> None:
-        if not wpilib.DriverStation.isDSAttached() and wpilib.DriverStation.isDisabled():
-            for i in range(self.NUM_BULBS):
-                self.bulb_colors[i] = self.RED
-        elif wpilib.DriverStation.isDSAttached() and wpilib.DriverStation.isDisabled():
-            for i in range(self.NUM_BULBS):
-                self.bulb_colors[i] = self.BLUE
+        if self.intake.target_speed < 0:
+            self.bulb_colors[BULB["Intake"]] = self.GREEN
+        elif self.intake.target_speed > 0:
+            self.bulb_colors[BULB["Intake"]] = self.RED
         else:
-            if self.intake.target_speed < 0:
-                self.bulb_colors[self.BULB_INTAKE] = self.GREEN
-            elif self.intake.target_speed > 0:
-                self.bulb_colors[self.BULB_INTAKE] = self.RED
-            else:
-                self.bulb_colors[self.BULB_INTAKE] = self.YELLOW
-            if self.kicker.target_speed != 0:
-                self.bulb_colors[self.BULB_KICKER] = self.GREEN
-            else:
-                self.bulb_colors[self.BULB_KICKER] = self.GREY
-            if self.singulator.target_speed > 0:
-                self.bulb_colors[self.BULB_SINGULATOR] = self.GREEN
-            elif self.singulator.target_speed < 0:
-                self.bulb_colors[self.BULB_SINGULATOR] = self.RED
-            else:
-                self.bulb_colors[self.BULB_SINGULATOR] = self.CYAN
-            if self.shooter.is_at_speed():
-                self.bulb_colors[self.BULB_SHOOTER] = self.GREEN
-            elif self.shooter.active:
-                self.bulb_colors[self.BULB_SHOOTER] = self.WHITE
-            else:
-                self.bulb_colors[self.BULB_SHOOTER] = self.BLACK
-            self.bulb_colors[self.BULB_TURRET] = self.PURPLE
-            self.bulb_colors[self.BULB_CLIMBER] = self.RED
-            self.bulb_colors[self.BULB_DRIVETRAIN] = self.BLUE
+            self.bulb_colors[BULB["Intake"]] = self.YELLOW
+        if self.kicker.is_active():
+            self.bulb_colors[BULB["Kicker"]] = self.GREEN
+        else:
+            self.bulb_colors[BULB["Kicker"]] = self.GREY
+        if self.singulator.is_forward():
+            self.bulb_colors[BULB["Singulator"]] = self.GREEN
+        elif self.singulator.is_reverse():
+            self.bulb_colors[BULB["Singulator"]] = self.RED
+        else:
+            self.bulb_colors[BULB["Singulator"]] = self.CYAN
+        if self.shooter.is_at_speed():
+            self.bulb_colors[BULB["Shooter"]] = self.GREEN
+        elif self.shooter.is_active():
+            self.bulb_colors[BULB["Shooter"]] = self.WHITE
+        else:
+            self.bulb_colors[BULB["Shooter"]] = self.BLACK
+        self.bulb_colors[BULB["Turret"]] = self.PURPLE
+        self.bulb_colors[BULB["Climber"]] = self.RED
+        self.bulb_colors[BULB["Drivetrain"]] = self.BLUE
 
         # Update physical LEDs and visualization
         for i, color in enumerate(self.bulb_colors):
