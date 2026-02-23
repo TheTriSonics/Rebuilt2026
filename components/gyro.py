@@ -1,6 +1,6 @@
 from magicbot import feedback
 from phoenix6.hardware import Pigeon2
-from wpimath.geometry import Rotation2d
+from wpimath.geometry import Rotation2d, Rotation3d
 
 from ids import CanId
 
@@ -18,6 +18,9 @@ class GyroComponent:
 
     def get_Rotation2d(self) -> Rotation2d:
         return Rotation2d.fromDegrees(self.get_heading())
+
+    def get_Rotation3d(self) -> Rotation3d:
+        return self.pigeon.getRotation3d()
 
     def execute(self) -> None:
         pass

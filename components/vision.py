@@ -2,7 +2,7 @@ import math
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 from wpilib import Timer
 import ntcore
-from wpimath.geometry import Pose2d, Translation3d, Rotation3d, Transform3d
+from wpimath.geometry import Pose2d, Pose3d, Translation3d, Rotation3d, Transform3d
 from photonlibpy.photonCamera import PhotonCamera
 from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from components.drivetrain import DrivetrainComponent
@@ -57,17 +57,17 @@ class VisionComponent:
 
         self.publisher_fr = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_fr", Pose2d)
+            .getStructTopic("/components/vision/pose_fr", Pose3d)
             .publish()
         )
         self.publisher_fl = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_fl", Pose2d)
+            .getStructTopic("/components/vision/pose_fl", Pose3d)
             .publish()
         )
         self.publisher_back = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_back", Pose2d)
+            .getStructTopic("/components/vision/pose_back", Pose3d)
             .publish()
         )
 
@@ -106,9 +106,12 @@ class VisionComponent:
                     pupdate = pose_est.estimateLowestAmbiguityPose(res)
 
                 if pupdate:
-                    twod_pose = pupdate.estimatedPose.toPose2d()
+                    pose3d = pupdate.estimatedPose
+                    twod_pose = pose3d.toPose2d()
                     ts = pupdate.timestampSeconds
-                    pub.set(twod_pose)
+                    # Publish 3D pose for AdvantageScope
+                    pub.set(pose3d)
+                    # Use 2D pose for distance rejection check
                     dist = robot_pose.relativeTo(twod_pose).translation().norm()
                     if dist < 1.0 or disabled:
                         targets = res.getTargets()
@@ -120,5 +123,5 @@ class VisionComponent:
                         std_factor = (avg_dist**2) / tag_count
                         std_xy = linear_baseline_std * std_factor
                         std_rot = angular_baseline_std * std_factor
-                        setDevs((std_xy, std_xy, std_rot))
-                        self.drivetrain.estimator.addVisionMeasurement(twod_pose, ts)
+                        setDevs((std_xy, std_xy, std_xy, std_rot))
+                        self.drivetrain.estimator.addVisionMeasurement(pose3d, ts)
