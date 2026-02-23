@@ -60,12 +60,26 @@ class MyRobot(MagicRobot):
         wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         wpilib.SmartDashboard.putData(self.field)
 
+        self.auton_chooser = wpilib.SendableChooser()
+        self.auton_chooser.setDefaultOption("Do Nothing", "")
+        self.auton_chooser.addOption("Ball Path", "ball_path")
+        self.auton_chooser.addOption("Go To Player Station", "go_to_player_station")
+        self.auton_chooser.addOption("Left Blue Simple", "Left_blue_simple")
+        self.auton_chooser.addOption("Middle Hang", "middle_hang")
+        self.auton_chooser.addOption("Right Blue Simple", "right_blue_simple")
+        wpilib.SmartDashboard.putData("Auto Mode", self.auton_chooser)
+
         if is_sim():
             self.control_loop_wait_time = 0.1
             wpilib.DriverStation.silenceJoystickConnectionWarning(True)
 
     def autonomousInit(self):
         self.tanker.engage()
+        selected = self.auton_chooser.getSelected()
+        if selected:
+            self.tanker.go_follow_path(selected)
+        else:
+            self.tanker.go_drive_field()
 
     def autonomousPeriodic(self):
         # MagicBot handles periodic execution; this never runs but is left as
