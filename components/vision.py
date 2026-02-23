@@ -43,9 +43,9 @@ class VisionComponent:
             ),
             Rotation3d.fromDegrees(0.0, 10.0, 0.0),  # roll, pitch, yaw
         )
-        self.linear_baseline_std = 0.10  # meters
-        self.angular_baseline_std = math.radians(10)
-        self.angular_baseline_std_sim = math.radians(30)
+        self.linear_baseline_std = 0.04  # meters
+        self.angular_baseline_std = math.radians(5)
+        self.angular_baseline_std_sim = math.radians(15)
 
         field = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
@@ -98,14 +98,14 @@ class VisionComponent:
         ):
             results = cam.getAllUnreadResults()
             for res in results:
-                best_target = res.getBestTarget()
-                if best_target and (best_target.poseAmbiguity > 0.2):
-                    continue
-
                 # Try multi-tag estimation first (most accurate)
                 pupdate = pose_est.estimateCoprocMultiTagPose(res)
-                if pupdate is None:
-                    # Fallback to single-tag estimation
+                is_multi_tag = pupdate is not None
+                if not is_multi_tag:
+                    # For single-tag, reject high-ambiguity results
+                    best_target = res.getBestTarget()
+                    if not best_target or best_target.poseAmbiguity > 0.4:
+                        continue
                     pupdate = pose_est.estimateLowestAmbiguityPose(res)
 
                 if pupdate:
@@ -120,9 +120,16 @@ class VisionComponent:
                         avg_dist = total_dist / tag_count
                         if avg_dist > 2.0 and not disabled:
                             continue
-                        std_factor = (avg_dist**2) / tag_count
+                        std_factor = (avg_dist ** 1.2) / (tag_count ** 2)
                         std_xy = linear_baseline_std * std_factor
-                        std_rot = angular_baseline_std * std_factor
+                        if is_multi_tag:
+                            std_rot = angular_baseline_std * std_factor
+                        else:
+                            # Scale XY by ambiguity for single-tag
+                            ambiguity = best_target.poseAmbiguity
+                            std_xy *= 5.0 * (ambiguity + 0.1)
+                            # Never trust single-tag rotation over gyro
+                            std_rot = float('inf')
                         candidates.append((std_xy, std_rot, twod_pose, ts))
 
         # Apply only the two best measurements (lowest std_xy)
