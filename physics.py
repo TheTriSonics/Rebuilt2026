@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import typing
 
-import ntcore
 import numpy as np
 import phoenix6
 import phoenix6.unmanaged
@@ -12,7 +11,7 @@ import robotpy_apriltag
 from pyfrc.physics.core import PhysicsInterface
 from wpilib.simulation import DCMotorSim
 
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Rotation2d
+from wpimath.geometry import Rotation2d
 from wpimath.kinematics import SwerveDrive4Kinematics
 from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.units import kilogram_square_meters
@@ -82,11 +81,6 @@ class PhysicsEngine:
         self.physics_controller = physics_controller
         self.robot = robot
         self.cancoder_test_offset = 0
-        self.sim_balls = (
-            ntcore.NetworkTableInstance.getDefault()
-            .getStructArrayTopic('/components/shooter/simballs', Pose3d)
-            .publish()
-        )
 
         self.kinematics: SwerveDrive4Kinematics = robot.drivetrain.kinematics
         self.swerve_modules: tuple[
@@ -121,42 +115,12 @@ class PhysicsEngine:
 
         self.manip_motors: list[Falcon500MotorSim] = [
             Falcon500MotorSim(
-                self.robot.climber.climber,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
                 self.robot.intake.rotate,
                 gearing=1,
                 moi=0.0009972 * 4,
             ),
             Falcon500MotorSim(
                 self.robot.intake.roller,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.turret.turret_motor,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.kicker.kicker,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.shooter.shooter_front,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.shooter.shooter_rear,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.singulator.singulator,
                 gearing=1,
                 moi=0.0009972 * 4,
             ),
@@ -210,29 +174,6 @@ class PhysicsEngine:
         # TODO: delete when phoenix6 integrates with wpilib
         if wpilib.DriverStation.isEnabled():
             phoenix6.unmanaged.feed_enable(0.1)
-
-        poses: list[Pose3d] = []
-        for b in self.robot.turret.balls:
-            pose = Pose3d(
-                Translation3d(b.xpos, b.ypos, b.zpos),
-                Rotation3d(0, 0, 0),
-            )
-            b.xpos += b.xvel * tm_diff
-            b.ypos += b.yvel * tm_diff
-            b.zpos += b.zvel * tm_diff
-            if b.zpos >= 0.075:
-                # Calculate new Z velocity with simple gravity
-                b.zvel -= 9.81 * tm_diff
-            else:
-                # Ball has hit the ground; stop simulating it
-                b.xvel = 0.0
-                b.yvel = 0.0
-                b.zvel = 0.0
-
-            poses.append(pose)
-        if len(poses) > 0:
-            self.sim_balls.set(poses)
-
 
         for wheel in self.wheels:
             wheel.update(tm_diff)

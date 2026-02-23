@@ -6,13 +6,8 @@ from components.battery_monitor import BatteryMonitorComponent
 from components.drivetrain import DrivetrainComponent
 from components.vision import VisionComponent
 from components.gyro import GyroComponent
-from components.turret import TurretComponent
-from components.kicker import KickerComponent
-from components.climber import ClimberComponent
-from components.singulator import SingulatorComponent
 from components.intake import IntakeComponent
 from components.leds import LEDComponent
-from components.shooter import ShooterComponent
 from utilities.scalers import rescale_js
 from wpimath.geometry import Pose2d, Rotation2d
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
@@ -35,12 +30,7 @@ class MyRobot(MagicRobot):
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
     vision: VisionComponent
-    turret: TurretComponent
-    kicker: KickerComponent
-    climber: ClimberComponent
-    singulator: SingulatorComponent
     intake: IntakeComponent
-    shooter: ShooterComponent
     leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 
@@ -51,7 +41,6 @@ class MyRobot(MagicRobot):
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
     target_tag = tunable(21)
-    shooter_rps = tunable(30.0)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -78,7 +67,6 @@ class MyRobot(MagicRobot):
         self.operator_controller = RebuiltOperator()
         self.tanker.engage()
         self.tanker.go_drive_field()
-        self.turret.set_hub_target()
 
     def teleopPeriodic(self):
         if self.battery_monitor.is_stop_active():
@@ -99,10 +87,6 @@ class MyRobot(MagicRobot):
 
         if self.driver_controller.robot_centric():
             self.tanker.go_drive_local()
-
-        operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
-        driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
-        self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
 
         if self.driver_controller.intake_on():
             self.intake.intake_on()
@@ -127,55 +111,6 @@ class MyRobot(MagicRobot):
 
         if self.driver_controller.reset_yaw():
             omega = 0
-
-        if self.operator_controller.singulator_forward():
-            self.singulator.singulator_forward()
-        elif self.operator_controller.singulator_reverse():
-            self.singulator.singulator_reverse()
-        else:
-            self.singulator.singulator_off()
-
-        if self.operator_controller.kicker_on():
-            self.kicker.kicker_forward()
-        else:
-            self.kicker.kicker_off()
-        
-        if self.operator_controller.shooter_shoot():
-            # self.turret.shoot_fuel()
-            self.shooter.spin_up(self.shooter_rps)
-        else:
-            self.shooter.stop()
-
-        
-        
-
-        """
-        if self.driver_controller.getLeftBumperPressed():
-            self.climber.set_speed(100)
-            self.climber.raise_climber()
-
-        if self.driver_controller.getRightBumperPressed():
-            # TODO: Fix error
-            self.singulator.singulator_forward()
-
-        if self.driver_controller.getPOV(180):
-            # TODO: Fix error
-            self.singulator.singulator_reverse()
-
-
-        if self.driver_controller.getRightTriggerAxis() > 0.55:
-            self.kicker.kicker_forward()
-        elif self.driver_controller.getRightTriggerAxis() < 0.45:
-            self.kicker.kicker_off()
-
-        if self.driver_controller.getLeftTriggerAxis() > 0.55:
-            self.kicker.kicker_reverse()
-        elif self.driver_controller.getLeftTriggerAxis() < 0.45:
-            self.kicker.kicker_off()
-        """
-
-        """if self.operator_controller.status == 'on':
-            self.turret.shoot_fuel()"""
 
     def disabledPeriodic(self):
         ...
