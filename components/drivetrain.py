@@ -18,8 +18,8 @@ from wpimath.controller import (
     SimpleMotorFeedforwardMeters,
     PIDController,
 )
-from wpimath.estimator import SwerveDrive4PoseEstimator
-from wpimath.geometry import Pose2d, Rotation2d, Translation2d
+from wpimath.estimator import SwerveDrive4PoseEstimator3d
+from wpimath.geometry import Pose2d, Pose3d, Rotation2d, Translation2d
 from wpimath.kinematics import (
     ChassisSpeeds,
     SwerveDrive4Kinematics,
@@ -220,7 +220,7 @@ class DrivetrainComponent:
         # estimated position on the field
         self.fused_pose_pub = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("FusedPose", Pose2d)
+            .getStructTopic("FusedPose", Pose3d)
             .publish()
         )
 
@@ -332,17 +332,17 @@ class DrivetrainComponent:
         return self.gyro.get_Rotation2d()
 
     def setup(self) -> None:
-        initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(0))
+        initial_pose = Pose3d()
 
-        self.estimator = SwerveDrive4PoseEstimator(
+        self.estimator = SwerveDrive4PoseEstimator3d(
             self.kinematics,
-            self.get_heading(),
+            self.gyro.get_Rotation3d(),
             self.get_module_positions(),
             initial_pose,
-            stateStdDevs=(0.01, 0.01, 0.01),  # How much to trust wheel odometry
-            visionMeasurementStdDevs=(0.4, 0.4, 0.2),
+            stateStdDevs=(0.01, 0.01, 0.01, 0.01),  # x, y, z, theta
+            visionMeasurementStdDevs=(0.4, 0.4, 0.4, 0.2),  # x, y, z, theta
         )
-        self.set_pose(initial_pose)
+        self.set_pose(Pose2d(Translation2d(0, 0), Rotation2d(0)))
         heading = 180 if is_red() else 0
         self.gyro.reset_heading(heading)
 
@@ -433,7 +433,7 @@ class DrivetrainComponent:
 
     def update_odometry(self) -> None:
         orig_pose = self.get_pose()
-        self.estimator.update(self.gyro.get_Rotation2d(), self.get_module_positions())
+        self.estimator.update(self.gyro.get_Rotation3d(), self.get_module_positions())
         curr_pose = self.get_pose()
 
         dx = curr_pose.x - orig_pose.x
@@ -448,20 +448,20 @@ class DrivetrainComponent:
         self.vx = sum(v * w for v, w in zip(self._vx_samples, weights, strict=True)) / total_weight
         self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
 
-        self.fused_pose_pub.set(curr_pose)
+        self.fused_pose_pub.set(self.get_pose3d())
         if self.send_modules:
             self.setpoints_publisher.set([module.state for module in self.modules])
             self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
         self.estimator.resetPosition(
-            self.gyro.get_Rotation2d(), self.get_module_positions(), pose
+            self.gyro.get_Rotation3d(), self.get_module_positions(), Pose3d(pose)
         )
-        self.fused_pose_pub.set(pose)
+        self.fused_pose_pub.set(Pose3d(pose))
 
     def reset_yaw(self) -> None:
         """Sets pose to current pose but with a heading of forwards"""
-        cur_pose = self.estimator.getEstimatedPosition()
+        cur_pose = self.estimator.getEstimatedPosition().toPose2d()
         default_heading = math.pi if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d(default_heading)))
 
@@ -479,7 +479,11 @@ class DrivetrainComponent:
         )
 
     def get_pose(self) -> Pose2d:
-        """Get the current location of the robot relative to ???"""
+        """Get the current 2D pose of the robot for path following and controls."""
+        return self.estimator.getEstimatedPosition().toPose2d()
+
+    def get_pose3d(self) -> Pose3d:
+        """Get the current 3D pose of the robot for AdvantageScope visualization."""
         return self.estimator.getEstimatedPosition()
 
     def get_rotation(self) -> Rotation2d:
