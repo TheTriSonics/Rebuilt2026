@@ -343,6 +343,14 @@ class DrivetrainComponent:
 
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""
+        is_translating = abs(vx) > 0.05 or abs(vy) > 0.05
+        is_rotating = abs(omega) > 0.05
+
+        if is_rotating:
+            self.stop_snapping()
+        elif is_translating and not self.snapping_to_heading:
+            self.snap_to_heading(self.get_heading().radians())
+
         current_heading = self.get_rotation()
         self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
             vx, vy, omega, current_heading
@@ -376,8 +384,14 @@ class DrivetrainComponent:
 
     def drive_local(self, vx: float, vy: float, omega: float) -> None:
         """Robot oriented drive commands"""
-        # if abs(omega) < 0.01 and self.snap_heading is None:
-        #     self.snap_to_heading(self.get_heading().radians())
+        is_translating = abs(vx) > 0.05 or abs(vy) > 0.05
+        is_rotating = abs(omega) > 0.05
+
+        if is_rotating:
+            self.stop_snapping()
+        elif is_translating and not self.snapping_to_heading:
+            self.snap_to_heading(self.get_heading().radians())
+
         self.chassis_speeds = ChassisSpeeds(vx, vy, omega)
 
     # Note that heading should be in radians
