@@ -21,7 +21,8 @@ from hid.xbox_operator import RebuiltOperator
 
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
-from utilities.game import is_sim
+from utilities.game import is_sim, is_red
+from choreo import load_swerve_trajectory
 from math import cos, sin
 
 
@@ -68,6 +69,7 @@ class MyRobot(MagicRobot):
         self.auton_chooser.addOption("Middle Hang", "middle_hang")
         self.auton_chooser.addOption("Right Blue Simple", "right_blue_simple")
         wpilib.SmartDashboard.putData("Auto Mode", self.auton_chooser)
+        self._last_auton_selection = None
 
         if is_sim():
             self.control_loop_wait_time = 0.1
@@ -155,5 +157,12 @@ class MyRobot(MagicRobot):
             self.singulator.singulator_reverse()
 
     def disabledPeriodic(self):
-        ...
+        selected = self.auton_chooser.getSelected()
+        if selected != self._last_auton_selection:
+            self._last_auton_selection = selected
+            if selected:
+                traj = load_swerve_trajectory(selected)
+                sample = traj.sample_at(0.0, is_red())
+                assert sample
+                self.drivetrain.set_pose(sample.get_pose())
 
