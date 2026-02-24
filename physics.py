@@ -125,16 +125,16 @@ class PhysicsEngine:
                 gearing=1,
                 moi=0.0009972 * 4,
             ),
-            Falcon500MotorSim(
-                self.robot.intake.rotate,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.intake.roller,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
+            # Falcon500MotorSim(
+            #     self.robot.intake.rotate,
+            #     gearing=1,
+            #     moi=0.0009972 * 4,
+            # ),
+            # Falcon500MotorSim(
+            #     self.robot.intake.roller,
+            #     gearing=1,
+            #     moi=0.0009972 * 4,
+            # ),
             Falcon500MotorSim(
                 self.robot.turret.turret_motor,
                 gearing=1,
