@@ -41,9 +41,9 @@ class MyRobot(MagicRobot):
     kicker: KickerComponent
     climber: ClimberComponent
     singulator: SingulatorComponent
-    intake: IntakeComponent
+    # intake: IntakeComponent
     shooter: ShooterComponent
-    leds: LEDComponent
+    # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
@@ -119,16 +119,16 @@ class MyRobot(MagicRobot):
         driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
 
-        if self.driver_controller.intake_on():
-            self.intake.intake_on()
-        elif self.driver_controller.intake_reverse():
-            self.intake.intake_reverse()
-        # elif self.operator_controller.intake_on():
+        # if self.driver_controller.intake_on():
         #     self.intake.intake_on()
-        # elif self.operator_controller.intake_reverse():
+        # elif self.driver_controller.intake_reverse():
         #     self.intake.intake_reverse()
-        else:
-            self.intake.intake_off()
+        # # elif self.operator_controller.intake_on():
+        # #     self.intake.intake_on()
+        # # elif self.operator_controller.intake_reverse():
+        # #     self.intake.intake_reverse()
+        # else:
+        #     self.intake.intake_off()
 
         if self.driver_controller.go_to_point():
             target_pose = self.apriltags.getTagPose(self.target_tag)

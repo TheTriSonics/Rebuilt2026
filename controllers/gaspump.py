@@ -36,7 +36,7 @@ class GasPump(StateMachine):
     def waiting(self) -> None:
         self.shooter.stop()
         self.kicker.kicker_off()
-        self.singulator.singulator_off()
+        # self.singulator.singulator_off()
 
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
