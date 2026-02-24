@@ -193,7 +193,7 @@ class DrivetrainComponent:
 
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
 
-    send_modules = magicbot.tunable(True)
+    send_modules = magicbot.tunable(False)
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:

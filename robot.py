@@ -130,15 +130,15 @@ class MyRobot(MagicRobot):
         # else:
         #     self.intake.intake_off()
 
-        if self.driver_controller.go_to_point():
-            target_pose = self.apriltags.getTagPose(self.target_tag)
-            assert target_pose
-            twod_pose = target_pose.toPose2d()
-            dist_away = 2.0
-            newx = target_pose.x + dist_away * cos(twod_pose.rotation().radians())
-            newy = target_pose.y + dist_away * sin(twod_pose.rotation().radians())
-            target_pose = Pose2d(newx, newy, twod_pose.rotation().rotateBy(Rotation2d.fromDegrees(180)))
-            self.tanker.go_drive_pose(target_pose)
+        # if self.driver_controller.go_to_point():
+        #     target_pose = self.apriltags.getTagPose(self.target_tag)
+        #     assert target_pose
+        #     twod_pose = target_pose.toPose2d()
+        #     dist_away = 2.0
+        #     newx = target_pose.x + dist_away * cos(twod_pose.rotation().radians())
+        #     newy = target_pose.y + dist_away * sin(twod_pose.rotation().radians())
+        #     target_pose = Pose2d(newx, newy, twod_pose.rotation().rotateBy(Rotation2d.fromDegrees(180)))
+        #     self.tanker.go_drive_pose(target_pose)
 
         if self.driver_controller.reset_yaw():
             omega = 0

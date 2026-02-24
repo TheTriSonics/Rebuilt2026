@@ -76,7 +76,6 @@ class SingulatorComponent:
 
     def set_speed(self, speed: float) -> None:
         self.target_speed = speed
-        print(f'Setting singulator target speed to {self.target_speed} RPS')
 
     def is_active(self) -> bool:
         return self.target_speed != 0.0
@@ -91,13 +90,11 @@ class SingulatorComponent:
         return self.target_speed == 0.0
 
     def execute(self) -> None:
-        print(f'singulator execute {self.target_speed}, {self.forward_speed}, {self.reverse_speed}')
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
         if abs(self.target_speed) > 0.02:
             self.singulator.set_control(self.velocity_request.with_velocity(self.target_speed))
-            print(f"Setting singulator speed to {self.target_speed} RPS")
         else:
             self.singulator.set_control(DutyCycleOut(0.0))
     
