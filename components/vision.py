@@ -16,7 +16,7 @@ class VisionComponent:
 
     def __init__(self) -> None:
         self.timer = Timer()
-<<<<<<< HEAD
+
         self.camera_rr = PhotonCamera("Rear_Right")
         self.camera_rl = PhotonCamera("Rear_Left")
         self.camera_back = PhotonCamera("Rear")
@@ -29,7 +29,7 @@ class VisionComponent:
             ),
             Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
         )
-        self.camera_br_offset = Transform3d(
+        self.camera_rl_offset = Transform3d(
             Translation3d(
                 units.inchesToMeters(-11.0),    # Forward/backward offset
                 units.inchesToMeters(-11.625),  # Left/right offset, right is negative
