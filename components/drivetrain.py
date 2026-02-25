@@ -190,11 +190,17 @@ class DrivetrainComponent:
     gyro: GyroComponent
 
     HEADING_TOLERANCE = math.radians(1)
+    OMEGA_DEADBAND = 0.10  # matches rescale_js deadband for rotation stick
 
     chassis_speeds = magicbot.will_reset_to(ChassisSpeeds(0, 0, 0))
 
     send_modules = magicbot.tunable(False)
     snapping_to_heading = magicbot.tunable(False)
+
+    # Heading lock tunables
+    heading_lock_grace_period = magicbot.tunable(0.25)  # seconds after stick release
+    heading_lock_min_yaw_rate = magicbot.tunable(math.radians(10))  # rad/s threshold
+    heading_lock_kP = magicbot.tunable(5.0)
 
     def __init__(self) -> None:
         # Theoretical max RPM that a Kraken X60 can reach
@@ -216,6 +222,15 @@ class DrivetrainComponent:
         # Weights for exponential weighting (most recent sample has highest weight)
         self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
 
+        # Heading lock state
+        self._heading_lock_active = False
+        self._heading_setpoint = 0.0
+        self._omega_last_active = 0.0  # timestamp when omega stick was last above deadband
+        self._heading_lock_timer = wpilib.Timer()
+        self._heading_lock_timer.start()
+        # Whether heading lock is enabled (disabled during auton/path following)
+        self._heading_lock_enabled = False
+
         # Plotting the location of this in AdvantageScope shows the robot's
         # estimated position on the field
         self.fused_pose_pub = (
@@ -224,9 +239,9 @@ class DrivetrainComponent:
             .publish()
         )
 
-        # Used to lock the robot onto a heading; currently not used.
+        # Used to lock the robot onto a heading
         self.heading_controller = ProfiledPIDControllerRadians(
-            0.5, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
+            5.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
@@ -397,11 +412,28 @@ class DrivetrainComponent:
         self.snapping_to_heading = False
         self.snap_heading = None
 
+    def enable_heading_lock(self) -> None:
+        """Enable automatic heading lock (call during teleopInit)."""
+        self._heading_lock_enabled = True
+        self._heading_lock_active = False
+
+    def disable_heading_lock(self) -> None:
+        """Disable automatic heading lock (for auton/path following)."""
+        self._heading_lock_enabled = False
+        self._heading_lock_active = False
+
     def execute(self) -> None:
+        # Update heading controller kP from tunable
+        self.heading_controller.setP(self.heading_lock_kP)
+
         if self.snapping_to_heading:
+            # Explicit snap-to-heading (used by auton/buttons) takes priority
             self.chassis_speeds.omega = self.heading_controller.calculate(
                 self.get_rotation().radians()
             )
+        elif self._heading_lock_enabled:
+            # Automatic heading lock for teleop
+            self._update_heading_lock()
         else:
             self.heading_controller.reset(
                 self.get_rotation().radians(), self.get_rotational_velocity()
@@ -417,6 +449,44 @@ class DrivetrainComponent:
             module.set(state)
 
         self.update_odometry()
+
+    def _update_heading_lock(self) -> None:
+        """Automatic heading lock: engage when rotation stick is released and robot settles."""
+        now = self._heading_lock_timer.get()
+        omega_input = abs(self.chassis_speeds.omega)
+        yaw_rate = abs(self.get_rotational_velocity())
+
+        if omega_input > 0.01:
+            # Driver is commanding rotation — disengage lock
+            self._heading_lock_active = False
+            self._omega_last_active = now
+            self.heading_controller.reset(
+                self.get_rotation().radians(), self.get_rotational_velocity()
+            )
+        elif (now - self._omega_last_active) < self.heading_lock_grace_period:
+            # Grace period — don't lock yet
+            self.heading_controller.reset(
+                self.get_rotation().radians(), self.get_rotational_velocity()
+            )
+        elif yaw_rate > self.heading_lock_min_yaw_rate:
+            # Still spinning too fast — don't lock yet
+            self.heading_controller.reset(
+                self.get_rotation().radians(), self.get_rotational_velocity()
+            )
+        else:
+            # Conditions met — engage heading lock
+            if not self._heading_lock_active:
+                # First locked cycle: capture current heading
+                self._heading_setpoint = self.get_rotation().radians()
+                self.heading_controller.reset(
+                    self._heading_setpoint, self.get_rotational_velocity()
+                )
+                self.heading_controller.setGoal(self._heading_setpoint)
+                self._heading_lock_active = True
+            # Apply heading correction
+            self.chassis_speeds.omega = self.heading_controller.calculate(
+                self.get_rotation().radians()
+            )
 
     def on_enable(self) -> None:
         """update the odometry so the pose estimator doesn't have an empty
