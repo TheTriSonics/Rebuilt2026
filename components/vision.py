@@ -2,7 +2,7 @@ import math
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 from wpilib import Timer
 import ntcore
-from wpimath.geometry import Pose2d, Translation3d, Rotation3d, Transform3d
+from wpimath.geometry import Pose2d, Pose3d, Translation3d, Rotation3d, Transform3d
 from photonlibpy.photonCamera import PhotonCamera
 from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from components.drivetrain import DrivetrainComponent
@@ -43,7 +43,7 @@ class VisionComponent:
                 units.inchesToMeters(0.0), # Left/right offset, right is negative
                 units.inchesToMeters(15.0), # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 10.0, 0.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, 10.0, 180.0),  # roll, pitch, yaw
         )
         self.linear_baseline_std = 0.10  # meters
         self.angular_baseline_std = math.radians(10)
@@ -71,6 +71,18 @@ class VisionComponent:
             .publish()
         )
 
+        # Publish camera world poses for AdvantageScope 3D visualization
+        self.camera_pose_pub = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructArrayTopic("/components/vision/camera_poses", Pose3d)
+            .publish()
+        )
+        self.camera_offsets = [
+            self.camera_rr_offset,
+            self.camera_rl_offset,
+            self.camera_back_offset,
+        ]
+
         # self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]  # Add back camera when we have one working
         self.cameras = [self.camera_rr]  # Add back camera when we have one working
         # self.pose_estimators = [
@@ -92,6 +104,13 @@ class VisionComponent:
 
     def execute(self) -> None:
         robot_pose = self.drivetrain.get_pose()
+
+        # Publish camera world poses for 3D visualization
+        robot_pose3d = Pose3d(robot_pose)
+        self.camera_pose_pub.set(
+            [robot_pose3d.transformBy(offset) for offset in self.camera_offsets]
+        )
+
         disabled = is_disabled()
         linear_baseline_std = self.linear_baseline_std
         angular_baseline_std = self.angular_baseline_std_sim if is_sim() else self.angular_baseline_std
