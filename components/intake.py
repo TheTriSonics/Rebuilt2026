@@ -105,6 +105,11 @@ class IntakeComponent:
     def set_speed(self, speed: float) -> None:
         self.target_speed = speed
 
+    def rotate_up(self) -> None:
+        ...
+    def rotate_down(self) -> None:
+        ...
+
     def intake_on(self) -> None:
         self.set_speed(self.intake_speed)
 
