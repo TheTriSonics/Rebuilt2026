@@ -200,7 +200,7 @@ class DrivetrainComponent:
     # Heading lock tunables
     heading_lock_grace_period = magicbot.tunable(0.25)  # seconds after stick release
     heading_lock_min_yaw_rate = magicbot.tunable(math.radians(10))  # rad/s threshold
-    heading_lock_kP = magicbot.tunable(5.0)
+    heading_lock_kP = magicbot.tunable(0.5)
 
     def __init__(self) -> None:
         # Theoretical max RPM that a Kraken X60 can reach
@@ -241,7 +241,7 @@ class DrivetrainComponent:
 
         # Used to lock the robot onto a heading
         self.heading_controller = ProfiledPIDControllerRadians(
-            5.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
+            0.5, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
