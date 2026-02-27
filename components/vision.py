@@ -23,17 +23,17 @@ class VisionComponent:
 
         self.camera_rr_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-11.0),    # Forward/backward offset
-                units.inchesToMeters(11.625),   # Left/right offset, right is negative
-                units.inchesToMeters(6.0),      # Up/down offset
+                units.inchesToMeters(-13.5),    # Forward/backward offset
+                units.inchesToMeters(11.0),   # Left/right offset, left is negative
+                units.inchesToMeters(9.5),      # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
         )
         self.camera_rl_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-11.0),    # Forward/backward offset
-                units.inchesToMeters(-11.625),  # Left/right offset, right is negative
-                units.inchesToMeters(6.0),      # Up/down offset
+                units.inchesToMeters(-13.5),    # Forward/backward offset
+                units.inchesToMeters(-11.0),  # Left/right offset, left is negative
+                units.inchesToMeters(9.56),      # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -22.0, -90.0),  # roll, pitch, yaw
         )
@@ -57,12 +57,12 @@ class VisionComponent:
 
         self.publisher_rr = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_bl", Pose2d)
+            .getStructTopic("/components/vision/pose_rr", Pose2d)
             .publish()
         )
-        self.publisher_br = (
+        self.publisher_rl = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("/components/vision/pose_br", Pose2d)
+            .getStructTopic("/components/vision/pose_rl", Pose2d)
             .publish()
         )
         self.publisher_back = (
@@ -84,7 +84,7 @@ class VisionComponent:
         ]
 
         # self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]  # Add back camera when we have one working
-        self.cameras = [self.camera_rr]  # Add back camera when we have one working
+        self.cameras = [self.camera_rr, self.camera_rl]  # Add back camera when we have one working
         # self.pose_estimators = [
         #     self.pose_estimator_fr,
         #     self.pose_estimator_fl,
@@ -97,19 +97,15 @@ class VisionComponent:
         # ]
         self.pose_estimators = [
             self.pose_estimator_rr,
+            self.pose_estimator_rl,
         ]
         self.publishers = [
             self.publisher_rr,
+            self.publisher_rl,
         ]
 
     def execute(self) -> None:
         robot_pose = self.drivetrain.get_pose()
-
-        # Publish camera world poses for 3D visualization
-        robot_pose3d = Pose3d(robot_pose)
-        self.camera_pose_pub.set(
-            [robot_pose3d.transformBy(offset) for offset in self.camera_offsets]
-        )
 
         disabled = is_disabled()
         linear_baseline_std = self.linear_baseline_std
