@@ -1,14 +1,16 @@
 from magicbot import tunable
-from phoenix6.hardware import TalonFX
-from phoenix6.controls import DutyCycleOut
+from phoenix6.hardware import CANcoder, TalonFX
+from phoenix6.controls import DutyCycleOut, PositionVoltage
 import ids
 
 from phoenix6.signals import (
+    FeedbackSensorSourceValue,
     InvertedValue,
     NeutralModeValue,
     StaticFeedforwardSignValue,
 )
 from phoenix6.configs import (
+    CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
     CurrentLimitsConfigs,
     FeedbackConfigs,
@@ -40,13 +42,19 @@ class IntakeComponent:
 
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
     roller = TalonFX(ids.TalonId.ROLLER.id, ids.TalonId.ROLLER.bus)
+    rotate_encoder = CANcoder(ids.CancoderId.INTAKE.id, ids.CancoderId.INTAKE.bus)
+    rotate_request = PositionVoltage(0).with_slot(0)
 
     def __init__(self):
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.BRAKE
         motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
+        encoder_config = CANcoderConfiguration()
+
         feedback_config = FeedbackConfigs()
+        feedback_config.feedback_remote_sensor_id = ids.CancoderId.INTAKE.id
+        feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
         feedback_config.sensor_to_mechanism_ratio = 1.0
         feedback_config.rotor_to_sensor_ratio = 1.0
 
@@ -64,6 +72,7 @@ class IntakeComponent:
         )
         closed_loop_config = ClosedLoopGeneralConfigs()
 
+        self.rotate_encoder.configurator.apply(encoder_config)
         self.rotate.configurator.apply(motor_config)
         self.rotate.configurator.apply(pid, 0.01)
         self.rotate.configurator.apply(feedback_config)
@@ -86,11 +95,17 @@ class IntakeComponent:
 
 
     def lower_intake(self) -> None:
-        # This method would lower the intake out.
+        self.rotate_down()
+
+    def rotate_down(self) -> None:
+        # Move intake to the configured lowered setpoint.
         self.target_position = self.lower_position
 
     def raise_intake(self) -> None:
-        # This method would raise the intake up.
+        self.rotate_up()
+
+    def rotate_up(self) -> None:
+        # Move intake to the configured raised setpoint.
         self.target_position = self.upper_position
 
     def set_speed(self, speed: float) -> None:
@@ -114,6 +129,6 @@ class IntakeComponent:
         elif self.target_position < self.lower_limit:
             self.target_position = self.lower_limit
 
-        # self.rotate.set_position(self.target_position)
+        self.rotate.set_control(self.rotate_request.with_position(self.target_position))
 
         self.roller.set_control(DutyCycleOut(self.target_speed))
