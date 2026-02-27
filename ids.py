@@ -38,6 +38,7 @@ class CancoderId:
     SWERVE_BR = CANDevice(33, drive)
     SWERVE_BL = CANDevice(34, drive)
     TURRET = CANDevice(35, drive)
+    INTAKE = CANDevice(36, shooter)
 
 
 class CANdleId:
