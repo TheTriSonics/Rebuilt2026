@@ -2,7 +2,7 @@ import math
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 from wpilib import Timer
 import ntcore
-from wpimath.geometry import Pose2d, Rotation2d, Translation3d, Rotation3d, Transform3d
+from wpimath.geometry import Pose2d, Pose3d, Translation3d, Rotation3d, Transform3d
 from photonlibpy.photonCamera import PhotonCamera
 from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from components.drivetrain import DrivetrainComponent
@@ -16,23 +16,24 @@ class VisionComponent:
 
     def __init__(self) -> None:
         self.timer = Timer()
+
         self.camera_rr = PhotonCamera("Rear_Right")
         self.camera_rl = PhotonCamera("Rear_Left")
         self.camera_back = PhotonCamera("Rear")
 
         self.camera_rr_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-11.0),    # Forward/backward offset
-                units.inchesToMeters(11.625),   # Left/right offset, right is negative
-                units.inchesToMeters(6.0),      # Up/down offset
+                units.inchesToMeters(-13.5),    # Forward/backward offset
+                units.inchesToMeters(11.0),   # Left/right offset, left is negative
+                units.inchesToMeters(9.5),      # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
         )
         self.camera_rl_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-11.0),    # Forward/backward offset
-                units.inchesToMeters(-11.625),  # Left/right offset, right is negative
-                units.inchesToMeters(6.0),      # Up/down offset
+                units.inchesToMeters(-13.5),    # Forward/backward offset
+                units.inchesToMeters(-11.0),  # Left/right offset, left is negative
+                units.inchesToMeters(9.56),      # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -22.0, -90.0),  # roll, pitch, yaw
         )
@@ -42,7 +43,7 @@ class VisionComponent:
                 units.inchesToMeters(0.0),    # Left/right offset, right is negative
                 units.inchesToMeters(15.0),   # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 10.0, 0.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, 10.0, 180.0),  # roll, pitch, yaw
         )
         self.linear_baseline_std = 0.10  # meters
         self.angular_baseline_std = math.radians(10)
@@ -70,30 +71,37 @@ class VisionComponent:
             .publish()
         )
 
-        # Rejection stats published to NT for debugging
-        nt = ntcore.NetworkTableInstance.getDefault().getTable("/components/vision")
-        self._rejected_z = nt.getIntegerTopic("rejected_z").publish()
-        self._rejected_yaw = nt.getIntegerTopic("rejected_yaw").publish()
-        self._rejected_origin = nt.getIntegerTopic("rejected_origin").publish()
-        self._rejected_stale = nt.getIntegerTopic("rejected_stale").publish()
-        self._accepted = nt.getIntegerTopic("accepted").publish()
-        self._rejected_z_count = 0
-        self._rejected_yaw_count = 0
-        self._rejected_origin_count = 0
-        self._rejected_stale_count = 0
-        self._accepted_count = 0
+        # Publish camera world poses for AdvantageScope 3D visualization
+        self.camera_pose_pub = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructArrayTopic("/components/vision/camera_poses", Pose3d)
+            .publish()
+        )
+        self.camera_offsets = [
+            self.camera_rr_offset,
+            self.camera_rl_offset,
+            self.camera_back_offset,
+        ]
 
-        # All cameras active
-        self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]
+        # self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]  # Add back camera when we have one working
+        self.cameras = [self.camera_rr, self.camera_rl]  # Add back camera when we have one working
+        # self.pose_estimators = [
+        #     self.pose_estimator_fr,
+        #     self.pose_estimator_fl,
+        #     self.pose_estimator_back,
+        # ]
+        # self.publishers = [
+        #     self.publisher_rr,
+        #     self.publisher_rl,
+        #     self.publisher_back,
+        # ]
         self.pose_estimators = [
             self.pose_estimator_rr,
             self.pose_estimator_rl,
-            self.pose_estimator_back,
         ]
         self.publishers = [
             self.publisher_rr,
             self.publisher_rl,
-            self.publisher_back,
         ]
 
         # Stale timestamp tracking per camera
@@ -261,6 +269,7 @@ class VisionComponent:
 
     def execute(self) -> None:
         robot_pose = self.drivetrain.get_pose()
+
         disabled = is_disabled()
         setDevs = self.drivetrain.estimator.setVisionMeasurementStdDevs
 

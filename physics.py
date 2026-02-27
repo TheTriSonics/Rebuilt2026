@@ -125,16 +125,16 @@ class PhysicsEngine:
                 gearing=1,
                 moi=0.0009972 * 4,
             ),
-            Falcon500MotorSim(
-                self.robot.intake.rotate,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
-                self.robot.intake.roller,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
+            # Falcon500MotorSim(
+            #     self.robot.intake.rotate,
+            #     gearing=1,
+            #     moi=0.0009972 * 4,
+            # ),
+            # Falcon500MotorSim(
+            #     self.robot.intake.roller,
+            #     gearing=1,
+            #     moi=0.0009972 * 4,
+            # ),
             Falcon500MotorSim(
                 self.robot.turret.turret_motor,
                 gearing=1,
@@ -179,12 +179,12 @@ class PhysicsEngine:
 
         properties_bl = SimCameraProperties.OV9281_1280_720()
         properties_bl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_bl = PhotonCameraSim(robot.vision.camera_bl, properties_bl)
+        self.camera_bl = PhotonCameraSim(robot.vision.camera_rl, properties_bl)
         self.camera_bl.setMaxSightRange(4.0)
 
         properties_br = SimCameraProperties.OV9281_1280_720()
         properties_br.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_br = PhotonCameraSim(robot.vision.camera_br, properties_br)
+        self.camera_br = PhotonCameraSim(robot.vision.camera_rr, properties_br)
         self.camera_br.setMaxSightRange(4.0)
 
         properties_back = SimCameraProperties.OV9281_1280_720()
@@ -194,11 +194,11 @@ class PhysicsEngine:
 
         self.vision_sim.addCamera(
             self.camera_bl,
-            self.robot.vision.camera_bl_offset,
+            self.robot.vision.camera_rl_offset,
         )
         self.vision_sim.addCamera(
             self.camera_br,
-            self.robot.vision.camera_br_offset,
+            self.robot.vision.camera_rr_offset,
         )
         self.vision_sim.addCamera(
             self.camera_back,

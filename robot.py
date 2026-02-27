@@ -26,6 +26,9 @@ from choreo import load_swerve_trajectory
 from math import cos, sin
 
 
+OPERATOR_DEBUG = True
+
+
 
 class MyRobot(MagicRobot):
     # Declare components and controllers here
@@ -41,7 +44,7 @@ class MyRobot(MagicRobot):
     kicker: KickerComponent
     climber: ClimberComponent
     singulator: SingulatorComponent
-    # intake: IntakeComponent
+    intake: IntakeComponent
     shooter: ShooterComponent
     # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
@@ -53,6 +56,7 @@ class MyRobot(MagicRobot):
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
     target_tag = tunable(21)
+    shooter_rps_target = tunable(50.0)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -94,7 +98,8 @@ class MyRobot(MagicRobot):
         self.driver_controller = RebuiltDriver()
         self.operator_controller = RebuiltOperator()
         self.tanker.engage()
-        self.gaspump.engage()
+        if not OPERATOR_DEBUG:
+            self.gaspump.engage()
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
         self.drivetrain.enable_heading_lock()
@@ -121,16 +126,28 @@ class MyRobot(MagicRobot):
         driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
 
-        # if self.driver_controller.intake_on():
-        #     self.intake.intake_on()
-        # elif self.driver_controller.intake_reverse():
-        #     self.intake.intake_reverse()
-        # # elif self.operator_controller.intake_on():
-        # #     self.intake.intake_on()
-        # # elif self.operator_controller.intake_reverse():
-        # #     self.intake.intake_reverse()
-        # else:
-        #     self.intake.intake_off()
+        if self.driver_controller.intake_on():
+            self.intake.intake_on()
+        elif self.driver_controller.intake_reverse():
+            self.intake.intake_reverse()
+        elif self.operator_controller.intake_on():
+            self.intake.intake_on()
+        elif self.operator_controller.intake_reverse():
+            self.intake.intake_reverse()
+        else:
+            self.intake.intake_off()
+
+        if self.operator_controller.kicker_on():
+            self.kicker.kicker_forward()
+        else:
+            # JJB: You could make this kicker-reverse for testing the singulator and have it rotate back slowly
+            # Long term that's a job for the gaspump controller
+            self.kicker.kicker_off()
+
+        if self.operator_controller.shooter_shoot() or self.driver_controller.shooter_shoot():
+            self.shooter.spin_up(self.shooter_rps_target)
+        else:
+            self.shooter.stop()
 
         # if self.driver_controller.go_to_point():
         #     target_pose = self.apriltags.getTagPose(self.target_tag)
@@ -145,12 +162,13 @@ class MyRobot(MagicRobot):
         if self.driver_controller.reset_yaw():
             omega = 0
 
-        if (self.operator_controller.shooter_shoot()
-            or
-            self.driver_controller.shooter_shoot()):
-            self.gaspump.shoot()
-        else:
-            self.gaspump.stop()
+        if not OPERATOR_DEBUG:  # Disabled for operator control testing, will want on real robot
+            if (self.operator_controller.shooter_shoot()
+                or
+                self.driver_controller.shooter_shoot()):
+                self.gaspump.shoot()
+            else:
+                self.gaspump.stop()
 
         # Manual singulator overrides (for testing / clearing jams)
         if self.operator_controller.singulator_forward():
