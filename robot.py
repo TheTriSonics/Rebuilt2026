@@ -129,7 +129,8 @@ class MyRobot(MagicRobot):
         elif self.driver_controller.intake_reverse():
             self.intake.intake_reverse()
         elif self.operator_controller.intake_on():
-            self.intake.intake_on()
+            # self.intake.intake_on()
+            self.intake.rotate_up()
         elif self.operator_controller.intake_reverse():
             self.intake.intake_reverse()
         else:
@@ -175,6 +176,7 @@ class MyRobot(MagicRobot):
             self.singulator.singulator_reverse()
 
     def disabledPeriodic(self):
+        self.vision.execute()
         selected = self.auton_chooser.getSelected()
         if selected != self._last_auton_selection:
             self._last_auton_selection = selected

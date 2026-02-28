@@ -1,4 +1,4 @@
-from magicbot import tunable
+from magicbot import tunable, feedback
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import DutyCycleOut
 from phoenix6.hardware import CANcoder, TalonFX
@@ -58,15 +58,15 @@ class IntakeComponent:
         feedback_config.feedback_remote_sensor_id = ids.CancoderId.INTAKE.id
         feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
         feedback_config.sensor_to_mechanism_ratio = 1.0
-        feedback_config.rotor_to_sensor_ratio = 1.0
+        feedback_config.rotor_to_sensor_ratio = 135.0
 
         pid = (
             Slot0Configs()
-            .with_k_p(0.0001)
+            .with_k_p(2)
             .with_k_i(0)
             .with_k_d(0.0)
-            .with_k_s(4.3)
-            .with_k_v(2.0)
+            .with_k_s(-0.012)
+            .with_k_v(0)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -127,6 +127,10 @@ class IntakeComponent:
 
     def intake_reverse(self) -> None:
         self.set_speed(-self.intake_speed)
+
+    @feedback
+    def get_rotate_position(self) -> float:
+        return self.rotate_encoder.get_position().value
 
     def execute(self) -> None:
         if self.config_limits:

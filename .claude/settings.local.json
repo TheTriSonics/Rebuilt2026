@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh search:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "WebFetch(domain:docs.photonvision.org)",
+      "WebFetch(domain:robotpy.readthedocs.io)",
+      "WebFetch(domain:wiki.thedropbears.org.au)"
+    ]
+  }
+}
