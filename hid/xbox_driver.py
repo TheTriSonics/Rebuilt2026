@@ -41,7 +41,7 @@ class RebuiltDriver:
     def intake_on(self):
         return self.controller.getRightTriggerAxis() > 0.1
 
-    def intake_reverse(self):
+    def singulating(self):
         return self.controller.getLeftTriggerAxis() > 0.1
 
     def go_to_point(self):
@@ -55,3 +55,9 @@ class RebuiltDriver:
 
     def turret_right(self) -> float:
         return -0.6 if self.controller.getPOV() == 90 else 0.0
+    
+    def intake_idle(self):
+        return self.controller.getLeftBumperButtonPressed()
+    
+    def eject(self):
+        return self.controller.getXButtonPressed()

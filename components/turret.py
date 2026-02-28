@@ -7,10 +7,10 @@ import wpilib
 import ntcore
 from magicbot import tunable
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose2d, Pose3d, Rotation3d, Translation3d
 
 from phoenix6.hardware import TalonFX, CANcoder
-from phoenix6.controls import DutyCycleOut, PositionVoltage
+from phoenix6.controls import DutyCycleOut, PositionTorqueCurrentFOC
 from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
@@ -35,11 +35,6 @@ _G = 9.81
 _shooter_height = 0.15  # meters
 _goal_height = 2.00  # meters
 _margin_factor = 2.00
-
-# Set to True when the CANCoder is physically installed on the turret.
-# When False, turret uses DutyCycleOut for manual stick control.
-# When True, turret uses PositionVoltage with FusedCANCoder feedback.
-CANCODER_INSTALLED = True
 
 def clamp_angle(rads: float) -> float:
     rads = rads % tau
@@ -113,7 +108,7 @@ class TurretComponent:
         # robot's turret should be aiming at if it were to launch a fuel cell
         self.targets = (
             ntcore.NetworkTableInstance.getDefault()
-            .getStructArrayTopic('/components/turret/targets', Pose3d)
+            .getStructTopic('/components/turret/fuel_target', Pose3d)
             .publish()
         )
 
@@ -129,48 +124,41 @@ class TurretComponent:
         motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         self.turret_motor.configurator.apply(motor_config)
 
-        if not CANCODER_INSTALLED:
-            # Use the internal rotor sensor for position feedback
-            feedback_config = FeedbackConfigs()
-            feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.ROTOR_SENSOR
-            self.turret_motor.configurator.apply(feedback_config)
+        # CANCoder + position control setup
+        self.turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
 
-        if CANCODER_INSTALLED:
-            # CANCoder + position control setup
-            self.turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
+        enc_config = CANcoderConfiguration()
+        self.turret_encoder.configurator.apply(enc_config)
 
-            enc_config = CANcoderConfiguration()
-            self.turret_encoder.configurator.apply(enc_config)
-
-            feedback_config = FeedbackConfigs()
-            feedback_config.feedback_remote_sensor_id = ids.CancoderId.TURRET.id
-            feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
-            feedback_config.sensor_to_mechanism_ratio = 1.0
-            feedback_config.rotor_to_sensor_ratio = 90.0  # TODO: set actual gear ratio
-
-            turret_pid = (
-                Slot0Configs()
-                .with_k_p(1.0)
-                .with_k_i(0.0)
-                .with_k_d(0.1)
-                .with_k_s(0.25)
-                .with_k_v(0.0)
-                .with_k_a(0.0)
-                .with_static_feedforward_sign(
-                    StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
-                )
+        feedback_config = FeedbackConfigs()
+        feedback_config.feedback_remote_sensor_id = ids.CancoderId.TURRET.id
+        feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
+        feedback_config.sensor_to_mechanism_ratio = 1.0
+        feedback_config.rotor_to_sensor_ratio = 90.0 
+        
+        turret_pid = (
+            Slot0Configs()
+            .with_k_p(15.0)
+            .with_k_i(0.0)
+            .with_k_d(0.0)
+            .with_k_s(1.0)
+            .with_k_v(0.0)
+            .with_k_a(0.0)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
             )
+        )
 
-            closed_loop_config = ClosedLoopGeneralConfigs()
-            closed_loop_config.continuous_wrap = True
+        closed_loop_config = ClosedLoopGeneralConfigs()
+        closed_loop_config.continuous_wrap = True
 
-            self.turret_motor.configurator.apply(turret_pid, 0.01)
-            self.turret_motor.configurator.apply(feedback_config)
-            self.turret_motor.configurator.apply(closed_loop_config)
+        self.turret_motor.configurator.apply(turret_pid, 0.01)
+        self.turret_motor.configurator.apply(feedback_config)
+        self.turret_motor.configurator.apply(closed_loop_config)
 
-            self.position_request = PositionVoltage(0).with_slot(0)
+        self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
 
-        # self.set_hub_target()
+        self.set_hub_target()
 
 
     def setup(self):
@@ -203,36 +191,58 @@ class TurretComponent:
             Translation3d((tag20.x + tag26.x)/2, tag20.y, tag20.z),
             Rotation3d(0, 0, 0),
         )
-        t = [self.static_goal_center]
-        self.targets.set(t)
+        self.targets.set(self.static_goal_center)
+    
+    def set_lob_target(self, robot_pose: Pose2d) -> None:
+        targetx = self.apriltags.getFieldLength() - 2.0 if is_red() else 2.0
+        roboty = robot_pose.translation().y
+        half_width = self.apriltags.getFieldWidth() / 2.0
+        if roboty < half_width:
+            targety = 2.0
+        else:
+            targety = self.apriltags.getFieldWidth() - 2.0
+        self.static_goal_center = Pose3d(
+            Translation3d(targetx, targety, _goal_height),
+            Rotation3d(0, 0, 0),
+        )
+
 
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
 
-        self.turret_motor.set_control(self.position_request.with_position(self.target_position))
+        # self.turret_motor.set_control(self.position_request.with_position(self.target_position))
 
-        # Auto-tracking (currently manual stick override — re-enable later)
-        # curr_pose = self.drivetrain.get_pose()
-        # robotvx = self.drivetrain.vx
-        # robotvy = self.drivetrain.vy
-        #
-        # t = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
-        # futurex: float = self.static_goal_center.translation().x - robotvx * t
-        # futurey: float = self.static_goal_center.translation().y - robotvy * t
-        #
-        # dx = futurex - curr_pose.translation().x
-        # dy = futurey - curr_pose.translation().y
-        # self.desired_angle = clamp_angle(
-        #     atan2(dy, dx) + self.gyro.get_Rotation2d().radians()
-        # )
-        # self.distance_to_goal = sqrt(dx**2 + dy**2)
-        # goal_viz = Pose3d(
-        #     Translation3d(futurex, futurey, self.static_goal_center.translation().z),
-        #     Rotation3d(0, 0, 0),
-        # )
-        # self.targets.set([goal_viz])
+        # Auto-tracking
+        curr_pose = self.drivetrain.get_pose()
+        wall_tag = 16 if is_red() else 32
+        wall_pose: Pose3d = self.apriltags.getTagPose(wall_tag) or Pose3d()
+        curr_pose = self.drivetrain.get_pose()
+        if abs(curr_pose.translation().x - wall_pose.translation().x) > 4.0:
+            self.set_lob_target(curr_pose)
+        else:
+            self.set_hub_target()
+        
+
+        robotvx = self.drivetrain.vx
+        robotvy = self.drivetrain.vy
+        
+        t = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
+        futurex: float = self.static_goal_center.translation().x - robotvx * t
+        futurey: float = self.static_goal_center.translation().y - robotvy * t
+        
+        dx = futurex - curr_pose.translation().x
+        dy = futurey - curr_pose.translation().y
+        self.desired_angle = clamp_angle(
+            atan2(dy, dx) + self.gyro.get_Rotation2d().radians()
+        )
+        self.distance_to_goal = sqrt(dx**2 + dy**2)
+        goal_viz = Pose3d(
+            Translation3d(futurex, futurey, self.static_goal_center.translation().z),
+            Rotation3d(0, 0, 0),
+        )
+        self.targets.set(goal_viz)
 
         # Publish visualization
         field_shot_angle = self.measured_angle - self.gyro.get_Rotation2d().radians()
@@ -244,4 +254,7 @@ class TurretComponent:
             ),
             Rotation3d(0, 0, field_shot_angle),
         )
+
+        self.turret_motor.set_control(self.position_request.with_position(field_shot_angle))
+
         self.position.set(turret_viz)

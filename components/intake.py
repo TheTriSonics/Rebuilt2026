@@ -31,10 +31,10 @@ class IntakeComponent:
     lower_position = tunable(2.0)
     target_position = upper_position
 
-    target_speed = tunable(0.5)
+    target_speed = tunable(0.0)
 
-    intake_speed = tunable(-0.7)
-    outtake_speed = tunable(0.7)
+    intake_speed = tunable(0.4)
+    outtake_speed = tunable(-0.4)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(1.0)
@@ -87,9 +87,9 @@ class IntakeComponent:
         current_limits_config = (
             CurrentLimitsConfigs()
             .with_stator_current_limit(self.stator_current_limit)
-            .with_stator_current_limit_enable(True)
+            .with_stator_current_limit_enable(False)
             .with_supply_current_limit(self.supply_current_limit)
-            .with_supply_current_limit_enable(True)
+            .with_supply_current_limit_enable(False)
             .with_supply_current_lower_limit(self.supply_current_lower_limit)
             .with_supply_current_lower_time(self.supply_current_lower_time)
         )
@@ -144,4 +144,5 @@ class IntakeComponent:
         # self.rotate.set_position(self.target_position)
         #self.rotate.set_control(self.rotate_request.with_position(self.target_position))
 
+        
         self.roller.set_control(DutyCycleOut(self.target_speed))

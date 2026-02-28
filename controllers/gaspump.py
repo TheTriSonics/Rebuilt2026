@@ -3,6 +3,7 @@ from magicbot import StateMachine, state, tunable
 from components.shooter import ShooterComponent
 from components.kicker import KickerComponent
 from components.singulator import SingulatorComponent
+from components.intake import IntakeComponent
 
 
 class GasPump(StateMachine):
@@ -15,18 +16,26 @@ class GasPump(StateMachine):
     shooter: ShooterComponent
     kicker: KickerComponent
     singulator: SingulatorComponent
+    intake: IntakeComponent
 
-    shooter_rps = tunable(30.0)
+    shooter_rps = tunable(50.0)
     kicker_current_threshold = tunable(20.0)
 
-    def shoot(self) -> None:
-        """Begin the shooting sequence (if not already running)."""
-        if self.current_state == self.waiting.name:
-            self.next_state_now(self.shooter_spin_up)
+    def go_shoot(self) -> None:
+        self.next_state_now(self.shooter_spin_up)
 
-    def stop(self) -> None:
+    def go_stop(self) -> None:
         """Abort shooting and kill all motors."""
         self.next_state_now(self.waiting)
+
+    def go_intake(self) -> None:
+        self.next_state_now(self.intake_running)
+
+    def go_singulate(self) -> None:
+        self.next_state_now(self.singulate)
+
+    def go_eject(self) -> None:
+        self.next_state_now(self.eject)
 
     # ------------------------------------------------------------------
     # States
@@ -36,7 +45,8 @@ class GasPump(StateMachine):
     def waiting(self) -> None:
         self.shooter.stop()
         self.kicker.kicker_off()
-        # self.singulator.singulator_off()
+        self.singulator.singulator_off()
+        self.intake.intake_off()
 
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
@@ -60,3 +70,28 @@ class GasPump(StateMachine):
         self.shooter.spin_up(self.shooter_rps)
         self.kicker.kicker_forward()
         self.singulator.singulator_forward()
+
+    @state(must_finish=True)
+    def intake_running(self) -> None:
+        self.shooter.stop()
+        self.kicker.kicker_reverse()
+        self.singulator.singulator_forward()
+        #self.intake.rotate_down()
+        self.intake.intake_on()
+
+    @state(must_finish=True)
+    def singulate(self) -> None:
+        self.shooter.stop()
+        self.kicker.kicker_reverse()
+        self.singulator.singulator_forward()
+        #self.intake.rotate_up()
+        self.intake.intake_off()
+
+    @state(must_finish=True)
+    def eject(self) -> None:
+        self.shooter.stop()
+        self.kicker.kicker_reverse()
+        self.singulator.singulator_reverse()
+        #self.intake.rotate_down()
+        self.intake.intake_reverse()
+        

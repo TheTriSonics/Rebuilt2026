@@ -26,7 +26,7 @@ from choreo import load_swerve_trajectory
 from math import cos, sin
 
 
-OPERATOR_DEBUG = True
+OPERATOR_DEBUG = False
 
 
 
@@ -46,7 +46,7 @@ class MyRobot(MagicRobot):
     singulator: SingulatorComponent
     intake: IntakeComponent
     shooter: ShooterComponent
-    # leds: LEDComponent
+    leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
@@ -120,60 +120,21 @@ class MyRobot(MagicRobot):
         if self.driver_controller.robot_centric():
             self.tanker.go_drive_local()
 
-        operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
-        driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
-        self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
+        # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
+        # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
+        # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
 
         if self.driver_controller.intake_on():
-            self.intake.intake_on()
-        elif self.driver_controller.intake_reverse():
-            self.intake.intake_reverse()
-        elif self.operator_controller.intake_on():
-            # self.intake.intake_on()
-            self.intake.rotate_up()
-        elif self.operator_controller.intake_reverse():
-            self.intake.intake_reverse()
-        else:
-            self.intake.intake_off()
+            self.gaspump.go_intake()
+        if self.driver_controller.eject():
+            self.gaspump.go_eject()
+        if self.driver_controller.singulating():
+            self.gaspump.go_singulate()
+        if self.driver_controller.shooter_shoot():
+            self.gaspump.go_shoot()
+        if self.driver_controller.intake_idle():
+            self.gaspump.go_stop()  
 
-        if self.operator_controller.kicker_on():
-            self.kicker.kicker_forward()
-        else:
-            # JJB: You could make this kicker-reverse for testing the singulator and have it rotate back slowly
-            # Long term that's a job for the gaspump controller
-            self.kicker.kicker_off()
-
-        if self.operator_controller.shooter_shoot() or self.driver_controller.shooter_shoot():
-            self.shooter.spin_up(self.shooter_rps_target)
-        else:
-            self.shooter.stop()
-
-        # if self.driver_controller.go_to_point():
-        #     target_pose = self.apriltags.getTagPose(self.target_tag)
-        #     assert target_pose
-        #     twod_pose = target_pose.toPose2d()
-        #     dist_away = 2.0
-        #     newx = target_pose.x + dist_away * cos(twod_pose.rotation().radians())
-        #     newy = target_pose.y + dist_away * sin(twod_pose.rotation().radians())
-        #     target_pose = Pose2d(newx, newy, twod_pose.rotation().rotateBy(Rotation2d.fromDegrees(180)))
-        #     self.tanker.go_drive_pose(target_pose)
-
-        if self.driver_controller.reset_yaw():
-            omega = 0
-
-        if not OPERATOR_DEBUG:  # Disabled for operator control testing, will want on real robot
-            if (self.operator_controller.shooter_shoot()
-                or
-                self.driver_controller.shooter_shoot()):
-                self.gaspump.shoot()
-            else:
-                self.gaspump.stop()
-
-        # Manual singulator overrides (for testing / clearing jams)
-        if self.operator_controller.singulator_forward():
-            self.singulator.singulator_forward()
-        elif self.operator_controller.singulator_reverse():
-            self.singulator.singulator_reverse()
 
     def disabledPeriodic(self):
         self.vision.execute()
