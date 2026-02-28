@@ -135,10 +135,6 @@ class VisionComponent:
         if abs(pose3d.Z()) > 0.2:
             return True
 
-        # Field origin norm check: reject degenerate PnP solutions near (0,0)
-        if twod_pose.translation().norm() < 1.0:
-            return True
-
         # Stale timestamp check
         if ts <= self._last_timestamps[cam_idx]:
             return True
@@ -149,19 +145,20 @@ class VisionComponent:
             return True
 
         # Yaw consistency check for weak observations
-        tag_count = len(targets)
-        total_area = sum(t.getArea() for t in targets)
-        avg_area = total_area / tag_count if tag_count > 0 else 0
-        if tag_count == 1 or avg_area < 2.0:
-            # Compare vision heading to gyro heading
-            gyro_heading = self.drivetrain.get_rotation().radians()
-            vision_heading = twod_pose.rotation().radians()
-            heading_diff = abs(math.atan2(
-                math.sin(vision_heading - gyro_heading),
-                math.cos(vision_heading - gyro_heading),
-            ))
-            if heading_diff > math.radians(5):
-                return True
+
+        # tag_count = len(targets)
+        # total_area = sum(t.getArea() for t in targets)
+        # avg_area = total_area / tag_count if tag_count > 0 else 0
+        # if tag_count == 1 or avg_area < 2.0:
+        #     # Compare vision heading to gyro heading
+        #     gyro_heading = self.drivetrain.get_rotation().radians()
+        #     vision_heading = twod_pose.rotation().radians()
+        #     heading_diff = abs(math.atan2(
+        #         math.sin(vision_heading - gyro_heading),
+        #         math.cos(vision_heading - gyro_heading),
+        #     ))
+        #     if heading_diff > math.radians(5):
+        #         return True
 
         return False
 
@@ -292,12 +289,9 @@ class VisionComponent:
         for cam_idx, (cam, pose_est, pub) in enumerate(zip(
             self.cameras, self.pose_estimators, self.publishers
         )):
-            results = cam.getAllUnreadResults()
-            if not results:
+            res = cam.getLatestResult()
+            if not res:
                 continue
-
-            # Only process the most recent result to avoid backlog buildup
-            res = results[-1]
 
             targets = res.getTargets()
             if not targets:
