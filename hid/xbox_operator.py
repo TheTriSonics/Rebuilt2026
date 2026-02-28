@@ -19,7 +19,6 @@ class RebuiltOperator:
         return self.controller.getBButton()
 
     def kicker_on(self):
-        
         return self.controller.getAButton()
 
     def intake_up(self):
