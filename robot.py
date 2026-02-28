@@ -80,7 +80,6 @@ class MyRobot(MagicRobot):
             wpilib.DriverStation.silenceJoystickConnectionWarning(True)
 
     def autonomousInit(self):
-        self.drivetrain.disable_heading_lock()
         self.tanker.engage()
         selected = self.auton_chooser.getSelected()
         if selected:
@@ -102,7 +101,6 @@ class MyRobot(MagicRobot):
             self.gaspump.engage()
         self.tanker.go_drive_field()
         self.turret.set_hub_target()
-        self.drivetrain.enable_heading_lock()
 
     def teleopPeriodic(self):
         if self.battery_monitor.is_stop_active():
