@@ -212,27 +212,28 @@ class PhysicsEngine:
         if wpilib.DriverStation.isEnabled():
             phoenix6.unmanaged.feed_enable(0.1)
 
-        poses: list[Pose3d] = []
-        for b in self.robot.turret.balls:
-            pose = Pose3d(
-                Translation3d(b.xpos, b.ypos, b.zpos),
-                Rotation3d(0, 0, 0),
-            )
-            b.xpos += b.xvel * tm_diff
-            b.ypos += b.yvel * tm_diff
-            b.zpos += b.zvel * tm_diff
-            if b.zpos >= 0.075:
-                # Calculate new Z velocity with simple gravity
-                b.zvel -= 9.81 * tm_diff
-            else:
-                # Ball has hit the ground; stop simulating it
-                b.xvel = 0.0
-                b.yvel = 0.0
-                b.zvel = 0.0
+        if False:
+            poses: list[Pose3d] = []
+            for b in self.robot.turret.balls:
+                pose = Pose3d(
+                    Translation3d(b.xpos, b.ypos, b.zpos),
+                    Rotation3d(0, 0, 0),
+                )
+                b.xpos += b.xvel * tm_diff
+                b.ypos += b.yvel * tm_diff
+                b.zpos += b.zvel * tm_diff
+                if b.zpos >= 0.075:
+                    # Calculate new Z velocity with simple gravity
+                    b.zvel -= 9.81 * tm_diff
+                else:
+                    # Ball has hit the ground; stop simulating it
+                    b.xvel = 0.0
+                    b.yvel = 0.0
+                    b.zvel = 0.0
 
-            poses.append(pose)
-        if len(poses) > 0:
-            self.sim_balls.set(poses)
+                poses.append(pose)
+            if len(poses) > 0:
+                self.sim_balls.set(poses)
 
 
         for wheel in self.wheels:
