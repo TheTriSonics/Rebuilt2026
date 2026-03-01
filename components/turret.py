@@ -158,7 +158,8 @@ class TurretComponent:
 
         self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
 
-        self.set_hub_target()
+        self.current_target_mode = "hub"
+        self.aim_hub()
 
 
     def setup(self):
@@ -179,51 +180,55 @@ class TurretComponent:
     def set_manual_speed(self, speed: float) -> None:
         self.manual_speed = speed
 
-    def set_hub_target(self) -> None:
-        # We calculate the center of the goal based on the positions of
-        # AprilTags 20 and 26, then get a point right between them. That's
-        # basically dead center of the goal
-        tag1 = 10 if is_red() else 20
-        tag2 = 4 if is_red() else 26
-        tag20: Pose3d = self.apriltags.getTagPose(tag1) or Pose3d()
-        tag26: Pose3d = self.apriltags.getTagPose(tag2) or Pose3d()
-        self.static_goal_center = Pose3d(
-            Translation3d((tag20.x + tag26.x)/2, tag20.y, tag20.z),
-            Rotation3d(0, 0, 0),
-        )
-        self.targets.set(self.static_goal_center)
-    
-    def set_lob_target(self, robot_pose: Pose2d) -> None:
-        targetx = self.apriltags.getFieldLength() - 2.0 if is_red() else 2.0
-        roboty = robot_pose.translation().y
-        half_width = self.apriltags.getFieldWidth() / 2.0
-        if roboty < half_width:
-            targety = 2.0
-        else:
-            targety = self.apriltags.getFieldWidth() - 2.0
-        self.static_goal_center = Pose3d(
-            Translation3d(targetx, targety, _goal_height),
-            Rotation3d(0, 0, 0),
-        )
+    def aim_hub(self) -> None:
+        self.current_target_mode = "hub"
 
+    def aim_left_lob(self) -> None:
+        self.current_target_mode = "left_lob"
+
+    def aim_right_lob(self) -> None:
+        self.current_target_mode = "right_lob"
+
+    def _update_static_goal(self) -> None:
+        if self.current_target_mode == "hub":
+            # We calculate the center of the goal based on the positions of
+            # AprilTags 20 and 26, then get a point right between them. That's
+            # basically dead center of the goal
+            tag1 = 10 if is_red() else 20
+            tag2 = 4 if is_red() else 26
+            tag20: Pose3d = self.apriltags.getTagPose(tag1) or Pose3d()
+            tag26: Pose3d = self.apriltags.getTagPose(tag2) or Pose3d()
+            self.static_goal_center = Pose3d(
+                Translation3d((tag20.x + tag26.x)/2, tag20.y, tag20.z),
+                Rotation3d(0, 0, 0),
+            )
+        else:
+            targetx = self.apriltags.getFieldLength() - 2.0 if is_red() else 2.0
+            if self.current_target_mode == "left_lob":
+                # Assuming left is +y direction in WPILib coordinates (so closer to FieldWidth) or -y?
+                # Let's use the field coordinates where left is > half_width or < half_width
+                # WPILib coords: Origin is right corner of the blue alliance wall.
+                # So +Y is left from the driver station perspective.
+                # Wait, looking at original code:
+                # half_width = self.apriltags.getFieldWidth() / 2.0
+                # if roboty < half_width: targety = 2.0 else targety = fieldWidth - 2.0
+                targety = self.apriltags.getFieldWidth() - 2.0
+            else: # right_lob
+                targety = 2.0
+
+            self.static_goal_center = Pose3d(
+                Translation3d(targetx, targety, _goal_height),
+                Rotation3d(0, 0, 0),
+            )
 
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
 
-        # self.turret_motor.set_control(self.position_request.with_position(self.target_position))
+        self._update_static_goal()
 
-        # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
-        wall_tag = 16 if is_red() else 32
-        wall_pose: Pose3d = self.apriltags.getTagPose(wall_tag) or Pose3d()
-        curr_pose = self.drivetrain.get_pose()
-        if abs(curr_pose.translation().x - wall_pose.translation().x) > 4.0:
-            self.set_lob_target(curr_pose)
-        else:
-            self.set_hub_target()
-        
 
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy

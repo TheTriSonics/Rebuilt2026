@@ -162,76 +162,6 @@ class VisionComponent:
 
         return False
 
-    def _fuse_estimates(
-        self, estimates: list[tuple[Pose2d, float, tuple[float, float, float]]]
-    ) -> tuple[Pose2d, float, tuple[float, float, float]]:
-        """Fuse multiple vision estimates using inverse-variance weighting.
-
-        Each estimate is (pose2d, timestamp, (std_x, std_y, std_rot)).
-        Returns fused (pose2d, timestamp, std_devs).
-        """
-        if len(estimates) == 1:
-            return estimates[0]
-
-        # Use the most recent timestamp
-        estimates.sort(key=lambda e: e[1])
-        newest_ts = estimates[-1][1]
-
-        # Time-align older estimates to newest using odometry delta
-        aligned: list[tuple[Pose2d, tuple[float, float, float]]] = []
-        for pose, ts, stds in estimates:
-            if ts < newest_ts:
-                # Approximate alignment: use the pose estimator's odometry
-                # The time difference should be small (< 1 frame), so we use
-                # the raw pose offset as a simple approximation
-                dt = newest_ts - ts
-                speeds = self.drivetrain.get_chassis_speeds()
-                dx = speeds.vx * dt
-                dy = speeds.vy * dt
-                dtheta = speeds.omega * dt
-                cos_t = math.cos(dtheta)
-                sin_t = math.sin(dtheta)
-                new_x = pose.x + dx * cos_t - dy * sin_t
-                new_y = pose.y + dx * sin_t + dy * cos_t
-                new_rot = pose.rotation().radians() + dtheta
-                pose = Pose2d(new_x, new_y, Rotation2d(new_rot))
-            aligned.append((pose, stds))
-
-        # Inverse-variance weighting for X and Y independently
-        sum_inv_var_x = 0.0
-        sum_inv_var_y = 0.0
-        sum_inv_var_rot = 0.0
-        weighted_x = 0.0
-        weighted_y = 0.0
-        weighted_sin = 0.0
-        weighted_cos = 0.0
-
-        for pose, stds in aligned:
-            inv_var_x = 1.0 / (stds[0] ** 2) if stds[0] > 0 else 1e6
-            inv_var_y = 1.0 / (stds[1] ** 2) if stds[1] > 0 else 1e6
-            inv_var_rot = 1.0 / (stds[2] ** 2) if stds[2] > 0 else 1e6
-
-            sum_inv_var_x += inv_var_x
-            sum_inv_var_y += inv_var_y
-            sum_inv_var_rot += inv_var_rot
-
-            weighted_x += pose.x * inv_var_x
-            weighted_y += pose.y * inv_var_y
-            rot = pose.rotation().radians()
-            weighted_sin += math.sin(rot) * inv_var_rot
-            weighted_cos += math.cos(rot) * inv_var_rot
-
-        fused_x = weighted_x / sum_inv_var_x
-        fused_y = weighted_y / sum_inv_var_y
-        fused_rot = math.atan2(weighted_sin, weighted_cos)
-
-        fused_std_x = math.sqrt(1.0 / sum_inv_var_x)
-        fused_std_y = math.sqrt(1.0 / sum_inv_var_y)
-        fused_std_rot = math.sqrt(1.0 / sum_inv_var_rot)
-
-        fused_pose = Pose2d(fused_x, fused_y, Rotation2d(fused_rot))
-        return (fused_pose, newest_ts, (fused_std_x, fused_std_y, fused_std_rot))
-
     def _estimate_single_tag(
         self, targets: list, cam_idx: int
     ) -> tuple[Pose3d, Pose2d, bool] | None:
@@ -282,9 +212,6 @@ class VisionComponent:
         # Update yaw rate history (deque auto-evicts oldest)
         yaw_rate = self.drivetrain.get_rotational_velocity()
         self._yaw_rate_history.append(yaw_rate)
-
-        # Collect valid estimates from all cameras for fusion
-        valid_estimates: list[tuple[Pose2d, float, tuple[float, float, float]]] = []
 
         for cam_idx, (cam, pose_est, pub) in enumerate(zip(
             self.cameras, self.pose_estimators, self.publishers
@@ -337,14 +264,7 @@ class VisionComponent:
             # Record timestamp
             self._last_timestamps[cam_idx] = ts
 
-            valid_estimates.append((twod_pose, ts, std_devs))
-
-        # Fuse and apply
-        if valid_estimates:
-            if len(valid_estimates) == 1:
-                pose, ts, stds = valid_estimates[0]
-            else:
-                pose, ts, stds = self._fuse_estimates(valid_estimates)
-
-            setDevs(stds)
-            self.drivetrain.estimator.addVisionMeasurement(pose, ts)
+            # WPILib's PoseEstimator natively handles latency by using the timestamp.
+            # Passing each camera's measurement individually handles multi-camera setup.
+            setDevs(std_devs)
+            self.drivetrain.estimator.addVisionMeasurement(twod_pose, ts)
