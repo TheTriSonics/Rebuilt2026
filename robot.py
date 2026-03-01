@@ -100,7 +100,7 @@ class MyRobot(MagicRobot):
         if not OPERATOR_DEBUG:
             self.gaspump.engage()
         self.tanker.go_drive_field()
-        self.turret.set_hub_target()
+        self.turret.aim_hub()
 
     def teleopPeriodic(self):
         if self.battery_monitor.is_stop_active():
