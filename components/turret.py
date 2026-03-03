@@ -5,7 +5,7 @@ from math import atan2, cos, pi, sin, sqrt, tau
 import math
 import wpilib
 import ntcore
-from magicbot import tunable
+from magicbot import tunable, feedback
 from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
 from wpimath.geometry import Pose2d, Pose3d, Rotation3d, Translation3d
 
@@ -86,9 +86,9 @@ class TurretComponent:
     # Shooter Rear: kP 4.5, kS 2, kV 0.11
 
     # These are set to tunables just so they show up on the dashboard for now
+    testpos = tunable(0.0)
     distance_to_goal = tunable(0.0)
     desired_angle = tunable(0.0)
-    measured_angle = 0.0
     manual_speed = tunable(0.0)
     target_position = tunable(0.0)
 
@@ -206,12 +206,17 @@ class TurretComponent:
             Rotation3d(0, 0, 0),
         )
 
+    @feedback
+    def get_turret_position(self) -> float:
+        return self.turret_encoder.get_position().value
+
 
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
 
+        # print(self.target_position)
         # self.turret_motor.set_control(self.position_request.with_position(self.target_position))
 
         # Auto-tracking
@@ -245,7 +250,9 @@ class TurretComponent:
         self.targets.set(goal_viz)
 
         # Publish visualization
-        field_shot_angle = self.measured_angle - self.gyro.get_Rotation2d().radians()
+        turret_angle = self.turret_encoder.get_position().value * math.tau
+        field_shot_angle = turret_angle - self.gyro.get_Rotation2d().radians()
+        field_shot_pos = field_shot_angle / math.tau
         turret_viz = Pose3d(
             Translation3d(
                 self.drivetrain.get_pose().translation().x,
@@ -255,6 +262,7 @@ class TurretComponent:
             Rotation3d(0, 0, field_shot_angle),
         )
 
-        self.turret_motor.set_control(self.position_request.with_position(field_shot_angle))
+        print(field_shot_pos)
+        self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
 
         self.position.set(turret_viz)
