@@ -332,7 +332,13 @@ class DrivetrainComponent:
         return self.gyro.get_Rotation2d()
 
     def setup(self) -> None:
-        initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(0))
+        # Reset gyro BEFORE creating the estimator / setting pose so the
+        # estimator's stored gyro reference matches the actual gyro value.
+        heading = 180 if is_red() else 0
+        self.gyro.reset_heading(heading)
+
+        initial_heading = math.pi if is_red() else 0
+        initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(initial_heading))
 
         self.estimator = SwerveDrive4PoseEstimator(
             self.kinematics,
@@ -343,8 +349,6 @@ class DrivetrainComponent:
             visionMeasurementStdDevs=(0.4, 0.4, 0.2),
         )
         self.set_pose(initial_pose)
-        heading = 180 if is_red() else 0
-        self.gyro.reset_heading(heading)
 
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""

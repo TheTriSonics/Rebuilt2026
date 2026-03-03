@@ -80,6 +80,7 @@ class MyRobot(MagicRobot):
             wpilib.DriverStation.silenceJoystickConnectionWarning(True)
 
     def autonomousInit(self):
+        self.drivetrain.reset_yaw()
         self.tanker.engage()
         selected = self.auton_chooser.getSelected()
         if selected:
@@ -94,6 +95,7 @@ class MyRobot(MagicRobot):
         ...
 
     def teleopInit(self):
+        self.drivetrain.reset_yaw()
         self.driver_controller = RebuiltDriver()
         self.operator_controller = RebuiltOperator()
         self.tanker.engage()
