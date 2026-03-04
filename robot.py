@@ -125,7 +125,7 @@ class MyRobot(MagicRobot):
             self.tanker.go_drive_pose(target_pose)
 
         if self.driver_controller.reset_yaw():
-            omega = 0
+            self.drivetrain.reset_yaw()
 
         if (self.operator_controller.shooter_shoot()
             or
