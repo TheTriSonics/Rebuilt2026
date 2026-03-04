@@ -322,6 +322,7 @@ class VisionComponent:
                 pose3d, twod_pose, ts, cam_idx, targets, robot_pose, disabled
             ):
                 continue
+            pub.set(twod_pose)
 
             # Compute std devs
             tag_count = len(targets)

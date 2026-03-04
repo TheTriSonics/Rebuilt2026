@@ -126,15 +126,15 @@ class MyRobot(MagicRobot):
         # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
 
-        if self.driver_controller.intake_on():
+        if self.operator_controller.intake_on():
             self.gaspump.go_intake()
-        if self.driver_controller.eject():
+        if self.operator_controller.eject():
             self.gaspump.go_eject()
-        if self.driver_controller.singulating():
+        if self.operator_controller.singulating():
             self.gaspump.go_singulate()
-        if self.driver_controller.shooter_shoot():
+        if self.operator_controller.shooter_shoot():
             self.gaspump.go_shoot()
-        if self.driver_controller.intake_idle():
+        if self.operator_controller.intake_idle():
             self.gaspump.go_stop()  
 
 

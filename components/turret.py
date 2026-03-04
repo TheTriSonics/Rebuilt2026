@@ -223,7 +223,6 @@ class TurretComponent:
         curr_pose = self.drivetrain.get_pose()
         wall_tag = 16 if is_red() else 32
         wall_pose: Pose3d = self.apriltags.getTagPose(wall_tag) or Pose3d()
-        curr_pose = self.drivetrain.get_pose()
         if abs(curr_pose.translation().x - wall_pose.translation().x) > 4.0:
             self.set_lob_target(curr_pose)
         else:
@@ -239,9 +238,7 @@ class TurretComponent:
         
         dx = futurex - curr_pose.translation().x
         dy = futurey - curr_pose.translation().y
-        self.desired_angle = clamp_angle(
-            atan2(dy, dx) + self.gyro.get_Rotation2d().radians()
-        )
+        self.desired_angle = atan2(dy, dx) + self.gyro.get_Rotation2d().radians() + math.pi
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         goal_viz = Pose3d(
             Translation3d(futurex, futurey, self.static_goal_center.translation().z),
@@ -250,16 +247,14 @@ class TurretComponent:
         self.targets.set(goal_viz)
 
         # Publish visualization
-        turret_angle = self.turret_encoder.get_position().value * math.tau
-        field_shot_angle = turret_angle - self.gyro.get_Rotation2d().radians()
-        field_shot_pos = field_shot_angle / math.tau
+        field_shot_pos = self.desired_angle / math.tau
         turret_viz = Pose3d(
             Translation3d(
                 self.drivetrain.get_pose().translation().x,
                 self.drivetrain.get_pose().translation().y,
                 _shooter_height + 0.5
             ),
-            Rotation3d(0, 0, field_shot_angle),
+            Rotation3d(0, 0, self.desired_angle),
         )
 
         print(field_shot_pos)

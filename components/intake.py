@@ -33,8 +33,8 @@ class IntakeComponent:
 
     target_speed = tunable(0.0)
 
-    intake_speed = tunable(0.4)
-    outtake_speed = tunable(-0.4)
+    intake_speed = tunable(0.7)
+    outtake_speed = tunable(-0.7)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(1.0)
