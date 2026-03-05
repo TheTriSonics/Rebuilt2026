@@ -216,18 +216,15 @@ class TurretComponent:
             self._apply_current_limits()
             self.config_limits = False
 
-        # print(self.target_position)
-        # self.turret_motor.set_control(self.position_request.with_position(self.target_position))
-
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
-        wall_tag = 16 if is_red() else 32
-        wall_pose: Pose3d = self.apriltags.getTagPose(wall_tag) or Pose3d()
-        if abs(curr_pose.translation().x - wall_pose.translation().x) > 4.0:
-            self.set_lob_target(curr_pose)
-        else:
-            self.set_hub_target()
-        
+        # wall_tag = 16 if is_red() else 32
+        # wall_pose: Pose3d = self.apriltags.getTagPose(wall_tag) or Pose3d()
+        # if abs(curr_pose.translation().x - wall_pose.translation().x) > 4.0:
+        #     self.set_lob_target(curr_pose)
+        # else:
+        #     self.set_hub_target()
+        self.set_hub_target()
 
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
@@ -236,9 +233,9 @@ class TurretComponent:
         futurex: float = self.static_goal_center.translation().x - robotvx * t
         futurey: float = self.static_goal_center.translation().y - robotvy * t
         
-        dx = futurex - curr_pose.translation().x
-        dy = futurey - curr_pose.translation().y
-        self.desired_angle = atan2(dy, dx) + self.gyro.get_Rotation2d().radians() + math.pi
+        dx = curr_pose.translation().x - futurex
+        dy = curr_pose.translation().y - futurey
+        self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians()
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         goal_viz = Pose3d(
             Translation3d(futurex, futurey, self.static_goal_center.translation().z),
@@ -247,7 +244,7 @@ class TurretComponent:
         self.targets.set(goal_viz)
 
         # Publish visualization
-        field_shot_pos = self.desired_angle / math.tau
+        field_shot_pos = (self.desired_angle / math.tau)
         turret_viz = Pose3d(
             Translation3d(
                 self.drivetrain.get_pose().translation().x,
@@ -257,7 +254,7 @@ class TurretComponent:
             Rotation3d(0, 0, self.desired_angle),
         )
 
-        print(field_shot_pos)
+        # print(field_shot_pos)
         self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
 
         self.position.set(turret_viz)

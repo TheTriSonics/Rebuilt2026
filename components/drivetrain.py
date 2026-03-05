@@ -332,13 +332,7 @@ class DrivetrainComponent:
         return self.gyro.get_Rotation2d()
 
     def setup(self) -> None:
-        # Reset gyro BEFORE creating the estimator / setting pose so the
-        # estimator's stored gyro reference matches the actual gyro value.
-        heading = 180 if is_red() else 0
-        self.gyro.reset_heading(heading)
-
-        initial_heading = math.pi if is_red() else 0
-        initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(initial_heading))
+        initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(0))
 
         self.estimator = SwerveDrive4PoseEstimator(
             self.kinematics,
@@ -466,8 +460,9 @@ class DrivetrainComponent:
     def reset_yaw(self) -> None:
         """Sets pose to current pose but with a heading of forwards"""
         cur_pose = self.estimator.getEstimatedPosition()
-        default_heading = math.pi if is_red() else 0
+        default_heading = 180 if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d(default_heading)))
+        self.gyro.reset_heading(default_heading)
 
     def get_module_positions(self) -> tuple[
         SwerveModulePosition,

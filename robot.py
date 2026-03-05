@@ -95,7 +95,6 @@ class MyRobot(MagicRobot):
         ...
 
     def teleopInit(self):
-        self.drivetrain.reset_yaw()
         self.driver_controller = RebuiltDriver()
         self.operator_controller = RebuiltOperator()
         self.tanker.engage()
@@ -121,6 +120,9 @@ class MyRobot(MagicRobot):
 
         if self.driver_controller.robot_centric():
             self.tanker.go_drive_local()
+
+        if self.driver_controller.reset_yaw():
+            self.drivetrain.reset_yaw()
 
         # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
         # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()

@@ -322,6 +322,10 @@ class VisionComponent:
                 pose3d, twod_pose, ts, cam_idx, targets, robot_pose, disabled
             ):
                 continue
+            # Everything is 180 degrees off with vision so let's just flip it around,. Ugh.
+            vision_heading  = twod_pose.rotation().radians()
+            flipped_heading = (vision_heading + math.pi) % math.tau
+            twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
             pub.set(twod_pose)
 
             # Compute std devs
