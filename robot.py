@@ -83,6 +83,7 @@ class MyRobot(MagicRobot):
         self.drivetrain.reset_yaw()
         self.tanker.engage()
         selected = self.auton_chooser.getSelected()
+        self.turret.set_target("hub")
         if selected:
             self.tanker.go_follow_path(selected)
         else:
@@ -101,7 +102,7 @@ class MyRobot(MagicRobot):
         if not OPERATOR_DEBUG:
             self.gaspump.engage()
         self.tanker.go_drive_field()
-        self.turret.set_hub_target()
+        self.turret.set_target("hub")
 
     def teleopPeriodic(self):
         if self.battery_monitor.is_stop_active():

@@ -6,8 +6,7 @@ import math
 import wpilib
 import ntcore
 from magicbot import tunable, feedback
-from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
-from wpimath.geometry import Pose2d, Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
 from phoenix6.hardware import TalonFX, CANcoder
 from phoenix6.controls import DutyCycleOut, PositionTorqueCurrentFOC
@@ -36,35 +35,42 @@ _shooter_height = 0.15  # meters
 _goal_height = 2.00  # meters
 _margin_factor = 2.00
 
+# Fixed field targets derived from AprilTag positions (k2026RebuiltWelded, meters)
+_BLUE_HUB    = Translation3d(4.626, 4.035, _goal_height)
+_RED_HUB     = Translation3d(11.916, 4.035, _goal_height)
+_FIELD_LENGTH = 16.541
+_FIELD_WIDTH  = 8.069
+
 def clamp_angle(rads: float) -> float:
     rads = rads % tau
     if rads > pi:
         rads -= tau
     return rads
 
-# We'll gloss over the derivation of the physics here and just use the formulas
-# you might find in a high school physics textbook.
-def traj_calc(d: float) -> tuple[float, float, float]:
-    # Determine the height difference of our target spot and where fuel exits
-    # the shooter
-    delta_h = _goal_height - _shooter_height
-    # Now calculate the time it will take for the ball to reach the target
-    # height if launched on a trajectory where that target height was it's max.
-    # This is also the time it would take to drop from the target height to the
-    # shooter height
-    t = sqrt(2 * delta_h / _G)
-    # Now multiply the minimum flight time by something larger than 1 so that we
-    # know the fuel cell will be coming down in its flight path. The larger the
-    # value the more of a "lob" shot you'll get.
-    t *= _margin_factor
-    # Horizontal velocity to reach the goal is simply distance / time
-    vhoriz = d / t
-    # Calculate how hard we have to launch the fuel vertically so that after t
-    # seconds it's still risen up delta_h. That means we'll have to launch it
-    # above the target height and it'll be falling because t is longer than the
-    # time it would take to reach the target height.
-    vvert = (delta_h + 0.5 * _G * t**2) / t
-    return vhoriz, vvert, t
+# JRD This section is deprecated given the flight calculation inside execute()
+# # We'll gloss over the derivation of the physics here and just use the formulas
+# # you might find in a high school physics textbook.
+# def traj_calc(d: float) -> tuple[float, float, float]:
+#     # Determine the height difference of our target spot and where fuel exits
+#     # the shooter
+#     delta_h = _goal_height - _shooter_height
+#     # Now calculate the time it will take for the ball to reach the target
+#     # height if launched on a trajectory where that target height was it's max.
+#     # This is also the time it would take to drop from the target height to the
+#     # shooter height
+#     t = sqrt(2 * delta_h / _G)
+#     # Now multiply the minimum flight time by something larger than 1 so that we
+#     # know the fuel cell will be coming down in its flight path. The larger the
+#     # value the more of a "lob" shot you'll get.
+#     t *= _margin_factor
+#     # Horizontal velocity to reach the goal is simply distance / time
+#     vhoriz = d / t
+#     # Calculate how hard we have to launch the fuel vertically so that after t
+#     # seconds it's still risen up delta_h. That means we'll have to launch it
+#     # above the target height and it'll be falling because t is longer than the
+#     # time it would take to reach the target height.
+#     vvert = (delta_h + 0.5 * _G * t**2) / t
+#     return vhoriz, vvert, t
 
 
 @dataclass
@@ -86,21 +92,21 @@ class TurretComponent:
     # Shooter Rear: kP 4.5, kS 2, kV 0.11
 
     # These are set to tunables just so they show up on the dashboard for now
-    testpos = tunable(0.0)
+    # testpos = tunable(0.0)
     distance_to_goal = tunable(0.0)
     desired_angle = tunable(0.0)
     manual_speed = tunable(0.0)
     target_position = tunable(0.0)
-    hub_x = tunable(0.0)
-    hub_y = tunable(0.0)
+
+    # Lob target offsets from corner of own alliance zone (meters, ~4 ft default)
+    lob_alliance_wall_offset = tunable(1.219)  # distance inward from end wall (X axis)
+    lob_side_wall_offset     = tunable(1.219)  # distance inward from side wall (Y axis)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(20.0)
     supply_current_limit = tunable(15.0)
     supply_current_lower_limit = tunable(10.0)
     supply_current_lower_time = tunable(1.0)
-
-    apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
     # Turret motor — always created
     turret_motor = TalonFX(ids.TalonId.TURRET_TURN.id, ids.TalonId.TURRET_TURN.bus)
@@ -160,11 +166,7 @@ class TurretComponent:
 
         self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
 
-        field_length = self.apriltags.getFieldLength()
-        field_width = self.apriltags.getFieldWidth()
-        self.hub_x = field_length / 2.0
-        self.hub_y = field_width / 2.0
-        self.set_hub_target()
+        self.set_target("hub")
 
 
     def setup(self):
@@ -185,38 +187,29 @@ class TurretComponent:
     def set_manual_speed(self, speed: float) -> None:
         self.manual_speed = speed
 
-    def set_hub_target(self) -> None:
-        # We calculate the center of the goal based on the positions of
-        # AprilTags 20 and 26, then get a point right between them. That's
-        # basically dead center of the goal
-        # tag1 = 10 if is_red() else 20
-        # tag2 = 4 if is_red() else 26
-        # tag20: Pose3d = self.apriltags.getTagPose(tag1) or Pose3d()
-        # tag26: Pose3d = self.apriltags.getTagPose(tag2) or Pose3d()
-        # self.static_goal_center = Pose3d(
-        #     Translation3d((tag20.x + tag26.x)/2, (tag20.y + tag26.y)/2, (tag20.z + tag26.z)/2),
-        #     Rotation3d(0, 0, 0),
-        # )
-        # self.targets.set(self.static_goal_center)
-        # Aim at the tunable hub center
-        self.static_goal_center = Pose3d(
-            Translation3d(self.hub_x, self.hub_y, _goal_height),
-            Rotation3d(0, 0, 0),
-        )
-        self.targets.set(self.static_goal_center)
-    
-    def set_lob_target(self, robot_pose: Pose2d) -> None:
-        targetx = self.apriltags.getFieldLength() - 2.0 if is_red() else 2.0
-        roboty = robot_pose.translation().y
-        half_width = self.apriltags.getFieldWidth() / 2.0
-        if roboty < half_width:
-            targety = 2.0
+    def set_target(self, name: str) -> None:
+        """Set the active aim target. name: 'hub', 'left', or 'right'.
+        Left/right are from the driver's perspective (blue faces high-X:
+        left=low-Y corner, right=high-Y corner of own alliance zone).
+        """
+        ax = self.lob_alliance_wall_offset
+        sy = self.lob_side_wall_offset
+        if is_red():
+            lookup = {
+                "hub":   _RED_HUB,
+                "left":  Translation3d(_FIELD_LENGTH - ax, sy, _goal_height),
+                "right": Translation3d(_FIELD_LENGTH - ax, _FIELD_WIDTH - sy, _goal_height),
+            }
         else:
-            targety = self.apriltags.getFieldWidth() - 2.0
-        self.static_goal_center = Pose3d(
-            Translation3d(targetx, targety, _goal_height),
-            Rotation3d(0, 0, 0),
-        )
+            lookup = {
+                "hub":   _BLUE_HUB,
+                "left":  Translation3d(ax, sy, _goal_height),
+                "right": Translation3d(ax, _FIELD_WIDTH - sy, _goal_height),
+            }
+        if name not in lookup:
+            raise ValueError(f"Unknown turret target {name!r}. Valid: {list(lookup)}")
+        self.active_target = Pose3d(lookup[name], Rotation3d(0, 0, 0))
+        self.targets.set(self.active_target)
 
     @feedback
     def get_turret_position(self) -> float:
@@ -230,20 +223,13 @@ class TurretComponent:
 
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
-        # wall_tag = 16 if is_red() else 32
-        # wall_pose: Pose3d = self.apriltags.getTagPose(wall_tag) or Pose3d()
-        # if abs(curr_pose.translation().x - wall_pose.translation().x) > 4.0:
-        #     self.set_lob_target(curr_pose)
-        # else:
-        #     self.set_hub_target()
-        self.set_hub_target()
 
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
         
-        t = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
-        futurex: float = self.static_goal_center.translation().x - robotvx * t
-        futurey: float = self.static_goal_center.translation().y - robotvy * t
+        flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
+        futurex: float = self.active_target.translation().x - robotvx * flight_time
+        futurey: float = self.active_target.translation().y - robotvy * flight_time
 
         pn = wpilib.SmartDashboard.putNumber
 
@@ -261,7 +247,7 @@ class TurretComponent:
 
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         goal_viz = Pose3d(
-            Translation3d(futurex, futurey, self.static_goal_center.translation().z),
+            Translation3d(futurex, futurey, self.active_target.translation().z),
             Rotation3d(0, 0, 0),
         )
         self.targets.set(goal_viz)
@@ -270,14 +256,14 @@ class TurretComponent:
         field_shot_pos = (self.desired_angle / math.tau)
         turret_viz = Pose3d(
             Translation3d(
-                self.drivetrain.get_pose().translation().x,
-                self.drivetrain.get_pose().translation().y,
+                curr_pose.translation().x,
+                curr_pose.translation().y,
                 _shooter_height + 0.5
             ),
             Rotation3d(0, 0, self.desired_angle),
         )
 
-        # print(field_shot_pos)
+        print("field_shot_pos: ", field_shot_pos)
         self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
 
         self.position.set(turret_viz)

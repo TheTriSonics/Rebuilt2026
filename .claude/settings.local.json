@@ -8,7 +8,11 @@
       "WebSearch",
       "WebFetch(domain:docs.photonvision.org)",
       "WebFetch(domain:robotpy.readthedocs.io)",
-      "WebFetch(domain:wiki.thedropbears.org.au)"
+      "WebFetch(domain:wiki.thedropbears.org.au)",
+      "WebFetch(domain:firstfrc.blob.core.windows.net)",
+      "WebFetch(domain:www.frcmanual.com)",
+      "Bash(cat /c/Users/jdowd/wpilib/2026/Rebuilt2026/.venv/Lib/site-packages/phoenix6-*.dist-info/METADATA)",
+      "WebFetch(domain:pypi.org)"
     ]
   }
 }
