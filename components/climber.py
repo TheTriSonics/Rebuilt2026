@@ -1,6 +1,6 @@
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
-from phoenix6.controls import VelocityVoltage
+from phoenix6.controls import PositionVoltage
 import ids
 
 from phoenix6.signals import (
@@ -26,10 +26,8 @@ class ClimberComponent:
     lower_limit = tunable(0.0)
     upper_position = tunable(95.0)
     home_position = 0.0
-    target_position = upper_position
+    target_position = tunable(95.0)
 
-
-    target_speed = tunable(0.0)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(1.0)
@@ -37,43 +35,42 @@ class ClimberComponent:
     supply_current_lower_limit = tunable(5.0)
     supply_current_lower_time = tunable(1.0)
 
-
-
     climber = TalonFX(ids.TalonId.CLIMBER.id, ids.TalonId.CLIMBER.bus)
-    power = VelocityVoltage(0)
+    position_request = PositionVoltage(0).with_slot(0)
 
-    motor_config = MotorOutputConfigs()
-    motor_config.neutral_mode = NeutralModeValue.BRAKE
-    # The SDS Mk4i rotation has one pair of gears.
-    motor_config.inverted = (
-        InvertedValue.CLOCKWISE_POSITIVE
-        if False
-        else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
-    )
-    feedback_config = FeedbackConfigs()
-    feedback_config.sensor_to_mechanism_ratio = 1.0
-    feedback_config.rotor_to_sensor_ratio = 1.0
-
-    # configuration for motor pid
-
-    pid = (
-        Slot0Configs()
-        .with_k_p(0.1)
-        .with_k_i(0)
-        .with_k_d(0.0)
-        .with_k_s(4.3)
-        .with_k_v(2.0)
-        .with_k_a(0)
-        .with_static_feedforward_sign(
-            StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+    def __init__(self):
+        motor_config = MotorOutputConfigs()
+        motor_config.neutral_mode = NeutralModeValue.BRAKE
+        # The SDS Mk4i rotation has one pair of gears.
+        motor_config.inverted = (
+            InvertedValue.CLOCKWISE_POSITIVE
+            if False
+            else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
-    )
-    closed_loop_config = ClosedLoopGeneralConfigs()
+        feedback_config = FeedbackConfigs()
+        feedback_config.sensor_to_mechanism_ratio = 1.0
+        feedback_config.rotor_to_sensor_ratio = 1.0
 
-    climber.configurator.apply(motor_config)
-    climber.configurator.apply(pid, 0.01)
-    climber.configurator.apply(feedback_config)
-    climber.configurator.apply(closed_loop_config)
+        # configuration for motor pid
+
+        pid = (
+            Slot0Configs()
+            .with_k_p(0.1)
+            .with_k_i(0)
+            .with_k_d(0.0)
+            .with_k_s(4.3)
+            .with_k_v(2.0)
+            .with_k_a(0)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+            )
+        )
+        closed_loop_config = ClosedLoopGeneralConfigs()
+
+        self.climber.configurator.apply(motor_config)
+        self.climber.configurator.apply(pid, 0.01)
+        self.climber.configurator.apply(feedback_config)
+        self.climber.configurator.apply(closed_loop_config)
 
 
     def setup(self):
@@ -100,10 +97,6 @@ class ClimberComponent:
         # This method would raise the climber up.
         self.target_position = self.upper_position
 
-    def set_speed(self, speed: float) -> None:
-        self.target_speed = speed
-
-
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
@@ -113,8 +106,4 @@ class ClimberComponent:
         elif self.target_position < self.lower_limit:
             self.target_position = self.lower_limit
 
-        self.climber.set_control(self.power.with_velocity(self.target_speed))
-
-
-
-
+        self.climber.set_control(self.position_request.with_position(self.target_position))
