@@ -91,6 +91,8 @@ class TurretComponent:
     desired_angle = tunable(0.0)
     manual_speed = tunable(0.0)
     target_position = tunable(0.0)
+    hub_x = tunable(0.0)
+    hub_y = tunable(0.0)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(20.0)
@@ -158,6 +160,10 @@ class TurretComponent:
 
         self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
 
+        field_length = self.apriltags.getFieldLength()
+        field_width = self.apriltags.getFieldWidth()
+        self.hub_x = field_length / 2.0
+        self.hub_y = field_width / 2.0
         self.set_hub_target()
 
 
@@ -183,12 +189,18 @@ class TurretComponent:
         # We calculate the center of the goal based on the positions of
         # AprilTags 20 and 26, then get a point right between them. That's
         # basically dead center of the goal
-        tag1 = 10 if is_red() else 20
-        tag2 = 4 if is_red() else 26
-        tag20: Pose3d = self.apriltags.getTagPose(tag1) or Pose3d()
-        tag26: Pose3d = self.apriltags.getTagPose(tag2) or Pose3d()
+        # tag1 = 10 if is_red() else 20
+        # tag2 = 4 if is_red() else 26
+        # tag20: Pose3d = self.apriltags.getTagPose(tag1) or Pose3d()
+        # tag26: Pose3d = self.apriltags.getTagPose(tag2) or Pose3d()
+        # self.static_goal_center = Pose3d(
+        #     Translation3d((tag20.x + tag26.x)/2, (tag20.y + tag26.y)/2, (tag20.z + tag26.z)/2),
+        #     Rotation3d(0, 0, 0),
+        # )
+        # self.targets.set(self.static_goal_center)
+        # Aim at the tunable hub center
         self.static_goal_center = Pose3d(
-            Translation3d((tag20.x + tag26.x)/2, tag20.y, tag20.z),
+            Translation3d(self.hub_x, self.hub_y, _goal_height),
             Rotation3d(0, 0, 0),
         )
         self.targets.set(self.static_goal_center)
@@ -238,7 +250,7 @@ class TurretComponent:
         
         dx = futurex - curr_pose.translation().x
         dy = futurey - curr_pose.translation().y
-        self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians() + math.pi
+        self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians()
 
         pn('Turret Future X', futurex)
         pn('Turret Future Y', futurey)
@@ -266,7 +278,6 @@ class TurretComponent:
         )
 
         # print(field_shot_pos)
-        # self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
-        self.turret_motor.set_control(self.position_request.with_position(0))
+        self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
 
         self.position.set(turret_viz)
