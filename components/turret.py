@@ -197,14 +197,14 @@ class TurretComponent:
         if is_red():
             lookup = {
                 "hub":   _RED_HUB,
-                "left":  Translation3d(_FIELD_LENGTH - ax, sy, _goal_height),
-                "right": Translation3d(_FIELD_LENGTH - ax, _FIELD_WIDTH - sy, _goal_height),
+                "left":  Translation3d(_FIELD_LENGTH - ax, sy, 0),
+                "right": Translation3d(_FIELD_LENGTH - ax, _FIELD_WIDTH - sy, 0),
             }
         else:
             lookup = {
                 "hub":   _BLUE_HUB,
-                "left":  Translation3d(ax, sy, _goal_height),
-                "right": Translation3d(ax, _FIELD_WIDTH - sy, _goal_height),
+                "left":  Translation3d(ax, _FIELD_WIDTH - sy, 0),
+                "right": Translation3d(ax, sy, 0),
             }
         if name not in lookup:
             raise ValueError(f"Unknown turret target {name!r}. Valid: {list(lookup)}")

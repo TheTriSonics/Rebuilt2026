@@ -141,7 +141,14 @@ class MyRobot(MagicRobot):
         if self.operator_controller.shooter_shoot():
             self.gaspump.go_shoot()
         if self.operator_controller.intake_idle():
-            self.gaspump.go_stop()  
+            self.gaspump.go_stop()
+
+        if self.operator_controller.turret_aim_hub():
+            self.turret.set_target("hub")
+        if self.operator_controller.turret_aim_left():
+            self.turret.set_target("left")
+        if self.operator_controller.turret_aim_right():
+            self.turret.set_target("right")
 
 
     def disabledPeriodic(self):

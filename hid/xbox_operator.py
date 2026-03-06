@@ -59,3 +59,12 @@ class RebuiltOperator:
     
     def intake_on(self):
         return self.controller.getRightTriggerAxis() > 0.1
+
+    def turret_aim_hub(self):
+        return self.controller.getPOV() == 0    # D-pad up → hub
+
+    def turret_aim_left(self):
+        return self.controller.getPOV() == 270  # D-pad left → left lob
+
+    def turret_aim_right(self):
+        return self.controller.getPOV() == 90   # D-pad right → right lob
