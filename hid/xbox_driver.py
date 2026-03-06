@@ -61,3 +61,8 @@ class RebuiltDriver:
     
     # def eject(self):
         return self.controller.getXButtonPressed()
+    
+    def intake_up(self):
+        return self.controller.getYButtonPressed()
+        
+    

@@ -232,10 +232,21 @@ class TurretComponent:
         t = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
         futurex: float = self.static_goal_center.translation().x - robotvx * t
         futurey: float = self.static_goal_center.translation().y - robotvy * t
+
+        pn = wpilib.SmartDashboard.putNumber
+
         
-        dx = curr_pose.translation().x - futurex
-        dy = curr_pose.translation().y - futurey
-        self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians()
+        dx = futurex - curr_pose.translation().x
+        dy = futurey - curr_pose.translation().y
+        self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians() + math.pi
+
+        pn('Turret Future X', futurex)
+        pn('Turret Future Y', futurey)
+        pn('Robot X', curr_pose.translation().x)
+        pn('Robot Y', curr_pose.translation().y)
+        pn('dx', dx)
+        pn('dy', dy)
+
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         goal_viz = Pose3d(
             Translation3d(futurex, futurey, self.static_goal_center.translation().z),
@@ -255,6 +266,7 @@ class TurretComponent:
         )
 
         # print(field_shot_pos)
-        self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
+        # self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
+        self.turret_motor.set_control(self.position_request.with_position(0))
 
         self.position.set(turret_viz)

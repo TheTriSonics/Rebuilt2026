@@ -27,11 +27,11 @@ class IntakeComponent:
     # These are set to tunables just so they show up on the dashboard for now
     upper_limit = tunable(0)
     lower_limit = tunable(0.3)
-    upper_position = tunable(0.32)
-    lower_position = tunable(2.0)
+    upper_position = tunable(0.69)
+    lower_position = tunable(0.46)
     target_position = upper_position
 
-    target_speed = tunable(0.0)
+    target_speed = tunable(0.1)
 
     intake_speed = tunable(0.7)
     outtake_speed = tunable(-0.7)
@@ -76,7 +76,7 @@ class IntakeComponent:
 
         self.rotate_encoder.configurator.apply(encoder_config)
         self.rotate.configurator.apply(motor_config)
-        self.rotate.configurator.apply(pid, 0.01)
+        self.rotate.configurator.apply(pid, 2.0)
         self.rotate.configurator.apply(feedback_config)
         self.rotate.configurator.apply(closed_loop_config)
 
@@ -108,13 +108,11 @@ class IntakeComponent:
 
     def raise_intake(self) -> None:
         # This method would raise the intake up.
-        #self.rotate_up()
-        ...
-
+        self.rotate_up()
+        
     def rotate_up(self) -> None:
         # Move intake to the configured raised setpoint.
-        #self.target_position = self.upper_position
-        ...
+        self.target_position = self.upper_position
 
     def set_speed(self, speed: float) -> None:
         self.target_speed = speed

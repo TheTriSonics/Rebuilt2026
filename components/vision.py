@@ -254,6 +254,7 @@ class VisionComponent:
 
         # Compute robot pose: field_to_tag * inv(cam_to_tag) * inv(robot_to_cam)
         camera_to_target = target.getBestCameraToTarget()
+        # TODO: This is giving us a heading that's 180 degrees off I think.
         robot_pose_3d = tag_pose.transformBy(
             camera_to_target.inverse()
         ).transformBy(

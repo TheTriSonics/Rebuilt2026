@@ -124,6 +124,9 @@ class MyRobot(MagicRobot):
         if self.driver_controller.reset_yaw():
             self.drivetrain.reset_yaw()
 
+        if self.driver_controller.intake_up():
+            self.intake.rotate_up()
+
         # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
         # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)

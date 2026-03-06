@@ -76,7 +76,7 @@ class GasPump(StateMachine):
         self.shooter.stop()
         self.kicker.kicker_reverse()
         self.singulator.singulator_forward()
-        #self.intake.rotate_down()
+        self.intake.rotate_down()
         self.intake.intake_on()
 
     @state(must_finish=True)
