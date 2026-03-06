@@ -23,6 +23,7 @@ from phoenix6.signals import (
     InvertedValue,
     NeutralModeValue,
     StaticFeedforwardSignValue,
+    SensorDirectionValue,
 )
 
 from components.drivetrain import DrivetrainComponent
@@ -107,6 +108,7 @@ class TurretComponent:
     supply_current_limit = tunable(15.0)
     supply_current_lower_limit = tunable(10.0)
     supply_current_lower_time = tunable(1.0)
+    mag_offset = 0.498046875
 
     # Turret motor — always created
     turret_motor = TalonFX(ids.TalonId.TURRET_TURN.id, ids.TalonId.TURRET_TURN.bus)
@@ -136,6 +138,8 @@ class TurretComponent:
         self.turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
 
         enc_config = CANcoderConfiguration()
+        enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
+        enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.CLOCKWISE_POSITIVE)
         self.turret_encoder.configurator.apply(enc_config)
 
         feedback_config = FeedbackConfigs()
@@ -146,7 +150,7 @@ class TurretComponent:
         
         turret_pid = (
             Slot0Configs()
-            .with_k_p(15.0)
+            .with_k_p(2.0)
             .with_k_i(0.0)
             .with_k_d(0.0)
             .with_k_s(1.0)
@@ -166,11 +170,12 @@ class TurretComponent:
 
         self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
 
-        self.set_target("hub")
+        self.active_target = Pose3d()
 
 
     def setup(self):
         self._apply_current_limits()
+        self.set_target("hub")
 
     def _apply_current_limits(self):
         current_limits_config = (
@@ -236,14 +241,22 @@ class TurretComponent:
         
         dx = futurex - curr_pose.translation().x
         dy = futurey - curr_pose.translation().y
+
+        field_angle = atan2(dy, dx)
+        field_angle_degrees = math.degrees(field_angle)
+
         self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians()
 
+        pn('field angle', field_angle_degrees)
+        pn('active target x', self.active_target.translation().x)
+        pn('active target y', self.active_target.translation().y)
         pn('Turret Future X', futurex)
         pn('Turret Future Y', futurey)
         pn('Robot X', curr_pose.translation().x)
         pn('Robot Y', curr_pose.translation().y)
         pn('dx', dx)
         pn('dy', dy)
+        pn('Desired Angle', math.degrees(self.desired_angle))
 
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         goal_viz = Pose3d(
@@ -263,7 +276,7 @@ class TurretComponent:
             Rotation3d(0, 0, self.desired_angle),
         )
 
-        print("field_shot_pos: ", field_shot_pos)
-        self.turret_motor.set_control(self.position_request.with_position(field_shot_pos))
+        pn("field_shot_pos", field_shot_pos)
+        self.turret_motor.set_control(self.position_request.with_position(field_shot_pos - self.mag_offset))
 
         self.position.set(turret_viz)

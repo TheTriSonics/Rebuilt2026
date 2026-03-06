@@ -25,19 +25,19 @@ class VisionComponent:
 
         self.camera_rr_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-13.5),    # Forward/backward offset
-                units.inchesToMeters(11.0),   # Left/right offset, left is negative
-                units.inchesToMeters(9.5),      # Up/down offset
+                units.inchesToMeters(-12.0),    # Forward/backward offset
+                units.inchesToMeters(-10.5),   # Left/right offset, left is negative
+                units.inchesToMeters(8.0),      # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, 22.0, -90.0),  # roll, pitch, yaw
         )
         self.camera_rl_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-13.5),    # Forward/backward offset
-                units.inchesToMeters(-11.0),  # Left/right offset, left is negative
-                units.inchesToMeters(9.5),      # Up/down offset
+                units.inchesToMeters(-12.0),    # Forward/backward offset
+                units.inchesToMeters(10.5),  # Left/right offset, left is negative
+                units.inchesToMeters(8.0),      # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, -22.0, -90.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, 25.0, 90.0),  # roll, pitch, yaw
         )
         self.camera_back_offset = Transform3d(
             Translation3d(
@@ -263,6 +263,10 @@ class VisionComponent:
 
         twod_pose = robot_pose_3d.toPose2d()
 
+        # Correct the heading by 180 degrees
+        vision_heading = twod_pose.rotation().radians()
+        flipped_heading = (vision_heading + math.pi) % math.tau
+        twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
         # Check if we can fuse with gyro heading for better accuracy
         is_gyro_fused = False
         if len(self._yaw_rate_history) >= 5:
@@ -311,22 +315,18 @@ class VisionComponent:
                 twod_pose = pose3d.toPose2d()
                 ts = pupdate.timestampSeconds
             else:
-                # Single-tag fallback using transform math (no SolvePnP)
-                result = self._estimate_single_tag(targets, cam_idx)
-                if result is None:
-                    continue
-                pose3d, twod_pose, is_gyro_fused = result
-                ts = res.getTimestampSeconds()
+                # # Single-tag fallback using transform math (no SolvePnP)
+                # result = self._estimate_single_tag(targets, cam_idx)
+                # if result is None:
+                #     continue
+                # pose3d, twod_pose, is_gyro_fused = result
+                # ts = res.getTimestampSeconds()
 
-            # Apply rejection pipeline
-            if self._reject_measurement(
-                pose3d, twod_pose, ts, cam_idx, targets, robot_pose, disabled
-            ):
                 continue
             # Everything is 180 degrees off with vision so let's just flip it around,. Ugh.
             vision_heading  = twod_pose.rotation().radians()
-            flipped_heading = (vision_heading + math.pi) % math.tau
-            twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
+            # flipped_heading = (vision_heading + math.pi) % math.tau
+            twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(vision_heading)) #JRD Changed from "flipped_heading" after adjusting camera offsets
             pub.set(twod_pose)
 
             # Compute std devs
