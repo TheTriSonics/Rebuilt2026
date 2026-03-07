@@ -52,7 +52,7 @@ class GasPump(StateMachine):
     def shooter_spin_up(self) -> None:
         self.shooter.spin_up(self.shooter_rps)
         self.kicker.kicker_off()
-        self.singulator.singulator_off()
+        self.singulator.singulator_forward()
         if self.shooter.is_at_speed():
             self.next_state(self.kicker_spin_up)
 
@@ -60,10 +60,10 @@ class GasPump(StateMachine):
     def kicker_spin_up(self) -> None:
         self.shooter.spin_up(self.shooter_rps)
         self.kicker.kicker_forward()
-        self.singulator.singulator_off()
-        stator_current = abs(self.kicker.kicker.get_stator_current().value)
-        if stator_current < self.kicker_current_threshold:
-            self.next_state(self.singulator_spin_up)
+        self.singulator.singulator_forward()
+        # stator_current = abs(self.kicker.kicker.get_stator_current().value)
+        # if stator_current < self.kicker_current_threshold:
+        #     self.next_state(self.singulator_spin_up)
 
     @state(must_finish=True)
     def singulator_spin_up(self) -> None:

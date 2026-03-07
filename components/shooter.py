@@ -4,10 +4,17 @@ from phoenix6.controls import Follower, VelocityTorqueCurrentFOC, VoltageOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs
 from phoenix6.signals import InvertedValue, MotorAlignmentValue, NeutralModeValue, StaticFeedforwardSignValue
 
+from components.drivetrain import DrivetrainComponent
+from components.turret import TurretComponent
+from wpimath.geometry import Transform2d, Rotation2d
+
 import ids
 
 
 class ShooterComponent:
+    drivetrain: DrivetrainComponent
+    turret: TurretComponent
+
     shooter_front = TalonFX(ids.TalonId.SHOOTER_FRONT.id, ids.TalonId.SHOOTER_FRONT.bus)
     shooter_rear = TalonFX(ids.TalonId.SHOOTER_REAR.id, ids.TalonId.SHOOTER_REAR.bus)
 
@@ -105,11 +112,21 @@ class ShooterComponent:
         target = abs(self.target_rps)
         return front_vel >= target * 0.95 and rear_vel >= target * 0.95
 
+    def calc_rps(self) -> float:
+        from wpimath.units import inchesToMeters, metersToInches
+        robot_pose = self.drivetrain.get_pose()
+        turret_pose = robot_pose.transformBy(Transform2d(inchesToMeters(-9.0), 0, Rotation2d(0)))
+        dist = turret_pose.relativeTo(self.turret.goal_pose.toPose2d()).translation().norm()
+        dist_in = metersToInches(dist)
+        rps = 0.524 * dist_in + 5.82
+        return rps
+
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
 
+        self.target_rps = self.calc_rps()
         if self.active and self.target_rps != 0.0:
             self.shooter_front.set_control(self.velocity_request.with_velocity(self.target_rps))
             self.shooter_rear.set_control(self.velocity_request.with_velocity(-self.target_rps))

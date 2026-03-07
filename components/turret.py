@@ -115,6 +115,7 @@ class TurretComponent:
     turret_motor = TalonFX(ids.TalonId.TURRET_TURN.id, ids.TalonId.TURRET_TURN.bus)
 
     def __init__(self):
+        self.goal_pose = Pose3d()
         # We'll use this to debug targetting. Right now it shows where the
         # robot's turret should be aiming at if it were to launch a fuel cell
         self.targets = (
@@ -239,25 +240,27 @@ class TurretComponent:
         robotvy = self.drivetrain.vy
         
         flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
-        futurex: float = self.active_target.translation().x - robotvx * flight_time
-        futurey: float = self.active_target.translation().y - robotvy * flight_time
+        # Stub in something better for now
+        flight_time = 0.5
+        self.futurex: float = self.active_target.translation().x - robotvx * flight_time
+        self.futurey: float = self.active_target.translation().y - robotvy * flight_time
 
         pn = wpilib.SmartDashboard.putNumber
 
         
-        dx = futurex - curr_pose.translation().x
-        dy = futurey - curr_pose.translation().y
+        dx = self.futurex - curr_pose.translation().x
+        dy = self.futurey - curr_pose.translation().y
 
         field_angle = atan2(dy, dx)
         field_angle_degrees = math.degrees(field_angle)
 
-        self.desired_angle = atan2(dy, dx) - self.gyro.get_Rotation2d().radians()
+        self.desired_angle = atan2(dy, dx) - curr_pose.rotation().radians()
 
         pn('field angle', field_angle_degrees)
         pn('active target x', self.active_target.translation().x)
         pn('active target y', self.active_target.translation().y)
-        pn('Turret Future X', futurex)
-        pn('Turret Future Y', futurey)
+        pn('Turret Future X', self.futurex)
+        pn('Turret Future Y', self.futurey)
         pn('Robot X', curr_pose.translation().x)
         pn('Robot Y', curr_pose.translation().y)
         pn('dx', dx)
@@ -265,11 +268,11 @@ class TurretComponent:
         pn('Desired Angle', math.degrees(self.desired_angle))
 
         self.distance_to_goal = sqrt(dx**2 + dy**2)
-        goal_viz = Pose3d(
-            Translation3d(futurex, futurey, self.active_target.translation().z),
+        self.goal_pose = Pose3d(
+            Translation3d(self.futurex, self.futurey, self.active_target.translation().z),
             Rotation3d(0, 0, 0),
         )
-        self.targets.set(goal_viz)
+        self.targets.set(self.goal_pose)
 
         # Publish visualization
         field_shot_pos = (self.desired_angle / math.tau)
