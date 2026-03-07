@@ -9,7 +9,7 @@ from magicbot import tunable, feedback
 from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
 from phoenix6.hardware import TalonFX, CANcoder
-from phoenix6.controls import DutyCycleOut, PositionTorqueCurrentFOC
+from phoenix6.controls import DutyCycleOut, PositionTorqueCurrentFOC, MotionMagicDutyCycle
 from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
@@ -17,6 +17,7 @@ from phoenix6.configs import (
     FeedbackConfigs,
     MotorOutputConfigs,
     Slot0Configs,
+    TalonFXConfiguration,
 )
 from phoenix6.signals import (
     FeedbackSensorSourceValue,
@@ -131,8 +132,12 @@ class TurretComponent:
         # Configure motor output
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.BRAKE
-        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+        motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
         self.turret_motor.configurator.apply(motor_config)
+
+        closed_loop_config = ClosedLoopGeneralConfigs()
+        closed_loop_config.continuous_wrap = True
+        self.turret_motor.configurator.apply(closed_loop_config)
 
         # CANCoder + position control setup
         self.turret_encoder = CANcoder(ids.CancoderId.TURRET.id, ids.CancoderId.TURRET.bus)
@@ -150,25 +155,26 @@ class TurretComponent:
         
         turret_pid = (
             Slot0Configs()
-            .with_k_p(2.0)
+            .with_k_p(5.0)
             .with_k_i(0.0)
             .with_k_d(0.0)
-            .with_k_s(1.0)
-            .with_k_v(0.0)
+            .with_k_s(0.34)
+            .with_k_v(0.122)
             .with_k_a(0.0)
             .with_static_feedforward_sign(
-                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+                StaticFeedforwardSignValue.USE_VELOCITY_SIGN  # This is important. Remember it in 2027.
             )
         )
-
-        closed_loop_config = ClosedLoopGeneralConfigs()
-        closed_loop_config.continuous_wrap = True
+        config = TalonFXConfiguration()
+        config.motion_magic.motion_magic_cruise_velocity = 1.3  # rps
+        config.motion_magic.motion_magic_acceleration = 13
+        # config.motion_magic.motion_magic_jerk = math.tau
 
         self.turret_motor.configurator.apply(turret_pid, 0.01)
         self.turret_motor.configurator.apply(feedback_config)
-        self.turret_motor.configurator.apply(closed_loop_config)
 
-        self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
+        # self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
+        self.motor_request = MotionMagicDutyCycle(0, override_brake_dur_neutral=True)
 
         self.active_target = Pose3d()
 
@@ -277,6 +283,9 @@ class TurretComponent:
         )
 
         pn("field_shot_pos", field_shot_pos)
-        self.turret_motor.set_control(self.position_request.with_position(field_shot_pos - self.mag_offset))
+        self.target_position = field_shot_pos
+        self.turret_motor.set_control(self.motor_request.with_position(field_shot_pos))
+
+        # self.turret_motor.set_control(self.motor_request.with_position(self.target_position + 0.5))
 
         self.position.set(turret_viz)
