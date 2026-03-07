@@ -10,6 +10,7 @@ from phoenix6.signals import (
     InvertedValue,
     NeutralModeValue,
     StaticFeedforwardSignValue,
+    SensorDirectionValue,
 )
 from phoenix6.configs import (
     CANcoderConfiguration,
@@ -25,16 +26,13 @@ from phoenix6.configs import (
 class IntakeComponent:
 
     # These are set to tunables just so they show up on the dashboard for now
-    upper_limit = tunable(1)
-    lower_limit = tunable(-0.3)
-    upper_position = tunable(0.69)
-    lower_position = tunable(0.46)
-    target_position = tunable(0.0)
-
-    target_speed = tunable(0.5)
+    upper_position = tunable(0.70)
+    lower_position = tunable(0.02)
+    target_position = tunable(0.3)
 
     intake_speed = tunable(0.7)
     outtake_speed = tunable(-0.7)
+    target_speed = tunable(0.5)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(1.0)
@@ -50,9 +48,14 @@ class IntakeComponent:
     def __init__(self):
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.BRAKE
-        motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
+        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
 
-        encoder_config = CANcoderConfiguration()
+        self.mag_offset = 0.00732421875
+        enc_config = CANcoderConfiguration()
+        enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
+        enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.COUNTER_CLOCKWISE_POSITIVE)
+        self.rotate_encoder.configurator.apply(enc_config)
+
 
         feedback_config = FeedbackConfigs()
         feedback_config.feedback_remote_sensor_id = ids.CancoderId.INTAKE.id
@@ -62,19 +65,17 @@ class IntakeComponent:
 
         pid = (
             Slot0Configs()
-            .with_k_p(1.0)
-            .with_k_i(0)
+            .with_k_p(12.0)
+            .with_k_i(2.0)
             .with_k_d(0.0)
-            .with_k_s(0.01)
-            .with_k_v(0)
+            .with_k_s(0.3)
+            .with_k_v(0.8)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
             )
         )
         closed_loop_config = ClosedLoopGeneralConfigs()
-
-        self.rotate_encoder.configurator.apply(encoder_config)
         self.rotate.configurator.apply(motor_config)
         self.rotate.configurator.apply(pid, 2.0)
         self.rotate.configurator.apply(feedback_config)
@@ -96,18 +97,9 @@ class IntakeComponent:
         self.roller.configurator.apply(current_limits_config)
 
 
-    # def lower_intake(self) -> None:
-    #     # This method would lower the intake out.
-    #     ... 
-
     def rotate_down(self) -> None:
         # Move intake to the configured lowered setpoint.
         self.target_position = self.lower_position
-
-    # def raise_intake(self) -> None:
-    #     # This method would raise the intake up.
-    #     self.rotate_up()
-    #     print('YESSSS')
         
     def rotate_up(self) -> None:
         # Move intake to the configured raised setpoint.
@@ -117,13 +109,15 @@ class IntakeComponent:
         self.target_speed = speed
 
     def intake_on(self) -> None:
+        self.target_position = self.lower_position
         self.set_speed(self.intake_speed)
 
     def intake_off(self) -> None:
+        self.target_position = self.upper_position
         self.set_speed(0)
 
     def intake_reverse(self) -> None:
-        self.set_speed(-self.intake_speed)
+        self.set_speed(self.outtake_speed)
 
     @feedback
     def get_rotate_position(self) -> float:
@@ -133,10 +127,10 @@ class IntakeComponent:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
-        if self.target_position > self.upper_limit:
-            self.target_position = self.upper_limit
-        elif self.target_position < self.lower_limit:
-            self.target_position = self.lower_limit
+        if self.target_position > self.upper_position:
+            self.target_position = self.upper_position
+        elif self.target_position < self.lower_position:
+            self.target_position = self.lower_position
 
         self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         

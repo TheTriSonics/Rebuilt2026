@@ -89,16 +89,12 @@ class TurretComponent:
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
-    # Shooter PIDs
-    # Shooter front: kP 4.0, kS 2.15, kV 0.14
-    # Shooter Rear: kP 4.5, kS 2, kV 0.11
-
     # These are set to tunables just so they show up on the dashboard for now
     # testpos = tunable(0.0)
-    distance_to_goal = tunable(0.0)
-    desired_angle = tunable(0.0)
-    manual_speed = tunable(0.0)
-    target_position = tunable(0.0)
+    distance_to_goal = 0.0
+    desired_angle = 0.0
+    flight_time = tunable(1.0)
+    # target_position = tunable(0.0)
 
     # Lob target offsets from corner of own alliance zone (meters, ~4 ft default)
     lob_alliance_wall_offset = tunable(1.219)  # distance inward from end wall (X axis)
@@ -196,9 +192,6 @@ class TurretComponent:
         )
         self.turret_motor.configurator.apply(current_limits_config)
 
-    def set_manual_speed(self, speed: float) -> None:
-        self.manual_speed = speed
-
     def set_target(self, name: str) -> None:
         """Set the active aim target. name: 'hub', 'left', or 'right'.
         Left/right are from the driver's perspective (blue faces high-X:
@@ -239,15 +232,14 @@ class TurretComponent:
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
         
-        flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
+        # self.flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
         # Stub in something better for now
-        flight_time = 0.5
-        self.futurex: float = self.active_target.translation().x - robotvx * flight_time
-        self.futurey: float = self.active_target.translation().y - robotvy * flight_time
+        self.flight_time = 1.0
+        self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
+        self.futurey: float = self.active_target.translation().y - robotvy * self.flight_time
 
         pn = wpilib.SmartDashboard.putNumber
 
-        
         dx = self.futurex - curr_pose.translation().x
         dy = self.futurey - curr_pose.translation().y
 
@@ -256,16 +248,16 @@ class TurretComponent:
 
         self.desired_angle = atan2(dy, dx) - curr_pose.rotation().radians()
 
-        pn('field angle', field_angle_degrees)
-        pn('active target x', self.active_target.translation().x)
-        pn('active target y', self.active_target.translation().y)
-        pn('Turret Future X', self.futurex)
-        pn('Turret Future Y', self.futurey)
-        pn('Robot X', curr_pose.translation().x)
-        pn('Robot Y', curr_pose.translation().y)
-        pn('dx', dx)
-        pn('dy', dy)
-        pn('Desired Angle', math.degrees(self.desired_angle))
+        # pn('field angle', field_angle_degrees)
+        # pn('active target x', self.active_target.translation().x)
+        # pn('active target y', self.active_target.translation().y)
+        # pn('Turret Future X', self.futurex)
+        # pn('Turret Future Y', self.futurey)
+        # pn('Robot X', curr_pose.translation().x)
+        # pn('Robot Y', curr_pose.translation().y)
+        # pn('dx', dx)
+        # pn('dy', dy)
+        # pn('Desired Angle', math.degrees(self.desired_angle))
 
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         self.goal_pose = Pose3d(
@@ -286,7 +278,7 @@ class TurretComponent:
         )
 
         pn("field_shot_pos", field_shot_pos)
-        self.target_position = field_shot_pos
+        # self.target_position = field_shot_pos
         self.turret_motor.set_control(self.motor_request.with_position(field_shot_pos))
 
         # self.turret_motor.set_control(self.motor_request.with_position(self.target_position + 0.5))

@@ -24,6 +24,9 @@ class GasPump(StateMachine):
     def go_shoot(self) -> None:
         self.next_state_now(self.shooter_spin_up)
 
+    def go_shoot_off(self) -> None:
+        self.next_state_now(self.shooter_off)
+
     def go_stop(self) -> None:
         """Abort shooting and kill all motors."""
         self.next_state_now(self.waiting)
@@ -42,11 +45,16 @@ class GasPump(StateMachine):
     # ------------------------------------------------------------------
 
     @state(first=True, must_finish=True)
-    def waiting(self) -> None:
-        self.shooter.stop()
-        self.kicker.kicker_off()
-        self.singulator.singulator_off()
-        self.intake.intake_off()
+    def waiting(self, initial_call: bool) -> None:
+        if initial_call:
+            self.intake.intake_off()
+
+    @state(must_finish=True)
+    def shooter_off(self, initial_call: bool) -> None:
+        if initial_call:
+            self.shooter.stop()
+            self.singulator.singulator_off()
+            self.kicker.kicker_off()
 
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
@@ -72,12 +80,11 @@ class GasPump(StateMachine):
         self.singulator.singulator_forward()
 
     @state(must_finish=True)
-    def intake_running(self) -> None:
-        self.shooter.stop()
-        self.kicker.kicker_reverse()
-        self.singulator.singulator_forward()
-        self.intake.rotate_down()
-        self.intake.intake_on()
+    def intake_running(self, initial_call: bool) -> None:
+        if initial_call:
+            self.singulator.singulator_forward()
+            self.intake.rotate_down()
+            self.intake.intake_on()
 
     @state(must_finish=True)
     def singulate(self) -> None:

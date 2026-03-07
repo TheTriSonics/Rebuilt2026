@@ -210,7 +210,7 @@ class DrivetrainComponent:
         self.vy = 0
         # Buffers for weighted moving average of velocity; used to populate
         # vx and vy
-        self._velocity_samples = 10
+        self._velocity_samples = 3
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
         self._vy_samples: deque[float] = deque(maxlen=self._velocity_samples)
         # Weights for exponential weighting (most recent sample has highest weight)
