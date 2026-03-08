@@ -26,7 +26,7 @@ class VisionComponent:
         self.camera_rr_offset = Transform3d(
             Translation3d(
                 units.inchesToMeters(-12.0),    # Forward/backward offset
-                units.inchesToMeters(-10.5),   # Left/right offset, left is negative
+                units.inchesToMeters(-22.0),   # Left/right offset, left is negative
                 units.inchesToMeters(8.0),      # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, 22.0, -90.0),  # roll, pitch, yaw
@@ -34,10 +34,10 @@ class VisionComponent:
         self.camera_rl_offset = Transform3d(
             Translation3d(
                 units.inchesToMeters(-12.0),    # Forward/backward offset
-                units.inchesToMeters(10.5),  # Left/right offset, left is negative
+                units.inchesToMeters(22.0),  # Left/right offset, left is negative
                 units.inchesToMeters(8.0),      # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 25.0, 90.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, 22.0, 90.0),  # roll, pitch, yaw
         )
         self.camera_back_offset = Transform3d(
             Translation3d(

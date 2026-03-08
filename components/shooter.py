@@ -18,6 +18,8 @@ class ShooterComponent:
     shooter_front = TalonFX(ids.TalonId.SHOOTER_FRONT.id, ids.TalonId.SHOOTER_FRONT.bus)
     shooter_rear = TalonFX(ids.TalonId.SHOOTER_REAR.id, ids.TalonId.SHOOTER_REAR.bus)
 
+    coef = tunable(0.8)
+    base = tunable(3.82)
     target_rps = tunable(0.0)
     active = tunable(False)
 
@@ -90,8 +92,7 @@ class ShooterComponent:
         self.shooter_front.configurator.apply(current_limits_config)
         self.shooter_rear.configurator.apply(current_limits_config)
 
-    def spin_up(self, rps: float) -> None:
-        self.target_rps = rps
+    def spin_up(self) -> None:
         self.active = True
 
     def stop(self) -> None:
@@ -118,7 +119,10 @@ class ShooterComponent:
         turret_pose = robot_pose.transformBy(Transform2d(inchesToMeters(-9.0), 0, Rotation2d(0)))
         dist = turret_pose.relativeTo(self.turret.goal_pose.toPose2d()).translation().norm()
         dist_in = metersToInches(dist)
-        rps = 0.524 * dist_in + 5.82
+        # rps = 0.8 * dist_in + 3.82
+        rps = self.coef * dist_in + self.base
+        rps = min(rps, 85)
+        rps = max(rps, 44)
         return rps
 
     def execute(self) -> None:

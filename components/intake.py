@@ -50,7 +50,7 @@ class IntakeComponent:
         motor_config.neutral_mode = NeutralModeValue.BRAKE
         motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
 
-        self.mag_offset = 0.00732421875
+        self.mag_offset = -0.199951171875
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
         enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.COUNTER_CLOCKWISE_POSITIVE)
@@ -65,11 +65,11 @@ class IntakeComponent:
 
         pid = (
             Slot0Configs()
-            .with_k_p(12.0)
+            .with_k_p(18.0)
             .with_k_i(2.0)
             .with_k_d(0.0)
             .with_k_s(0.3)
-            .with_k_v(0.8)
+            .with_k_v(1.8)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -111,6 +111,9 @@ class IntakeComponent:
     def intake_on(self) -> None:
         self.target_position = self.lower_position
         self.set_speed(self.intake_speed)
+    
+    def tilt(self) -> None:
+        self.target_position = self.lower_position + 0.4
 
     def intake_off(self) -> None:
         self.target_position = self.upper_position
@@ -132,6 +135,6 @@ class IntakeComponent:
         elif self.target_position < self.lower_position:
             self.target_position = self.lower_position
 
-        self.rotate.set_control(self.rotate_request.with_position(self.target_position))
+        #self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         
         self.roller.set_control(DutyCycleOut(self.target_speed))

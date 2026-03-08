@@ -72,6 +72,7 @@ class MyRobot(MagicRobot):
         self.auton_chooser.addOption("Left Blue Simple", "Left_blue_simple")
         self.auton_chooser.addOption("Middle Hang", "middle_hang")
         self.auton_chooser.addOption("Right Blue Simple", "right_blue_simple")
+        self.auton_chooser.addOption("Test Path", "test_path")
         wpilib.SmartDashboard.putData("Auto Mode", self.auton_chooser)
         self._last_auton_selection = None
 
@@ -135,6 +136,8 @@ class MyRobot(MagicRobot):
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.intake_on()
             self.singulator.singulator_forward()
+        if self.operator_controller.intake_flip():  # Y button
+            self.intake.tilt()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.intake_off()
         if self.operator_controller.eject():  # X 

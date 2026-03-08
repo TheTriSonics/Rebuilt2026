@@ -94,7 +94,7 @@ class TurretComponent:
     distance_to_goal = 0.0
     desired_angle = 0.0
     flight_time = tunable(1.0)
-    # target_position = tunable(0.0)
+    target_position = tunable(0.0)
 
     # Lob target offsets from corner of own alliance zone (meters, ~4 ft default)
     lob_alliance_wall_offset = tunable(1.219)  # distance inward from end wall (X axis)
@@ -148,29 +148,29 @@ class TurretComponent:
         feedback_config.feedback_remote_sensor_id = ids.CancoderId.TURRET.id
         feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
         feedback_config.sensor_to_mechanism_ratio = 1.0
-        feedback_config.rotor_to_sensor_ratio = 90.0 
+        feedback_config.rotor_to_sensor_ratio = 18.0
         
         turret_pid = (
             Slot0Configs()
-            .with_k_p(5.0)
+            .with_k_p(3.0)
             .with_k_i(0.0)
-            .with_k_d(0.0)
-            .with_k_s(0.34)
-            .with_k_v(0.122)
+            .with_k_d(0.2)
+            .with_k_s(0.05)
+            .with_k_v(0.0)
             .with_k_a(0.0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_VELOCITY_SIGN  # This is important. Remember it in 2027.
             )
         )
         config = TalonFXConfiguration()
-        config.motion_magic.motion_magic_cruise_velocity = 1.3  # rps
-        config.motion_magic.motion_magic_acceleration = 13
+        config.motion_magic.motion_magic_cruise_velocity = 6.5  # rps
+        config.motion_magic.motion_magic_acceleration = 65
         # config.motion_magic.motion_magic_jerk = math.tau
 
         self.turret_motor.configurator.apply(turret_pid, 0.01)
         self.turret_motor.configurator.apply(feedback_config)
 
-        # self.position_request = PositionTorqueCurrentFOC(0).with_slot(0)
+        # self.motor_request = PositionTorqueCurrentFOC(0).with_slot(0)
         self.motor_request = MotionMagicDutyCycle(0, override_brake_dur_neutral=True)
 
         self.active_target = Pose3d()
@@ -234,7 +234,7 @@ class TurretComponent:
         
         # self.flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
         # Stub in something better for now
-        self.flight_time = 1.0
+        self.flight_time = 1.15
         self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
         self.futurey: float = self.active_target.translation().y - robotvy * self.flight_time
 
@@ -246,7 +246,9 @@ class TurretComponent:
         field_angle = atan2(dy, dx)
         field_angle_degrees = math.degrees(field_angle)
 
-        self.desired_angle = atan2(dy, dx) - curr_pose.rotation().radians()
+        self.desired_angle = atan2(dy, dx) - math.radians(self.gyro.get_heading())
+        # self.desired_angle = atan2(dy, dx) - curr_pose.rotation().radians()
+
 
         # pn('field angle', field_angle_degrees)
         # pn('active target x', self.active_target.translation().x)
