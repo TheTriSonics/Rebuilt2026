@@ -437,16 +437,13 @@ class DrivetrainComponent:
 
         dx = curr_pose.x - orig_pose.x
         dy = curr_pose.y - orig_pose.y
-        # Add new velocity samples to the buffers
         self._vx_samples.append(dx / 0.02)
         self._vy_samples.append(dy / 0.02)
-        # Calculate weighted moving average (recent samples weighted more heavily)
-        n = len(self._vx_samples)
-        weights = self._velocity_weights[:n]
-        total_weight = sum(weights)
-        self.vx = sum(v * w for v, w in zip(self._vx_samples, weights, strict=True)) / total_weight
-        self.vy = sum(v * w for v, w in zip(self._vy_samples, weights, strict=True)) / total_weight
-
+        self.vx = sum(self._vx_samples) / float(len(self._vx_samples))
+        self.vy = sum(self._vy_samples) / float(len(self._vy_samples))
+        pn = wpilib.SmartDashboard.putNumber
+        pn("vx", self.vx)
+        pn("vy", self.vy)
         self.fused_pose_pub.set(curr_pose)
         if self.send_modules:
             self.setpoints_publisher.set([module.state for module in self.modules])

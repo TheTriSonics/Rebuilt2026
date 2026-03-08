@@ -228,13 +228,12 @@ class TurretComponent:
 
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
-
-        robotvx = self.drivetrain.vx
-        robotvy = self.drivetrain.vy
         
         # self.flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
         # Stub in something better for now
-        self.flight_time = 1.15
+        self.flight_time = 1.15 / 2.0
+        robotvx = self.drivetrain.vx
+        robotvy = self.drivetrain.vy
         self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
         self.futurey: float = self.active_target.translation().y - robotvy * self.flight_time
 
