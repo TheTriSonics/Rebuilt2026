@@ -1,8 +1,8 @@
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
-from phoenix6.controls import Follower, VelocityTorqueCurrentFOC, VoltageOut
+from phoenix6.controls import VelocityTorqueCurrentFOC, VoltageOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs
-from phoenix6.signals import InvertedValue, MotorAlignmentValue, NeutralModeValue, StaticFeedforwardSignValue
+from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
 
 from components.drivetrain import DrivetrainComponent
 from components.turret import TurretComponent
@@ -34,7 +34,6 @@ class ShooterComponent:
         motor_config.neutral_mode = NeutralModeValue.COAST
         motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
-        # Shooter front: kP 4.0, kS 2.15, kV 0.14
         front_pid = (
             Slot0Configs()
             .with_k_p(3.0)
@@ -48,7 +47,6 @@ class ShooterComponent:
             )
         )
 
-        # Shooter rear: kP 4.0, kS 2.15, kV 0.14
         rear_pid = (
             Slot0Configs()
             .with_k_p(3.1)
@@ -65,16 +63,11 @@ class ShooterComponent:
         self.shooter_front.configurator.apply(motor_config)
         self.shooter_front.configurator.apply(front_pid, 0.01)
 
-        rear_motor_config = MotorOutputConfigs()
-        rear_motor_config.neutral_mode = NeutralModeValue.COAST
-        rear_motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
-
-        self.shooter_rear.configurator.apply(rear_motor_config)
+        self.shooter_rear.configurator.apply(motor_config)
         self.shooter_rear.configurator.apply(rear_pid, 0.01)
 
         self.velocity_request = VelocityTorqueCurrentFOC(0).with_slot(0)
         self.stop_request = VoltageOut(0)
-        self.follower_request = Follower(ids.TalonId.SHOOTER_FRONT.id, MotorAlignmentValue.OPPOSED)
 
     def setup(self):
         self._apply_current_limits()
@@ -119,12 +112,10 @@ class ShooterComponent:
         turret_pose = robot_pose.transformBy(Transform2d(inchesToMeters(-9.0), 0, Rotation2d(0)))
         dist = turret_pose.relativeTo(self.turret.goal_pose.toPose2d()).translation().norm()
         dist_in = metersToInches(dist)
-        # rps = 0.8 * dist_in + 3.82
         rps = self.coef * dist_in + self.base
         rps = min(rps, 90)
         rps = max(rps, 40)
         return rps
-
 
     def execute(self) -> None:
         if self.config_limits:
@@ -138,4 +129,3 @@ class ShooterComponent:
         else:
             self.shooter_front.set_control(self.stop_request)
             self.shooter_rear.set_control(self.stop_request)
-        # self.shooter_rear.set_control(self.follower_request) # Follower not working, resorted to setting velocity on both motors

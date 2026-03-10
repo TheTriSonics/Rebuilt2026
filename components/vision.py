@@ -79,18 +79,7 @@ class VisionComponent:
             self.camera_back_offset,
         ]
 
-        # self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]  # Add back camera when we have one working
-        self.cameras = [self.camera_rr, self.camera_rl]  # Add back camera when we have one working
-        # self.pose_estimators = [
-        #     self.pose_estimator_fr,
-        #     self.pose_estimator_fl,
-        #     self.pose_estimator_back,
-        # ]
-        # self.publishers = [
-        #     self.publisher_rr,
-        #     self.publisher_rl,
-        #     self.publisher_back,
-        # ]
+        self.cameras = [self.camera_rr, self.camera_rl]
         self.pose_estimators = [
             self.pose_estimator_rr,
             self.pose_estimator_rl,
@@ -143,22 +132,6 @@ class VisionComponent:
         dist = robot_pose.relativeTo(twod_pose).translation().norm()
         if dist > 1.0 and not disabled:
             return True
-
-        # Yaw consistency check for weak observations
-
-        # tag_count = len(targets)
-        # total_area = sum(t.getArea() for t in targets)
-        # avg_area = total_area / tag_count if tag_count > 0 else 0
-        # if tag_count == 1 or avg_area < 2.0:
-        #     # Compare vision heading to gyro heading
-        #     gyro_heading = self.drivetrain.get_rotation().radians()
-        #     vision_heading = twod_pose.rotation().radians()
-        #     heading_diff = abs(math.atan2(
-        #         math.sin(vision_heading - gyro_heading),
-        #         math.cos(vision_heading - gyro_heading),
-        #     ))
-        #     if heading_diff > math.radians(5):
-        #         return True
 
         return False
 
@@ -315,18 +288,9 @@ class VisionComponent:
                 twod_pose = pose3d.toPose2d()
                 ts = pupdate.timestampSeconds
             else:
-                # # Single-tag fallback using transform math (no SolvePnP)
-                # result = self._estimate_single_tag(targets, cam_idx)
-                # if result is None:
-                #     continue
-                # pose3d, twod_pose, is_gyro_fused = result
-                # ts = res.getTimestampSeconds()
-
                 continue
-            # Everything is 180 degrees off with vision so let's just flip it around,. Ugh.
-            vision_heading  = twod_pose.rotation().radians()
-            # flipped_heading = (vision_heading + math.pi) % math.tau
-            twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(vision_heading)) #JRD Changed from "flipped_heading" after adjusting camera offsets
+            vision_heading = twod_pose.rotation().radians()
+            twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(vision_heading))
             pub.set(twod_pose)
 
             # Compute std devs

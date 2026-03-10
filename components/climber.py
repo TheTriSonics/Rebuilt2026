@@ -9,7 +9,6 @@ from phoenix6.signals import (
     StaticFeedforwardSignValue,
 )
 from phoenix6.configs import (
-    ClosedLoopGeneralConfigs,
     CurrentLimitsConfigs,
     FeedbackConfigs,
     MotorOutputConfigs,
@@ -17,17 +16,13 @@ from phoenix6.configs import (
 )
 
 
-
 class ClimberComponent:
 
-
-    # These are set to tunables just so they show up on the dashboard for now
     upper_limit = tunable(100.0)
     lower_limit = tunable(0.0)
     upper_position = tunable(95.0)
     home_position = 0.0
     target_position = tunable(95.0)
-
 
     config_limits = tunable(False)
     stator_current_limit = tunable(1.0)
@@ -41,17 +36,11 @@ class ClimberComponent:
     def __init__(self):
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.BRAKE
-        # The SDS Mk4i rotation has one pair of gears.
-        motor_config.inverted = (
-            InvertedValue.CLOCKWISE_POSITIVE
-            if False
-            else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
-        )
+        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+
         feedback_config = FeedbackConfigs()
         feedback_config.sensor_to_mechanism_ratio = 1.0
         feedback_config.rotor_to_sensor_ratio = 1.0
-
-        # configuration for motor pid
 
         pid = (
             Slot0Configs()
@@ -65,13 +54,10 @@ class ClimberComponent:
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
             )
         )
-        closed_loop_config = ClosedLoopGeneralConfigs()
 
         self.climber.configurator.apply(motor_config)
         self.climber.configurator.apply(pid, 0.01)
         self.climber.configurator.apply(feedback_config)
-        self.climber.configurator.apply(closed_loop_config)
-
 
     def setup(self):
         self._apply_current_limits()
@@ -88,13 +74,10 @@ class ClimberComponent:
         )
         self.climber.configurator.apply(current_limits_config)
 
-
-    def home_climber(self) -> None:
-        # This method would set the climber back to home.
+    def home(self) -> None:
         self.target_position = self.home_position
 
-    def raise_climber(self) -> None:
-        # This method would raise the climber up.
+    def raise_up(self) -> None:
         self.target_position = self.upper_position
 
     def execute(self) -> None:

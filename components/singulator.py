@@ -1,11 +1,10 @@
-#needs to spin both directions, speed control,
-
 from magicbot import tunable
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityVoltage, DutyCycleOut
 from phoenix6.configs import CurrentLimitsConfigs, FeedbackConfigs, Slot0Configs, MotorOutputConfigs
-from phoenix6.signals import FeedbackSensorSourceValue, StaticFeedforwardSignValue, NeutralModeValue
+from phoenix6.signals import StaticFeedforwardSignValue, NeutralModeValue
 import ids
+
 
 class SingulatorComponent:
 
@@ -20,7 +19,6 @@ class SingulatorComponent:
     supply_current_lower_limit = tunable(120.0)
     supply_current_lower_time = tunable(0.0)
 
-
     def __init__(self):
         self.target_speed = 0.0  # rotations per second
         motor_config = MotorOutputConfigs()
@@ -28,7 +26,7 @@ class SingulatorComponent:
         self.singulator.configurator.apply(motor_config)
 
         feedback_config = FeedbackConfigs()
-        feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.ROTOR_SENSOR
+        feedback_config.sensor_to_mechanism_ratio = 15.0
         self.singulator.configurator.apply(feedback_config)
 
         singulator_pid = (
@@ -43,10 +41,6 @@ class SingulatorComponent:
             )
         )
 
-        # Configure FusedCANCoder feedback
-        feedback_config = FeedbackConfigs()
-        feedback_config.sensor_to_mechanism_ratio = 15.0
-        self.singulator.configurator.apply(feedback_config)
         self.singulator.configurator.apply(singulator_pid)
         self.velocity_request = VelocityVoltage(0).with_slot(0)
 
@@ -65,13 +59,13 @@ class SingulatorComponent:
         )
         self.singulator.configurator.apply(current_limits_config)
 
-    def singulator_off(self):
-         self.set_speed(0.0)
+    def off(self):
+        self.set_speed(0.0)
 
-    def singulator_forward(self):
+    def forward(self):
         self.set_speed(self.forward_speed)
 
-    def singulator_reverse(self):
+    def reverse(self):
         self.set_speed(self.reverse_speed)
 
     def set_speed(self, speed: float) -> None:
@@ -97,4 +91,3 @@ class SingulatorComponent:
             self.singulator.set_control(self.velocity_request.with_velocity(self.target_speed))
         else:
             self.singulator.set_control(DutyCycleOut(0.0))
-    

@@ -1,6 +1,4 @@
-from collections import deque
-from dataclasses import dataclass
-from math import atan2, cos, pi, sin, sqrt, tau
+from math import atan2, sqrt
 
 import math
 import wpilib
@@ -9,7 +7,7 @@ from magicbot import tunable, feedback
 from wpimath.geometry import Pose3d, Rotation3d, Translation3d
 
 from phoenix6.hardware import TalonFX, CANcoder
-from phoenix6.controls import DutyCycleOut, PositionTorqueCurrentFOC, MotionMagicDutyCycle
+from phoenix6.controls import MotionMagicDutyCycle
 from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
@@ -32,10 +30,8 @@ from components.gyro import GyroComponent
 from utilities.game import is_red
 import ids
 
-_G = 9.81
 _shooter_height = 0.15  # meters
 _goal_height = 2.00  # meters
-_margin_factor = 2.00
 
 # Fixed field targets derived from AprilTag positions (k2026RebuiltWelded, meters)
 _BLUE_HUB    = Translation3d(4.626, 4.035, _goal_height)
@@ -43,54 +39,10 @@ _RED_HUB     = Translation3d(11.916, 4.035, _goal_height)
 _FIELD_LENGTH = 16.541
 _FIELD_WIDTH  = 8.069
 
-def clamp_angle(rads: float) -> float:
-    rads = rads % tau
-    if rads > pi:
-        rads -= tau
-    return rads
-
-# JRD This section is deprecated given the flight calculation inside execute()
-# # We'll gloss over the derivation of the physics here and just use the formulas
-# # you might find in a high school physics textbook.
-# def traj_calc(d: float) -> tuple[float, float, float]:
-#     # Determine the height difference of our target spot and where fuel exits
-#     # the shooter
-#     delta_h = _goal_height - _shooter_height
-#     # Now calculate the time it will take for the ball to reach the target
-#     # height if launched on a trajectory where that target height was it's max.
-#     # This is also the time it would take to drop from the target height to the
-#     # shooter height
-#     t = sqrt(2 * delta_h / _G)
-#     # Now multiply the minimum flight time by something larger than 1 so that we
-#     # know the fuel cell will be coming down in its flight path. The larger the
-#     # value the more of a "lob" shot you'll get.
-#     t *= _margin_factor
-#     # Horizontal velocity to reach the goal is simply distance / time
-#     vhoriz = d / t
-#     # Calculate how hard we have to launch the fuel vertically so that after t
-#     # seconds it's still risen up delta_h. That means we'll have to launch it
-#     # above the target height and it'll be falling because t is longer than the
-#     # time it would take to reach the target height.
-#     vvert = (delta_h + 0.5 * _G * t**2) / t
-#     return vhoriz, vvert, t
-
-
-@dataclass
-class BallProperties:
-    xpos: float
-    ypos: float
-    zpos: float
-    xvel: float
-    yvel: float
-    zvel: float
-
-
 class TurretComponent:
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
-    # These are set to tunables just so they show up on the dashboard for now
-    # testpos = tunable(0.0)
     distance_to_goal = 0.0
     desired_angle = 0.0
     flight_time = tunable(1.0)
@@ -165,16 +117,13 @@ class TurretComponent:
         config = TalonFXConfiguration()
         config.motion_magic.motion_magic_cruise_velocity = 6.5  # rps
         config.motion_magic.motion_magic_acceleration = 65
-        # config.motion_magic.motion_magic_jerk = math.tau
 
         self.turret_motor.configurator.apply(turret_pid, 0.01)
         self.turret_motor.configurator.apply(feedback_config)
 
-        # self.motor_request = PositionTorqueCurrentFOC(0).with_slot(0)
         self.motor_request = MotionMagicDutyCycle(0, override_brake_dur_neutral=True)
 
         self.active_target = Pose3d()
-
 
     def setup(self):
         self._apply_current_limits()
@@ -229,36 +178,16 @@ class TurretComponent:
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
         
-        # self.flight_time = sqrt(2 * (_goal_height - _shooter_height) / _G) * _margin_factor
-        # Stub in something better for now
         self.flight_time = 1.15 / 2.0
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
         self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
         self.futurey: float = self.active_target.translation().y - robotvy * self.flight_time
 
-        pn = wpilib.SmartDashboard.putNumber
-
         dx = self.futurex - curr_pose.translation().x
         dy = self.futurey - curr_pose.translation().y
 
-        field_angle = atan2(dy, dx)
-        field_angle_degrees = math.degrees(field_angle)
-
         self.desired_angle = atan2(dy, dx) - math.radians(self.gyro.get_heading())
-        # self.desired_angle = atan2(dy, dx) - curr_pose.rotation().radians()
-
-
-        # pn('field angle', field_angle_degrees)
-        # pn('active target x', self.active_target.translation().x)
-        # pn('active target y', self.active_target.translation().y)
-        # pn('Turret Future X', self.futurex)
-        # pn('Turret Future Y', self.futurey)
-        # pn('Robot X', curr_pose.translation().x)
-        # pn('Robot Y', curr_pose.translation().y)
-        # pn('dx', dx)
-        # pn('dy', dy)
-        # pn('Desired Angle', math.degrees(self.desired_angle))
 
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         self.goal_pose = Pose3d(
@@ -267,7 +196,6 @@ class TurretComponent:
         )
         self.targets.set(self.goal_pose)
 
-        # Publish visualization
         field_shot_pos = (self.desired_angle / math.tau)
         turret_viz = Pose3d(
             Translation3d(
@@ -278,10 +206,7 @@ class TurretComponent:
             Rotation3d(0, 0, self.desired_angle),
         )
 
-        pn("field_shot_pos", field_shot_pos)
-        # self.target_position = field_shot_pos
+        wpilib.SmartDashboard.putNumber("field_shot_pos", field_shot_pos)
         self.turret_motor.set_control(self.motor_request.with_position(field_shot_pos))
-
-        # self.turret_motor.set_control(self.motor_request.with_position(self.target_position + 0.5))
 
         self.position.set(turret_viz)
