@@ -18,7 +18,7 @@ class ShooterComponent:
     shooter_front = TalonFX(ids.TalonId.SHOOTER_FRONT.id, ids.TalonId.SHOOTER_FRONT.bus)
     shooter_rear = TalonFX(ids.TalonId.SHOOTER_REAR.id, ids.TalonId.SHOOTER_REAR.bus)
 
-    coef = tunable(0.8)
+    coef = tunable(0.6)
     base = tunable(3.82)
     target_rps = tunable(0.0)
     active = tunable(False)
@@ -121,9 +121,10 @@ class ShooterComponent:
         dist_in = metersToInches(dist)
         # rps = 0.8 * dist_in + 3.82
         rps = self.coef * dist_in + self.base
-        rps = min(rps, 85)
-        rps = max(rps, 44)
+        rps = min(rps, 90)
+        rps = max(rps, 40)
         return rps
+
 
     def execute(self) -> None:
         if self.config_limits:

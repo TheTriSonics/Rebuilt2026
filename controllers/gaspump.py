@@ -4,6 +4,7 @@ from components.shooter import ShooterComponent
 from components.kicker import KickerComponent
 from components.singulator import SingulatorComponent
 from components.intake import IntakeComponent
+from components.turret import TurretComponent
 
 
 class GasPump(StateMachine):
@@ -17,9 +18,12 @@ class GasPump(StateMachine):
     kicker: KickerComponent
     singulator: SingulatorComponent
     intake: IntakeComponent
+    turret: TurretComponent
 
-    shooter_rps = tunable(50.0)
     kicker_current_threshold = tunable(20.0)
+
+    def __init__(self) -> None:
+        ...
 
     def go_shoot(self) -> None:
         self.next_state_now(self.shooter_spin_up)
@@ -58,7 +62,7 @@ class GasPump(StateMachine):
 
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
-        self.shooter.spin_up(self.shooter_rps)
+        self.shooter.spin_up()
         self.kicker.kicker_off()
         self.singulator.singulator_forward()
         if self.shooter.is_at_speed():
@@ -66,7 +70,7 @@ class GasPump(StateMachine):
 
     @state(must_finish=True)
     def kicker_spin_up(self) -> None:
-        self.shooter.spin_up(self.shooter_rps)
+        self.shooter.spin_up()
         self.kicker.kicker_forward()
         self.singulator.singulator_forward()
         # stator_current = abs(self.kicker.kicker.get_stator_current().value)
@@ -75,7 +79,7 @@ class GasPump(StateMachine):
 
     @state(must_finish=True)
     def singulator_spin_up(self) -> None:
-        self.shooter.spin_up(self.shooter_rps)
+        self.shooter.spin_up()
         self.kicker.kicker_forward()
         self.singulator.singulator_forward()
 

@@ -144,7 +144,7 @@ class MyRobot(MagicRobot):
             self.gaspump.go_eject()
         if self.operator_controller.shooter_shoot(): # Right bumper
             self.gaspump.go_shoot()
-        if self.operator_controller.shooter_off(): # Right bumper
+        if self.operator_controller.shooter_off(): # A button
             self.gaspump.go_shoot_off()
 
         if self.operator_controller.turret_aim_hub():

@@ -59,6 +59,9 @@ class RebuiltOperator:
 
     def shooter_off(self):
         return self.controller.getAButtonPressed()
+
+    def intake_flip(self):
+        return self.controller.getYButton()
     
     def intake_on(self):
         return self.controller.getRightTriggerAxis() > 0.1

@@ -27,7 +27,7 @@ class IntakeComponent:
 
     # These are set to tunables just so they show up on the dashboard for now
     upper_position = tunable(0.70)
-    lower_position = tunable(0.02)
+    lower_position = tunable(0.10)
     target_position = tunable(0.3)
 
     intake_speed = tunable(0.7)
@@ -50,10 +50,10 @@ class IntakeComponent:
         motor_config.neutral_mode = NeutralModeValue.BRAKE
         motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
 
-        self.mag_offset = -0.199951171875
+        self.mag_offset = -0.21728515625
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
-        enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.COUNTER_CLOCKWISE_POSITIVE)
+        enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.CLOCKWISE_POSITIVE)
         self.rotate_encoder.configurator.apply(enc_config)
 
 
@@ -135,6 +135,6 @@ class IntakeComponent:
         elif self.target_position < self.lower_position:
             self.target_position = self.lower_position
 
-        #self.rotate.set_control(self.rotate_request.with_position(self.target_position))
+        self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         
         self.roller.set_control(DutyCycleOut(self.target_speed))
