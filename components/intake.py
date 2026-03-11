@@ -124,5 +124,5 @@ class IntakeComponent:
         elif self.target_position < self.lower_position:
             self.target_position = self.lower_position
 
-        self.rotate.set_control(self.rotate_request.with_position(self.target_position))
+        #self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         self.roller.set_control(DutyCycleOut(self.target_speed))

@@ -46,7 +46,7 @@ class TurretComponent:
     distance_to_goal = 0.0
     desired_angle = 0.0
     flight_time = tunable(1.0)
-    target_position = tunable(0.0)
+    turret_position = tunable(0.0)
 
     # Lob target offsets from corner of own alliance zone (meters, ~4 ft default)
     lob_alliance_wall_offset = tunable(1.219)  # distance inward from end wall (X axis)
@@ -178,7 +178,7 @@ class TurretComponent:
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
         
-        self.flight_time = 1.15 / 2.0
+        self.flight_time = 0.4 / 2.0
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
         self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
@@ -207,6 +207,7 @@ class TurretComponent:
         )
 
         wpilib.SmartDashboard.putNumber("field_shot_pos", field_shot_pos)
-        self.turret_motor.set_control(self.motor_request.with_position(field_shot_pos))
+        self.turret_motor.set_control(self.motor_request.with_position(0.5))
+        # self.turret_motor.set_control(self.motor_request.with_position(self.turret_position))
 
         self.position.set(turret_viz)
