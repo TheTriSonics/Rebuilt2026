@@ -104,7 +104,7 @@ class ShooterComponent:
         front_vel = abs(self.shooter_front.get_velocity().value)
         rear_vel = abs(self.shooter_rear.get_velocity().value)
         target = abs(self.target_rps)
-        return front_vel >= target * 0.95 and rear_vel >= target * 0.95
+        return (front_vel - target) < 1 and (rear_vel - target) < 1
 
     def calc_rps(self) -> float:
         from wpimath.units import inchesToMeters, metersToInches
