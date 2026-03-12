@@ -8,6 +8,7 @@ from wpimath.geometry import Pose2d, Pose3d, Translation3d, Rotation3d, Transfor
 from photonlibpy.photonCamera import PhotonCamera
 from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from components.drivetrain import DrivetrainComponent
+from components.gyro import GyroComponent
 from wpimath import units
 from utilities.game import is_sim, is_disabled
 
@@ -15,6 +16,7 @@ from utilities.game import is_sim, is_disabled
 class VisionComponent:
 
     drivetrain: DrivetrainComponent
+    gyro: GyroComponent
 
     def __init__(self) -> None:
         self.timer = Timer()
@@ -163,12 +165,14 @@ class VisionComponent:
                 dx = speeds.vx * dt
                 dy = speeds.vy * dt
                 dtheta = speeds.omega * dt
-                cos_t = math.cos(dtheta)
-                sin_t = math.sin(dtheta)
+                heading = pose.rotation().radians()
+                cos_t = math.cos(heading)
+                sin_t = math.sin(heading)
                 new_x = pose.x + dx * cos_t - dy * sin_t
                 new_y = pose.y + dx * sin_t + dy * cos_t
                 new_rot = pose.rotation().radians() + dtheta
                 pose = Pose2d(new_x, new_y, Rotation2d(new_rot))
+
             aligned.append((pose, stds))
 
         # Inverse-variance weighting for X and Y independently
