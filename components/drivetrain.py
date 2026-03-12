@@ -197,6 +197,7 @@ class DrivetrainComponent:
     snapping_to_heading = magicbot.tunable(False)
 
     def __init__(self) -> None:
+        self.last_odometry_update_time: float = wpilib.Timer.getFPGATimestamp()
         # Theoretical max RPM that a Kraken X60 can reach
         DRIVE_MOTOR_MAX_RPM = 200
 
@@ -437,8 +438,10 @@ class DrivetrainComponent:
 
         dx = curr_pose.x - orig_pose.x
         dy = curr_pose.y - orig_pose.y
-        self._vx_samples.append(dx / 0.02)
-        self._vy_samples.append(dy / 0.02)
+        newtime: float = wpilib.Timer.getFPGATimestamp()
+        dt = newtime - self.last_odometry_update_time
+        self._vx_samples.append(dx / dt if dt != 0 else 0)
+        self._vy_samples.append(dy / dt if dt != 0 else 0)
         self.vx = sum(self._vx_samples) / float(len(self._vx_samples))
         self.vy = sum(self._vy_samples) / float(len(self._vy_samples))
         pn = wpilib.SmartDashboard.putNumber
