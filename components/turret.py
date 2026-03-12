@@ -208,6 +208,6 @@ class TurretComponent:
 
         wpilib.SmartDashboard.putNumber("field_shot_pos", field_shot_pos)
         self.turret_motor.set_control(self.motor_request.with_position(0.5))
-        # self.turret_motor.set_control(self.motor_request.with_position(self.turret_position))
+        # self.turret_motor.set_control(self.motor_request.with_position(field_shot_pos))
 
         self.position.set(turret_viz)

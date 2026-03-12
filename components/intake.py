@@ -30,8 +30,8 @@ class IntakeComponent:
     target_speed = tunable(0.5)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(1.0)
-    supply_current_limit = tunable(2.0)
+    stator_current_limit = tunable(0.5)
+    supply_current_limit = tunable(1.0)
     supply_current_lower_limit = tunable(2.0)
     supply_current_lower_time = tunable(1.0)
 
@@ -86,7 +86,7 @@ class IntakeComponent:
             .with_supply_current_lower_limit(self.supply_current_lower_limit)
             .with_supply_current_lower_time(self.supply_current_lower_time)
         )
-        self.roller.configurator.apply(current_limits_config)
+        self.rotate.configurator.apply(current_limits_config)
 
     def rotate_down(self) -> None:
         self.target_position = self.lower_position
