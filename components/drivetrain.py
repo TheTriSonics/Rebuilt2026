@@ -465,8 +465,7 @@ class DrivetrainComponent:
         """Sets pose to current pose but with a heading of forwards"""
         cur_pose = self.estimator.getEstimatedPosition()
         default_heading = 180 if is_red() else 0
-        self.set_pose(Pose2d(cur_pose.translation(), Rotation2d(default_heading)))
-        self.gyro.reset_heading(default_heading)
+        self.set_pose(Pose2d(cur_pose.translation(), Rotation2d.fromDegrees(default_heading)))
 
     def get_module_positions(self) -> tuple[
         SwerveModulePosition,

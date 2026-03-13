@@ -127,9 +127,8 @@ class MyRobot(MagicRobot):
             self.drivetrain.reset_yaw()
         if self.driver_controller.set_heading_to_vision():
             curr_pose = self.drivetrain.get_pose()
-            self.gyro.reset_heading(curr_pose.rotation().degrees())
-            # Force an update to the estimator so that the gyro reset doesn't
-            # make it think it suddenly rotated
+            # resetPosition (called inside set_pose) re-syncs the gyro offset
+            # internally, so we don't need to reset the hardware gyro
             self.drivetrain.set_pose(curr_pose)
 
 
