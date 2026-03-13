@@ -125,6 +125,13 @@ class MyRobot(MagicRobot):
 
         if self.driver_controller.reset_yaw():
             self.drivetrain.reset_yaw()
+        if self.driver_controller.set_heading_to_vision():
+            curr_pose = self.drivetrain.get_pose()
+            self.gyro.reset_heading(curr_pose.rotation().degrees())
+            # Force an update to the estimator so that the gyro reset doesn't
+            # make it think it suddenly rotated
+            self.drivetrain.set_pose(curr_pose)
+
 
         if self.driver_controller.intake_up():
             self.intake.rotate_up()
@@ -140,7 +147,6 @@ class MyRobot(MagicRobot):
             self.tanker.go_drive_auto_target()
         else:
             self.tanker.go_drive_local()
-
         # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
         # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)

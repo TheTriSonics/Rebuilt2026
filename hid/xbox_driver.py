@@ -50,7 +50,8 @@ class RebuiltDriver:
             return True
         return False
 
-    
+    def set_heading_to_vision(self):
+        return self.controller.getLeftTriggerAxis() > 0.5
 
     # def shooter_shoot(self):
     #     return self.controller.getRightBumperButton()
@@ -73,15 +74,15 @@ class RebuiltDriver:
 
     def turret_right(self) -> float:
         return -0.6 if self.controller.getPOV() == 90 else 0.0
-    
+
     # def intake_idle(self):
     #     return self.controller.getLeftBumperButtonPressed()
-    
+
     # def eject(self):
         return self.controller.getXButtonPressed()
-    
+
     def intake_up(self):
         return self.controller.getYButtonPressed()
         print('YESSSS')
-        
-    
+
+
