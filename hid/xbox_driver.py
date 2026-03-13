@@ -35,6 +35,23 @@ class RebuiltDriver:
     def robot_centric(self):
         return self.controller.getRawButtonPressed(7)
 
+    def target_lob_left(self):
+        if not self.controller.getRightBumperButton() and self.controller.getLeftBumperButton():
+            return True
+        return False
+
+    def target_lob_right(self):
+        if not self.controller.getLeftBumperButton() and self.controller.getRightBumperButton():
+            return True
+        return False
+
+    def target_hub(self):
+        if self.controller.getRightBumperButton() and self.controller.getLeftBumperButton():
+            return True
+        return False
+
+    
+
     # def shooter_shoot(self):
     #     return self.controller.getRightBumperButton()
 

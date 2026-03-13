@@ -45,11 +45,12 @@ class Tanker(StateMachine):
     def go_drive_field(self):
         self.drivetrain.stop_snapping()
         if self.current_state != self.drive_field.name:
+            self.drivetrain.stop_snapping()
             self.next_state_now(self.drive_field)
 
-    def go_drive_hub_lockon(self):
-        if self.current_state != self.drive_hub_lockon.name:
-            self.next_state_now(self.drive_hub_lockon)
+    def go_drive_auto_target(self):
+        if self.current_state != self.drive_auto_target.name:
+            self.next_state_now(self.drive_auto_target)
 
     @state(first=True, must_finish=True)
     def drive_field(self, initial_call: bool):
@@ -61,7 +62,7 @@ class Tanker(StateMachine):
         self.drivetrain.drive_field(x, y, self.stick_o)
 
     @state(first=False, must_finish=True)
-    def drive_hub_lockon(self, initial_call: bool):
+    def drive_auto_target(self, initial_call: bool):
         if initial_call:
             # Clear out any trajectory we're runnning
             ...
@@ -72,6 +73,7 @@ class Tanker(StateMachine):
 
     def go_drive_local(self):
         if self.current_state != self.drive_local.name:
+            self.drivetrain.stop_snapping()
             self.next_state_now(self.drive_local)
 
     @state(must_finish=True)

@@ -88,7 +88,7 @@ class MyRobot(MagicRobot):
         if selected:
             self.tanker.go_follow_path(selected)
         else:
-            self.tanker.go_drive_field()
+            self.tanker.go_drive_local()
 
     def autonomousPeriodic(self):
         # MagicBot handles periodic execution; this never runs but is left as
@@ -102,7 +102,7 @@ class MyRobot(MagicRobot):
         self.tanker.engage()
         if not OPERATOR_DEBUG:
             self.gaspump.engage()
-        self.tanker.go_drive_field()
+        self.tanker.go_drive_local()
         self.turret.set_target("hub")
 
     def teleopPeriodic(self):
@@ -129,6 +129,18 @@ class MyRobot(MagicRobot):
         if self.driver_controller.intake_up():
             self.intake.rotate_up()
 
+        if self.driver_controller.target_lob_left():
+            self.turret.set_target("left")
+            self.tanker.go_drive_auto_target()
+        elif self.driver_controller.target_lob_right():
+            self.turret.set_target("right")
+            self.tanker.go_drive_auto_target()
+        elif self.driver_controller.target_hub():
+            self.turret.set_target("hub")
+            self.tanker.go_drive_auto_target()
+        else:
+            self.tanker.go_drive_local()
+
         # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
         # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
@@ -144,10 +156,8 @@ class MyRobot(MagicRobot):
             self.gaspump.go_eject()
         if self.operator_controller.shooter_shoot(): # Right bumper
             self.gaspump.go_shoot()
-            self.tanker.go_drive_hub_lockon()
         if self.operator_controller.shooter_off(): # A button
             self.gaspump.go_shoot_off()
-            self.tanker.go_drive_field()
 
         if self.operator_controller.turret_aim_hub():
             self.turret.set_target("hub")
