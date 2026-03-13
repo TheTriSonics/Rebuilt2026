@@ -227,7 +227,7 @@ class DrivetrainComponent:
 
         # Used to lock the robot onto a heading; currently not used.
         self.heading_controller = ProfiledPIDControllerRadians(
-            0.5, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
+            8.2, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
@@ -440,8 +440,11 @@ class DrivetrainComponent:
         dy = curr_pose.y - orig_pose.y
         newtime: float = wpilib.Timer.getFPGATimestamp()
         dt = newtime - self.last_odometry_update_time
-        self._vx_samples.append(dx / dt if dt != 0 else 0)
-        self._vy_samples.append(dy / dt if dt != 0 else 0)
+        if dt == 0:
+            return
+        self.last_odometry_update_time = newtime
+        self._vx_samples.append(dx / dt)
+        self._vy_samples.append(dy / dt)
         self.vx = sum(self._vx_samples) / float(len(self._vx_samples))
         self.vy = sum(self._vy_samples) / float(len(self._vy_samples))
         pn = wpilib.SmartDashboard.putNumber

@@ -4,6 +4,7 @@ from wpimath.geometry import Pose2d
 from magicbot import StateMachine, state
 
 from components.drivetrain import DrivetrainComponent
+from components.turret import TurretComponent
 from utilities.game import is_red
 from choreo import load_swerve_trajectory
 
@@ -13,6 +14,7 @@ class Tanker(StateMachine):
     ROTATION_TOLERANCE_DEG = 1.0
 
     drivetrain: DrivetrainComponent
+    turret: TurretComponent
 
     stick_x, stick_y, stick_o = 0, 0, 0
     alliance_loaded = None
@@ -41,8 +43,13 @@ class Tanker(StateMachine):
             self.go_drive_field()
 
     def go_drive_field(self):
+        self.drivetrain.stop_snapping()
         if self.current_state != self.drive_field.name:
             self.next_state_now(self.drive_field)
+
+    def go_drive_hub_lockon(self):
+        if self.current_state != self.drive_hub_lockon.name:
+            self.next_state_now(self.drive_hub_lockon)
 
     @state(first=True, must_finish=True)
     def drive_field(self, initial_call: bool):
@@ -52,6 +59,16 @@ class Tanker(StateMachine):
         x = -self.stick_x if is_red() else self.stick_x
         y = -self.stick_y if is_red() else self.stick_y
         self.drivetrain.drive_field(x, y, self.stick_o)
+
+    @state(first=False, must_finish=True)
+    def drive_hub_lockon(self, initial_call: bool):
+        if initial_call:
+            # Clear out any trajectory we're runnning
+            ...
+        x = -self.stick_x if is_red() else self.stick_x
+        y = -self.stick_y if is_red() else self.stick_y
+        self.drivetrain.snap_to_heading(self.turret.field_angle + math.pi)
+        self.drivetrain.drive_field(x, y, 0)
 
     def go_drive_local(self):
         if self.current_state != self.drive_local.name:

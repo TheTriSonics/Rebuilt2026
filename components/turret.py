@@ -177,8 +177,8 @@ class TurretComponent:
 
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
-        
-        self.flight_time = 0.4 / 2.0
+
+        self.flight_time = 0.65
         robotvx = self.drivetrain.vx
         robotvy = self.drivetrain.vy
         self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
@@ -187,7 +187,9 @@ class TurretComponent:
         dx = self.futurex - curr_pose.translation().x
         dy = self.futurey - curr_pose.translation().y
 
-        self.desired_angle = atan2(dy, dx) - math.radians(self.gyro.get_heading())
+        self.field_angle = atan2(dy, dx)
+
+        self.desired_angle = self.field_angle - math.radians(self.gyro.get_heading())
 
         self.distance_to_goal = sqrt(dx**2 + dy**2)
         self.goal_pose = Pose3d(
