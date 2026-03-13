@@ -3,8 +3,9 @@ from math import atan2, sqrt
 import math
 import wpilib
 import ntcore
+from wpimath import units
 from magicbot import tunable, feedback
-from wpimath.geometry import Pose3d, Rotation3d, Translation3d
+from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Pose2d, Rotation2d, Translation2d, Transform2d
 
 from phoenix6.hardware import TalonFX, CANcoder
 from phoenix6.controls import MotionMagicDutyCycle
@@ -177,6 +178,11 @@ class TurretComponent:
 
         # Auto-tracking
         curr_pose = self.drivetrain.get_pose()
+        turret_pose = curr_pose.transformBy(
+            Transform2d(Translation2d(units.inchesToMeters(-9.5), 0),
+                         Rotation2d.fromDegrees(0)
+            )
+        )
 
         self.flight_time = 0.65
         robotvx = self.drivetrain.vx
@@ -184,8 +190,8 @@ class TurretComponent:
         self.futurex: float = self.active_target.translation().x - robotvx * self.flight_time
         self.futurey: float = self.active_target.translation().y - robotvy * self.flight_time
 
-        dx = self.futurex - curr_pose.translation().x
-        dy = self.futurey - curr_pose.translation().y
+        dx = self.futurex - turret_pose.translation().x
+        dy = self.futurey - turret_pose.translation().y
 
         self.field_angle = atan2(dy, dx)
 
@@ -201,8 +207,8 @@ class TurretComponent:
         field_shot_pos = (self.desired_angle / math.tau)
         turret_viz = Pose3d(
             Translation3d(
-                curr_pose.translation().x,
-                curr_pose.translation().y,
+                turret_pose.translation().x,
+                turret_pose.translation().y,
                 _shooter_height + 0.5
             ),
             Rotation3d(0, 0, self.desired_angle),
