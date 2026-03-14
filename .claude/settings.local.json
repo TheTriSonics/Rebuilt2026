@@ -12,7 +12,10 @@
       "WebFetch(domain:firstfrc.blob.core.windows.net)",
       "WebFetch(domain:www.frcmanual.com)",
       "Bash(cat /c/Users/jdowd/wpilib/2026/Rebuilt2026/.venv/Lib/site-packages/phoenix6-*.dist-info/METADATA)",
-      "WebFetch(domain:pypi.org)"
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:docs.wpilib.org)",
+      "WebFetch(domain:www.chiefdelphi.com)",
+      "WebFetch(domain:github.wpilib.org)"
     ]
   }
 }
