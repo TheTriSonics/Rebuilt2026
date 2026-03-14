@@ -44,6 +44,9 @@ class GasPump(StateMachine):
     def go_eject(self) -> None:
         self.next_state_now(self.eject)
 
+    def go_intake_off(self) -> None:
+        self.next_state_now(self.waiting)
+
     # ------------------------------------------------------------------
     # States
     # ------------------------------------------------------------------

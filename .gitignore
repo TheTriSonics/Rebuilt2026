@@ -223,3 +223,6 @@ __marimo__/
 logs/
 ctre_sim/
 simgui*.json
+deploy/choreo/beta_left.traj
+deploy/choreo/Left_blue_simple.traj
+deploy/choreo/Left_blue_simple.traj
