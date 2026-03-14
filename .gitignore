@@ -1,3 +1,4 @@
+.claude/
 # FRC Specific temp files
 simgui*
 networktables.json
