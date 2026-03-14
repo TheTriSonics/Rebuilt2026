@@ -1,5 +1,5 @@
 import math
-from collections import deque
+# from collections import deque  # Only needed for single-tag estimation
 
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 from wpilib import Timer
@@ -19,7 +19,11 @@ class VisionComponent:
     gyro: GyroComponent
 
     def __init__(self) -> None:
+        self.sim = is_sim()
         self.timer = Timer()
+        self.angular_baseline_std = math.radians(10)
+        self.angular_baseline_std_sim = math.radians(30)
+        self.angular_baseline = self.angular_baseline_std_sim if self.sim else self.angular_baseline_std
 
         self.camera_rr = PhotonCamera("Rear_Right")
         self.camera_rl = PhotonCamera("Rear_Left")
@@ -28,7 +32,7 @@ class VisionComponent:
         self.camera_rr_offset = Transform3d(
             Translation3d(
                 units.inchesToMeters(-12.0),    # Forward/backward offset
-                units.inchesToMeters(-10.5),   # Left/right offset, left is positive 
+                units.inchesToMeters(-10.5),   # Left/right offset, left is positive
                 units.inchesToMeters(8.0),      # Up/down offset
             ),
             # Pitching up is a negative value
@@ -37,7 +41,7 @@ class VisionComponent:
         self.camera_rl_offset = Transform3d(
             Translation3d(
                 units.inchesToMeters(-12.0),    # Forward/backward offset
-                units.inchesToMeters(10.5),  # Left/right offset, left is positive 
+                units.inchesToMeters(10.5),  # Left/right offset, left is positive
                 units.inchesToMeters(8.0),      # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
@@ -51,8 +55,6 @@ class VisionComponent:
             Rotation3d.fromDegrees(0.0, 10.0, 180.0),  # roll, pitch, yaw
         )
         self.linear_baseline_std = 0.10  # meters
-        self.angular_baseline_std = math.radians(10)
-        self.angular_baseline_std_sim = math.radians(30)
 
         self.field = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
@@ -92,30 +94,29 @@ class VisionComponent:
             self.publisher_rl,
         ]
 
-        # Precompute inverse camera offsets for single-tag transform math
-        self._camera_offsets_inv = [
-            self.camera_rr_offset.inverse(),
-            self.camera_rl_offset.inverse(),
-        ]
+        # Only needed for single-tag estimation
+        # self._camera_offsets_inv = [
+        #     self.camera_rr_offset.inverse(),
+        #     self.camera_rl_offset.inverse(),
+        # ]
 
         # Stale timestamp tracking per camera
         self._last_timestamps: list[float] = [0.0] * len(self.cameras)
 
-        # Gyro-fused fallback: track recent yaw rates for stability check
-        self._yaw_rate_history: deque[float] = deque(maxlen=15)
+        # Only needed for single-tag gyro-fused fallback
+        # self._yaw_rate_history: deque[float] = deque(maxlen=15)
 
     def _compute_std_devs(
-        self, avg_dist: float, tag_count: int, is_single_tag_gyro_fused: bool = False
+        self, avg_dist: float, tag_count: int, is_single_tag_gyro_fused: bool
     ) -> tuple[float, float, float]:
         """Compute standard deviations for a vision measurement."""
-        angular_baseline = self.angular_baseline_std_sim if is_sim() else self.angular_baseline_std
         std_factor = (avg_dist ** 2) / tag_count
         std_xy = self.linear_baseline_std * std_factor
-        if is_single_tag_gyro_fused:
-            # Gyro heading is far more trustworthy; tell Kalman filter to ignore vision heading
-            std_rot = 1e6
-        else:
-            std_rot = angular_baseline * std_factor
+        std_rot = self.angular_baseline * std_factor
+        # Only needed for single-tag gyro-fused fallback:
+        # if is_single_tag_gyro_fused:
+        #     # Gyro heading is far more trustworthy; tell Kalman filter to ignore vision heading
+        #     std_rot = 1e6
         return (std_xy, std_xy, std_rot)
 
     def _reject_measurement(
@@ -155,13 +156,13 @@ class VisionComponent:
 
         # Time-align older estimates to newest using odometry delta
         aligned: list[tuple[Pose2d, tuple[float, float, float]]] = []
+        speeds = self.drivetrain.get_chassis_speeds()
         for pose, ts, stds in estimates:
             if ts < newest_ts:
                 # Approximate alignment: use the pose estimator's odometry
                 # The time difference should be small (< 1 frame), so we use
                 # the raw pose offset as a simple approximation
                 dt = newest_ts - ts
-                speeds = self.drivetrain.get_chassis_speeds()
                 dx = speeds.vx * dt
                 dy = speeds.vy * dt
                 dtheta = speeds.omega * dt
@@ -210,68 +211,72 @@ class VisionComponent:
         fused_pose = Pose2d(fused_x, fused_y, Rotation2d(fused_rot))
         return (fused_pose, newest_ts, (fused_std_x, fused_std_y, fused_std_rot))
 
-    def _estimate_single_tag(
-        self, targets: list, cam_idx: int
-    ) -> tuple[Pose3d, Pose2d, bool] | None:
-        """Estimate robot pose from the best single tag using transform math.
-
-        Uses pre-computed camera-to-target transforms from PhotonVision
-        instead of running SolvePnP on the RoboRIO.
-
-        Returns (pose3d, twod_pose, is_gyro_fused) or None.
-        """
-        if not targets:
-            return None
-
-        # Pick the lowest ambiguity target
-        target = min(targets, key=lambda t: t.getPoseAmbiguity())
-        tag_id = target.getFiducialId()
-        tag_pose = self.field.getTagPose(tag_id)
-        if tag_pose is None:
-            return None
-
-        # Compute robot pose: field_to_tag * inv(cam_to_tag) * inv(robot_to_cam)
-        camera_to_target = target.getBestCameraToTarget()
-        # TODO: This is giving us a heading that's 180 degrees off I think.
-        robot_pose_3d = tag_pose.transformBy(
-            camera_to_target.inverse()
-        ).transformBy(
-            self._camera_offsets_inv[cam_idx]
-        )
-
-        twod_pose = robot_pose_3d.toPose2d()
-
-        # Correct the heading by 180 degrees
-        vision_heading = twod_pose.rotation().radians()
-        flipped_heading = (vision_heading + math.pi) % math.tau
-        twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
-        # Check if we can fuse with gyro heading for better accuracy
-        is_gyro_fused = False
-        if len(self._yaw_rate_history) >= 5:
-            max_recent_yaw_rate = max(abs(yr) for yr in self._yaw_rate_history)
-            if max_recent_yaw_rate <= 5.0:
-                gyro_heading = self.drivetrain.get_rotation()
-                twod_pose = Pose2d(twod_pose.x, twod_pose.y, gyro_heading)
-                is_gyro_fused = True
-
-        return robot_pose_3d, twod_pose, is_gyro_fused
+    # Only needed for single-tag estimation
+    # def _estimate_single_tag(
+    #     self, targets: list, cam_idx: int
+    # ) -> tuple[Pose3d, Pose2d, bool] | None:
+    #     """Estimate robot pose from the best single tag using transform math.
+    #
+    #     Uses pre-computed camera-to-target transforms from PhotonVision
+    #     instead of running SolvePnP on the RoboRIO.
+    #
+    #     Returns (pose3d, twod_pose, is_gyro_fused) or None.
+    #     """
+    #     if not targets:
+    #         return None
+    #
+    #     # Pick the lowest ambiguity target
+    #     target = min(targets, key=lambda t: t.getPoseAmbiguity())
+    #     tag_id = target.getFiducialId()
+    #     tag_pose = self.field.getTagPose(tag_id)
+    #     if tag_pose is None:
+    #         return None
+    #
+    #     # Compute robot pose: field_to_tag * inv(cam_to_tag) * inv(robot_to_cam)
+    #     camera_to_target = target.getBestCameraToTarget()
+    #     robot_pose_3d = tag_pose.transformBy(
+    #         camera_to_target.inverse()
+    #     ).transformBy(
+    #         self._camera_offsets_inv[cam_idx]
+    #     )
+    #
+    #     twod_pose = robot_pose_3d.toPose2d()
+    #
+    #     # Correct the heading by 180 degrees
+    #     vision_heading = twod_pose.rotation().radians()
+    #     flipped_heading = (vision_heading + math.pi) % math.tau
+    #     twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
+    #     # Check if we can fuse with gyro heading for better accuracy
+    #     is_gyro_fused = False
+    #     if len(self._yaw_rate_history) >= 5:
+    #         max_recent_yaw_rate = max(abs(yr) for yr in self._yaw_rate_history)
+    #         if max_recent_yaw_rate <= 5.0:
+    #             gyro_heading = self.drivetrain.get_rotation()
+    #             twod_pose = Pose2d(twod_pose.x, twod_pose.y, gyro_heading)
+    #             is_gyro_fused = True
+    #
+    #     return robot_pose_3d, twod_pose, is_gyro_fused
 
     def execute(self) -> None:
-        robot_pose = self.drivetrain.get_pose()
 
         disabled = is_disabled()
         setDevs = self.drivetrain.estimator.setVisionMeasurementStdDevs
 
-        # Update yaw rate history (deque auto-evicts oldest)
-        yaw_rate = self.drivetrain.get_rotational_velocity()
-        self._yaw_rate_history.append(yaw_rate)
+        # Only needed for single-tag gyro-fused fallback
+        # yaw_rate = self.drivetrain.get_rotational_velocity()
+        # self._yaw_rate_history.append(yaw_rate)
 
         # Collect valid estimates from all cameras for fusion
         valid_estimates: list[tuple[Pose2d, float, tuple[float, float, float]]] = []
 
-        for cam_idx, (cam, pose_est, pub) in enumerate(zip(
-            self.cameras, self.pose_estimators, self.publishers
-        )):
+        # No need for cam_idx if not using _reject_estimate
+        # for cam_idx, (cam, pose_est, pub) in enumerate(zip(
+        #     self.cameras, self.pose_estimators, self.publishers
+        # )):
+
+        for (cam, pose_est, pub) in zip(
+            self.cameras, self.pose_estimators, self.publishers, strict=True
+        ):
             res = cam.getLatestResult()
             if not res:
                 continue
@@ -286,16 +291,16 @@ class VisionComponent:
 
             # Try multi-tag estimation first (most accurate)
             pupdate = pose_est.estimateCoprocMultiTagPose(res)
-            is_gyro_fused = False
-
-            if pupdate is not None:
-                pose3d = pupdate.estimatedPose
-                twod_pose = pose3d.toPose2d()
-                ts = pupdate.timestampSeconds
-            else:
+            if pupdate is None:
+                # No updated multi-tag pose? We skip this loop
                 continue
-            vision_heading = twod_pose.rotation().radians()
-            twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(vision_heading))
+
+            # is_gyro_fused = False  # Only used for single-tag estimation
+            ts = pupdate.timestampSeconds
+            pose3d = pupdate.estimatedPose
+            # TODO: Should we check the Z axis and reject things that aren't
+            # very close to the floor?
+            twod_pose = pose3d.toPose2d()
             pub.set(twod_pose)
 
             # Compute std devs
@@ -307,10 +312,16 @@ class VisionComponent:
             if avg_dist > 2.0 and not disabled:
                 continue
 
-            std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
-
+            # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
             # Record timestamp
-            self._last_timestamps[cam_idx] = ts
+            # Only used in _reject_estimate which is not active.
+            # self._last_timestamps[cam_idx] = ts
+
+            std_factor = (avg_dist ** 2) / tag_count
+            std_xy = self.linear_baseline_std * std_factor
+            std_rot = self.angular_baseline * std_factor
+            std_devs = (std_xy, std_xy, std_rot)
+
 
             valid_estimates.append((twod_pose, ts, std_devs))
 
