@@ -72,11 +72,6 @@ class GasPump(StateMachine):
         self.singulator.forward()
 
     @state(must_finish=True)
-    def singulator_spin_up(self) -> None:
-        self.shooter.spin_up()
-        self.singulator.forward()
-
-    @state(must_finish=True)
     def intake_running(self, initial_call: bool) -> None:
         if initial_call:
             self.singulator.forward()

@@ -67,7 +67,6 @@ class RebuiltDriver:
 
     def reset_yaw(self):
         return self.controller.getPOV() == 180
-        print("fadskljflas")
 
     def turret_left(self) -> float:
         return 0.6 if self.controller.getPOV() == 270 else 0.0
@@ -75,14 +74,7 @@ class RebuiltDriver:
     def turret_right(self) -> float:
         return -0.6 if self.controller.getPOV() == 90 else 0.0
 
-    # def intake_idle(self):
-    #     return self.controller.getLeftBumperButtonPressed()
-
-    # def eject(self):
-        return self.controller.getXButtonPressed()
-
     def intake_up(self):
         return self.controller.getYButtonPressed()
-        print('YESSSS')
 
 

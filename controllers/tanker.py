@@ -4,7 +4,7 @@ from wpimath.geometry import Pose2d
 from magicbot import StateMachine, state
 
 from components.drivetrain import DrivetrainComponent
-from components.turret import TurretComponent
+from components.shot_calculator import ShotCalculatorComponent
 from utilities.game import is_red
 from choreo import load_swerve_trajectory
 
@@ -14,21 +14,20 @@ class Tanker(StateMachine):
     ROTATION_TOLERANCE_DEG = 1.0
 
     drivetrain: DrivetrainComponent
-    turret: TurretComponent
+    shot_calc: ShotCalculatorComponent
 
     stick_x, stick_y, stick_o = 0, 0, 0
-    alliance_loaded = None
 
 
     def __init__(self):
         super().__init__()
-        self.target_pose: Pose2d = Pose2d()
         self.target_pose_pub = (
             ntcore.NetworkTableInstance
             .getDefault()
             .getStructTopic("/components/tanker/target_pose", Pose2d)
             .publish()
         )
+        self._last_drive_mode = self.go_drive_local
 
     def set_stick_values(self, x: float, y: float, rot: float):
         self.stick_x = x
@@ -43,7 +42,7 @@ class Tanker(StateMachine):
             self.go_drive_field()
 
     def go_drive_field(self):
-        self.drivetrain.stop_snapping()
+        self._last_drive_mode = self.go_drive_field
         if self.current_state != self.drive_field.name:
             self.drivetrain.stop_snapping()
             self.next_state_now(self.drive_field)
@@ -54,37 +53,31 @@ class Tanker(StateMachine):
 
     @state(first=True, must_finish=True)
     def drive_field(self, initial_call: bool):
-        if initial_call:
-            # Clear out any trajectory we're runnning
-            ...
         x = -self.stick_x if is_red() else self.stick_x
         y = -self.stick_y if is_red() else self.stick_y
         self.drivetrain.drive_field(x, y, self.stick_o)
 
     @state(first=False, must_finish=True)
     def drive_auto_target(self, initial_call: bool):
-        if initial_call:
-            # Clear out any trajectory we're runnning
-            ...
         x = -self.stick_x if is_red() else self.stick_x
         y = -self.stick_y if is_red() else self.stick_y
-        self.drivetrain.snap_to_heading(self.turret.field_angle + math.pi)
+        self.drivetrain.snap_to_heading(self.shot_calc.field_angle + math.pi)
         self.drivetrain.drive_field(x, y, 0)
 
     def go_drive_local(self):
+        self._last_drive_mode = self.go_drive_local
         if self.current_state != self.drive_local.name:
             self.drivetrain.stop_snapping()
             self.next_state_now(self.drive_local)
 
+    def go_drive_last_mode(self):
+        self._last_drive_mode()
+
     @state(must_finish=True)
     def drive_local(self, initial_call: bool):
-        if initial_call:
-            # Clear out any trajectory we're runnning
-            ...
         x = self.stick_x
         y = self.stick_y
         self.drivetrain.drive_local(x, y, self.stick_o)
-
 
     def go_drive_pose(self, target_pose:Pose2d) -> None:
         self.target_pose = target_pose
@@ -101,12 +94,13 @@ class Tanker(StateMachine):
         dist = math.sqrt(tdiff.x**2 + tdiff.y**2)
         at_pos = dist < self.POSITION_TOLERANCE_M and abs(tdiff.rotation().degrees()) < self.ROTATION_TOLERANCE_DEG
         if at_pos:
-            self.go_drive_field()
-
+            self._last_drive_mode()
 
     def go_follow_path(self, path_name:str) -> None:
         #load choreo path
         self.traj = load_swerve_trajectory(path_name)
+        # JJB: Not sure about this bit, we should be letting vision and odometry
+        # tell us where we are not, the trajectory.
         sample = self.traj.sample_at(0.0, is_red())
         assert sample
         sp = sample.get_pose()
@@ -117,13 +111,13 @@ class Tanker(StateMachine):
 
     @state(must_finish=True)
     def follow_path(self, initial_call: bool, state_tm: float):
-       pose = self.drivetrain.get_pose()
-       end_pose = self.traj.get_final_pose(is_red())
-       assert end_pose
-       dist = pose.relativeTo(end_pose).translation().norm()
-       angle_diff = pose.relativeTo(end_pose).rotation().degrees()
-       if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
-           self.go_drive_field()
-       sample = self.traj.sample_at(state_tm, is_red())
-       assert sample
-       self.drivetrain.follow_path(sample)
+        pose = self.drivetrain.get_pose()
+        end_pose = self.traj.get_final_pose(is_red())
+        assert end_pose
+        dist = pose.relativeTo(end_pose).translation().norm()
+        angle_diff = pose.relativeTo(end_pose).rotation().degrees()
+        if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
+            self._last_drive_mode()
+        sample = self.traj.sample_at(state_tm, is_red())
+        assert sample
+        self.drivetrain.follow_path(sample)

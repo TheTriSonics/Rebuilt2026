@@ -2,6 +2,7 @@ import math
 import wpilib
 
 from magicbot import tunable, MagicRobot
+from components.shot_calculator import ShotCalculatorComponent
 from components.battery_monitor import BatteryMonitorComponent
 from components.drivetrain import DrivetrainComponent
 from components.vision import VisionComponent
@@ -36,15 +37,17 @@ class MyRobot(MagicRobot):
     tanker: Tanker
     gaspump: GasPump
 
-    # Components
-    gyro: GyroComponent
-    drivetrain: DrivetrainComponent
-    vision: VisionComponent
-    turret: TurretComponent
+    # Components, the order they are declared in determines which one's
+    # execute() goes first. This means we can order things a bit.
     kicker: KickerComponent
     climber: ClimberComponent
     singulator: SingulatorComponent
     intake: IntakeComponent
+    gyro: GyroComponent
+    vision: VisionComponent
+    drivetrain: DrivetrainComponent
+    shot_calc: ShotCalculatorComponent
+    turret: TurretComponent
     shooter: ShooterComponent
     leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
@@ -55,8 +58,6 @@ class MyRobot(MagicRobot):
     max_speed = tunable(8.0)
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
-    target_tag = tunable(21)
-    shooter_rps_target = tunable(50.0)
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -84,7 +85,7 @@ class MyRobot(MagicRobot):
         self.drivetrain.reset_yaw()
         self.tanker.engage()
         selected = self.auton_chooser.getSelected()
-        self.turret.set_target("hub")
+        self.shot_calc.set_target("hub")
         if selected:
             self.tanker.go_follow_path(selected)
         else:
@@ -103,7 +104,9 @@ class MyRobot(MagicRobot):
         if not OPERATOR_DEBUG:
             self.gaspump.engage()
         self.tanker.go_drive_local()
-        self.turret.set_target("hub")
+        self.shot_calc.set_target("hub")
+        # self.drivetrain.set_pose(Pose2d(14.2, 5.0, -1.34))
+        # self.gyro.reset_heading(math.degrees(-1.34))
 
     def teleopPeriodic(self):
         if self.battery_monitor.is_stop_active():
@@ -136,16 +139,17 @@ class MyRobot(MagicRobot):
             self.intake.rotate_up()
 
         if self.driver_controller.target_lob_left():
-            self.turret.set_target("left")
+            self.shot_calc.set_target("left")
             self.tanker.go_drive_auto_target()
         elif self.driver_controller.target_lob_right():
-            self.turret.set_target("right")
+            self.shot_calc.set_target("right")
             self.tanker.go_drive_auto_target()
         elif self.driver_controller.target_hub():
-            self.turret.set_target("hub")
+            self.shot_calc.set_target("hub")
             self.tanker.go_drive_auto_target()
         else:
-            self.tanker.go_drive_local()
+            self.tanker.go_drive_last_mode()
+
         # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
         # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
         # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
@@ -157,7 +161,7 @@ class MyRobot(MagicRobot):
             self.intake.tilt()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
-        if self.operator_controller.eject():  # X 
+        if self.operator_controller.eject():  # X
             self.gaspump.go_eject()
         if self.operator_controller.shooter_shoot(): # Right bumper
             self.gaspump.go_shoot()
@@ -165,15 +169,21 @@ class MyRobot(MagicRobot):
             self.gaspump.go_shoot_off()
 
         if self.operator_controller.turret_aim_hub():
-            self.turret.set_target("hub")
+            self.shot_calc.set_target("hub")
         if self.operator_controller.turret_aim_left():
-            self.turret.set_target("left")
+            self.shot_calc.set_target("left")
         if self.operator_controller.turret_aim_right():
-            self.turret.set_target("right")
+            self.shot_calc.set_target("right")
 
 
     def disabledPeriodic(self):
+        # this keeps us updating odometry even when disabled, vision will put
+        # us where it can
         self.vision.execute()
+        self.drivetrain.update_odometry()
+        # If a new auton mode is selected set the drivetrain's position to that
+        # vision will correct any subtle differences (hopefully!) before it
+        # starts running.
         selected = self.auton_chooser.getSelected()
         if selected != self._last_auton_selection:
             self._last_auton_selection = selected

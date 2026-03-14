@@ -1,9 +1,5 @@
-from math import atan2, sqrt
-
 import math
-import wpilib
 import ntcore
-from wpimath import units
 from magicbot import tunable, feedback
 from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Pose2d, Rotation2d, Translation2d, Transform2d
 
@@ -26,28 +22,16 @@ from phoenix6.signals import (
     SensorDirectionValue,
 )
 
-from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
-from utilities.game import is_red
+from components.shot_calculator import ShotCalculatorComponent
 import ids
 
 _shooter_height = 0.15  # meters
-_goal_height = 2.00  # meters
 
-# Fixed field targets derived from AprilTag positions (k2026RebuiltWelded, meters)
-_BLUE_HUB    = Translation3d(4.626, 4.035, _goal_height)
-_RED_HUB     = Translation3d(11.916, 4.035, _goal_height)
-_FIELD_LENGTH = 16.541
-_FIELD_WIDTH  = 8.069
 
 class TurretComponent:
     gyro: GyroComponent
-    drivetrain: DrivetrainComponent
-
-    flight_time = tunable(1.0)
-    # Lob target offsets from corner of own alliance zone (meters, ~4 ft default)
-    lob_alliance_wall_offset = tunable(1.219)  # distance inward from end wall (X axis)
-    lob_side_wall_offset     = tunable(1.219)  # distance inward from side wall (Y axis)
+    shot_calc: ShotCalculatorComponent
 
     config_limits = tunable(False)
     stator_current_limit = tunable(20.0)
@@ -60,27 +44,6 @@ class TurretComponent:
     turret_motor = TalonFX(ids.TalonId.TURRET_TURN.id, ids.TalonId.TURRET_TURN.bus)
 
     def __init__(self):
-        self.shot_dx = 0.0
-        self.shot_dy = 0.0
-        self.field_angle = 0.0
-        self.desired_turret_angle_relative_to_robot = 0.0
-        self.desired_turret_pos = 0.0
-        self.goal_pose = Pose3d()
-
-        # We'll use this to debug targetting. Right now it shows where the
-        # robot's turret should be aiming at if it were to launch a fuel cell
-        self.targets = (
-            ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic('/components/turret/fuel_target', Pose3d)
-            .publish()
-        )
-
-        self.position = (
-            ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic('/components/turret/position', Pose3d)
-            .publish()
-        )
-
         # Configure motor output
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.BRAKE
@@ -127,11 +90,16 @@ class TurretComponent:
 
         self.motor_request = MotionMagicDutyCycle(0, override_brake_dur_neutral=True)
 
-        self.active_target = Pose3d()
+        self.position = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic('/components/turret/position', Pose3d)
+            .publish()
+        )
+        self.desired_turret_pos = 0.0
+
 
     def setup(self):
         self._apply_current_limits()
-        self.set_target("hub")
 
     def _apply_current_limits(self):
         current_limits_config = (
@@ -145,29 +113,6 @@ class TurretComponent:
         )
         self.turret_motor.configurator.apply(current_limits_config)
 
-    def set_target(self, name: str) -> None:
-        """Set the active aim target. name: 'hub', 'left', or 'right'.
-        Left/right are from the driver's perspective (blue faces high-X:
-        left=low-Y corner, right=high-Y corner of own alliance zone).
-        """
-        ax = self.lob_alliance_wall_offset
-        sy = self.lob_side_wall_offset
-        if is_red():
-            lookup = {
-                "hub":   _RED_HUB,
-                "left":  Translation3d(_FIELD_LENGTH - ax, sy, 0),
-                "right": Translation3d(_FIELD_LENGTH - ax, _FIELD_WIDTH - sy, 0),
-            }
-        else:
-            lookup = {
-                "hub":   _BLUE_HUB,
-                "left":  Translation3d(ax, _FIELD_WIDTH - sy, 0),
-                "right": Translation3d(ax, sy, 0),
-            }
-        if name not in lookup:
-            raise ValueError(f"Unknown turret target {name!r}. Valid: {list(lookup)}")
-        self.active_target = Pose3d(lookup[name], Rotation3d(0, 0, 0))
-        self.targets.set(self.active_target)
 
     @feedback
     def get_turret_pos_actual(self) -> float:
@@ -177,58 +122,12 @@ class TurretComponent:
     def get_turret_pos_desired(self) -> float:
         return self.desired_turret_pos
 
-    @feedback
-    def get_field_shot_angle(self) -> float:
-        return self.field_angle
-
-    @feedback
-    def get_desired_turret_angle_rtr(self) -> float:
-        return self.desired_turret_angle_relative_to_robot
-
-
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
 
-        # Auto-tracking
-        curr_pose = self.drivetrain.get_pose()
-
-        # Take the robot's current pose, go back X inches to get to where the
-        # turret is and use that to calculate our angle on the field to the
-        # desired target
-        turret_pose = curr_pose.transformBy(
-            Transform2d(Translation2d(units.inchesToMeters(-9.5), 0),
-                        Rotation2d.fromDegrees(0)
-            )
-        )
-        # Get x and y speeds from the drivetrain; it can average things out over
-        # time to give a smooth reading.
-        robotvx = self.drivetrain.vx
-        robotvy = self.drivetrain.vy
-        # Calculate where the target is relative to our velocites, this is our
-        # actual aiming point.
-        futurex: float = self.active_target.translation().x - robotvx * self.flight_time
-        futurey: float = self.active_target.translation().y - robotvy * self.flight_time
-
-        # TODO: Turn this off if an FMS is connected. Debug only.
-        self.goal_pose = Pose3d(
-            Translation3d(futurex, futurey, self.active_target.translation().z),
-            Rotation3d(0, 0, 0),
-        )
-        self.targets.set(self.goal_pose)
-
-        # Now find the difference in x and y coordinates between the turret and
-        # the future target position.
-        shot_dx = futurex - turret_pose.translation().x
-        shot_dy = futurey - turret_pose.translation().y
-        # field_angle = self.get_field_shot_angle()
-        self.field_angle = atan2(shot_dy, shot_dx)
-        # This should be used to perform the same thing the shooter does to
-        # determine rps of the shooter. We can then take rps and that into a
-        # flight time.
-        self.flight_time = 0.65
-
+        self.field_angle = self.shot_calc.field_angle
         self.desired_turret_angle_relative_to_robot = (
             self.field_angle - math.radians(self.gyro.get_heading())
         )
@@ -237,8 +136,8 @@ class TurretComponent:
         # TODO: Turn this off if an FMS is connected. Debug only.
         turret_viz = Pose3d(
             Translation3d(
-                turret_pose.translation().x,
-                turret_pose.translation().y,
+                self.shot_calc.shooter_pose.translation().x,
+                self.shot_calc.shooter_pose.translation().y,
                 _shooter_height + 0.5
             ),
             Rotation3d(0, 0, self.field_angle),

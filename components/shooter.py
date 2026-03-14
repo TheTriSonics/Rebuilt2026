@@ -4,16 +4,14 @@ from phoenix6.controls import VelocityTorqueCurrentFOC, VoltageOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs
 from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
 
-from components.drivetrain import DrivetrainComponent
-from components.turret import TurretComponent
-from wpimath.geometry import Transform2d, Rotation2d
+from components.shot_calculator import ShotCalculatorComponent
+from wpimath.units import metersToInches
 
 import ids
 
 
 class ShooterComponent:
-    drivetrain: DrivetrainComponent
-    turret: TurretComponent
+    shot_calc: ShotCalculatorComponent
 
     shooter_front = TalonFX(ids.TalonId.SHOOTER_FRONT.id, ids.TalonId.SHOOTER_FRONT.bus)
     shooter_rear = TalonFX(ids.TalonId.SHOOTER_REAR.id, ids.TalonId.SHOOTER_REAR.bus)
@@ -107,10 +105,7 @@ class ShooterComponent:
         return front_vel >= target * 0.95 and rear_vel >= target * 0.95
 
     def calc_rps(self) -> float:
-        from wpimath.units import inchesToMeters, metersToInches
-        robot_pose = self.drivetrain.get_pose()
-        turret_pose = robot_pose.transformBy(Transform2d(inchesToMeters(-9.0), 0, Rotation2d(0)))
-        dist = turret_pose.relativeTo(self.turret.goal_pose.toPose2d()).translation().norm()
+        dist = self.shot_calc.get_field_shot_distance()
         dist_in = metersToInches(dist)
         rps = self.coef * dist_in + self.base
         rps = min(rps, 90)
