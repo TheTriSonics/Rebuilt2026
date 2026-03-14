@@ -94,13 +94,17 @@ class Left_blue_simple(AutonBase):
 
         return sample.get_pose()
     
-    # def intake_pose(self) -> Pose2d:
-    #     intake_off_time = self.traj.splits[2] * 0.02
-    #     intake_off_sample = self.traj.sample_at(intake_off_time, is_red()) 
-    #     assert intake_off_sample
-    #     self.intake_off_pose = intake_off_sample.get_pose()
+    def intake_pose(self) -> Pose2d:
+        intake_off_time = self.traj.splits[2] * 0.02
+        intake_off_sample = self.traj.sample_at(intake_off_time, is_red()) 
+        assert intake_off_sample
+        self.intake_off_pose = intake_off_sample.get_pose()
 
-    #     return self.intake_off_pose
+        sample = self.traj.sample_at(0.0, is_red())
+        assert sample
+
+        return sample.get_pose()
+
 
     def shooter_pose(self) -> Pose2d:
         shooter_on_time = self.traj.splits[3] * 0.02
@@ -108,9 +112,10 @@ class Left_blue_simple(AutonBase):
         assert shooter_on_sample
         self.shooter_on_pose = shooter_on_sample.get_pose()
 
-        return self.shooter_on_pose
+        sample = self.traj.sample_at(0.0, is_red())
+        assert sample
 
-        
+        return sample.get_pose()
 
 
     @state(first=True, must_finish=True)
@@ -121,8 +126,8 @@ class Left_blue_simple(AutonBase):
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.gaspump.go_intake()
 
-        # if self.at_pose(self.intake_off_pose, tolerance=0.15):
-        #     self.gaspump.waiting()
+        if self.at_pose(self.intake_off_pose, tolerance=0.15):
+            self.gaspump.waiting()
 
         if self.at_pose(self.shooter_on_pose, tolerance=0.15):
             self.gaspump.go_shoot()
