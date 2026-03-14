@@ -301,6 +301,7 @@ class VisionComponent:
             # TODO: Should we check the Z axis and reject things that aren't
             # very close to the floor?
             twod_pose = pose3d.toPose2d()
+            # TODO: Reject poses more than 1 meter away when we're enabled
             pub.set(twod_pose)
 
             # Compute std devs

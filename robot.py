@@ -23,12 +23,12 @@ from hid.xbox_operator import RebuiltOperator
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
 from utilities.game import is_sim, is_red
+from utilities.scalers import clamp_degrees
 from choreo import load_swerve_trajectory
 from math import cos, sin
 
 
 OPERATOR_DEBUG = False
-
 
 
 class MyRobot(MagicRobot):
@@ -66,15 +66,6 @@ class MyRobot(MagicRobot):
         wpilib.DriverStation.startDataLog(self.data_log, logJoysticks=True)
         wpilib.SmartDashboard.putData(self.field)
 
-        self.auton_chooser = wpilib.SendableChooser()
-        self.auton_chooser.setDefaultOption("Do Nothing", "")
-        self.auton_chooser.addOption("Ball Path", "ball_path")
-        self.auton_chooser.addOption("Go To Player Station", "go_to_player_station")
-        self.auton_chooser.addOption("Left Blue Simple", "Left_blue_simple")
-        self.auton_chooser.addOption("Middle Hang", "middle_hang")
-        self.auton_chooser.addOption("Right Blue Simple", "right_blue_simple")
-        self.auton_chooser.addOption("Test Path", "test_path")
-        wpilib.SmartDashboard.putData("Auto Mode", self.auton_chooser)
         self._last_auton_selection = None
 
         if is_sim():
@@ -84,12 +75,7 @@ class MyRobot(MagicRobot):
     def autonomousInit(self):
         self.drivetrain.reset_yaw()
         self.tanker.engage()
-        selected = self.auton_chooser.getSelected()
-        self.shot_calc.set_target("hub")
-        if selected:
-            self.tanker.go_follow_path(selected)
-        else:
-            self.tanker.go_drive_local()
+        self.gaspump.engage()
 
     def autonomousPeriodic(self):
         # MagicBot handles periodic execution; this never runs but is left as
@@ -181,15 +167,18 @@ class MyRobot(MagicRobot):
         # us where it can
         self.vision.execute()
         self.drivetrain.update_odometry()
+        # Force the gyro to honor our estimated pose that way it'll align when we begin auton
+        heading = clamp_degrees(self.drivetrain.get_pose().rotation().degrees())
+        wpilib.SmartDashboard.putNumber("Estimated Heading", heading)
+        self.gyro.reset_heading(heading)
         # If a new auton mode is selected set the drivetrain's position to that
         # vision will correct any subtle differences (hopefully!) before it
         # starts running.
-        selected = self.auton_chooser.getSelected()
+
+        selected = self._automodes.chooser.getSelected()
         if selected != self._last_auton_selection:
             self._last_auton_selection = selected
             if selected:
-                traj = load_swerve_trajectory(selected)
-                sample = traj.sample_at(0.0, is_red())
-                assert sample
-                self.drivetrain.set_pose(sample.get_pose())
+                initial_pose = selected.get_initial_pose()
+                self.drivetrain.set_pose(initial_pose)
 

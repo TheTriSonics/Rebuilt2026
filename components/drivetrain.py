@@ -447,9 +447,6 @@ class DrivetrainComponent:
         self._vy_samples.append(dy / dt)
         self.vx = sum(self._vx_samples) / float(len(self._vx_samples))
         self.vy = sum(self._vy_samples) / float(len(self._vy_samples))
-        pn = wpilib.SmartDashboard.putNumber
-        pn("vx", self.vx)
-        pn("vy", self.vy)
         self.fused_pose_pub.set(curr_pose)
         if self.send_modules:
             self.setpoints_publisher.set([module.state for module in self.modules])

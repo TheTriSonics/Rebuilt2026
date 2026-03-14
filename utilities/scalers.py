@@ -50,3 +50,6 @@ def scale_value(
 
 def lerp(value: float, lo: float, hi: float) -> float:
     return value * (hi - lo) + lo
+
+def clamp_degrees(angle: float) -> float:
+    return (angle + 180) % 360 - 180

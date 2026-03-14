@@ -3,6 +3,8 @@ from phoenix6.hardware import Pigeon2
 from wpimath.geometry import Rotation2d
 
 from ids import CanId
+from utilities.scalers import clamp_degrees
+
 
 
 class GyroComponent:
@@ -16,7 +18,7 @@ class GyroComponent:
 
     @feedback
     def get_heading(self) -> float:
-        return self.pigeon.get_yaw().value + self.offset
+        return clamp_degrees(self.pigeon.get_yaw().value + self.offset)
 
     def get_Rotation2d(self) -> Rotation2d:
         return Rotation2d.fromDegrees(self.get_heading())

@@ -1,4 +1,5 @@
 import math
+from choreo.trajectory import SwerveTrajectory
 import ntcore
 from wpimath.geometry import Pose2d
 from magicbot import StateMachine, state
@@ -96,11 +97,22 @@ class Tanker(StateMachine):
         if at_pos:
             self._last_drive_mode()
 
+    # JJB: We may remove this
     def go_follow_path(self, path_name:str) -> None:
         #load choreo path
         self.traj = load_swerve_trajectory(path_name)
         # JJB: Not sure about this bit, we should be letting vision and odometry
         # tell us where we are not, the trajectory.
+        sample = self.traj.sample_at(0.0, is_red())
+        assert sample
+        sp = sample.get_pose()
+        self.drivetrain.set_pose(sp)
+
+        if self.current_state != self.follow_path.name:
+            self.next_state_now(self.follow_path)
+
+    def go_follow_traj(self, traj: SwerveTrajectory) -> None:
+        self.traj = traj
         sample = self.traj.sample_at(0.0, is_red())
         assert sample
         sp = sample.get_pose()

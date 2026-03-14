@@ -145,4 +145,4 @@ class TurretComponent:
         self.position.set(turret_viz)
 
         # self.turret_motor.set_control(self.motor_request.with_position(0.5))
-        self.turret_motor.set_control(self.motor_request.with_position(self.desired_turret_pos))
+        # self.turret_motor.set_control(self.motor_request.with_position(self.desired_turret_pos))
