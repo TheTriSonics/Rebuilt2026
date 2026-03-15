@@ -100,7 +100,7 @@ class Left_blue_simple(AutonBase):
         assert intake_off_sample
         self.intake_off_pose = intake_off_sample.get_pose()
 
-        sample = self.traj.sample_at(0.0, is_red())
+        sample = self.traj.sample_at(2.67, is_red())
         assert sample
 
         return sample.get_pose()
@@ -112,7 +112,7 @@ class Left_blue_simple(AutonBase):
         assert shooter_on_sample
         self.shooter_on_pose = shooter_on_sample.get_pose()
 
-        sample = self.traj.sample_at(0.0, is_red())
+        sample = self.traj.sample_at(3.58, is_red())
         assert sample
 
         return sample.get_pose()
