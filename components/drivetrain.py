@@ -397,6 +397,12 @@ class DrivetrainComponent:
         self.snapping_to_heading = False
         self.snap_heading = None
 
+    def is_heading_aligned(self) -> bool:
+        """Returns True when the heading snap controller has reached its goal."""
+        if not self.snapping_to_heading or self.snap_heading is None:
+            return False
+        return self.heading_controller.atGoal()
+
     def execute(self) -> None:
         if self.snapping_to_heading:
             self.chassis_speeds.omega = self.heading_controller.calculate(

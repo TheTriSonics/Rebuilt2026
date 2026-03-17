@@ -67,7 +67,10 @@ class MyRobot(MagicRobot):
             wpilib.DriverStation.silenceJoystickConnectionWarning(True)
 
     def autonomousInit(self):
-        self.drivetrain.reset_yaw()
+        curr_pose = self.drivetrain.get_pose()
+        # resetPosition (called inside set_pose) re-syncs the gyro offset
+        # internally, so we don't need to reset the hardware gyro
+        self.drivetrain.set_pose(curr_pose)
         self.tanker.engage()
         self.gaspump.engage()
 

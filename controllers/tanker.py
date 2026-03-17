@@ -121,6 +121,13 @@ class Tanker(StateMachine):
         if self.current_state != self.follow_path.name:
             self.next_state_now(self.follow_path)
 
+    def go_follow_traj_no_reset(self, traj: SwerveTrajectory) -> None:
+        """Follow a trajectory without resetting the drivetrain pose.
+        Use when resuming after a mid-path action so vision corrections are preserved."""
+        self.traj = traj
+        if self.current_state != self.follow_path.name:
+            self.next_state_now(self.follow_path)
+
     @state(must_finish=True)
     def follow_path(self, initial_call: bool, state_tm: float):
         pose = self.drivetrain.get_pose()

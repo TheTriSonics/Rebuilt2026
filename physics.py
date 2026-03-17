@@ -120,11 +120,6 @@ class PhysicsEngine:
         ]
 
         self.manip_motors: list[Falcon500MotorSim] = [
-            Falcon500MotorSim(
-                self.robot.climber.climber,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
             # Falcon500MotorSim(
             #     self.robot.intake.rotate,
             #     gearing=1,
@@ -136,32 +131,30 @@ class PhysicsEngine:
             #     moi=0.0009972 * 4,
             # ),
             Falcon500MotorSim(
-                self.robot.turret.turret_motor,
-                gearing=1,
-                moi=0.0009972 * 4,
-            ),
-            Falcon500MotorSim(
                 self.robot.kicker.kicker,
                 gearing=1,
                 moi=0.0009972 * 2,
             ),
             Falcon500MotorSim(
-                self.robot.shooter.shooter_front,
+                self.robot.shooter.shooter_left,
                 gearing=1,
                 # 2x 3" Colson wheels (~0.1 kg each, r=0.0381m) + 10%
                 moi=0.00016,
             ),
             Falcon500MotorSim(
-                self.robot.shooter.shooter_rear,
+                self.robot.shooter.shooter_right,
                 gearing=1,
                 moi=0.00016,
             ),
             Falcon500MotorSim(
-                self.robot.singulator.singulator,
+                self.robot.shooter.shooter_hood,
                 gearing=1,
-                moi=0.0009972 * 4,
+                moi=0.00016,
             ),
         ]
+
+        # Lagged steer angles for sim — makes turning feel more like the real robot
+        self._sim_steer_angles = [0.0] * 4
 
         self.current_yaw = 0.0
         self.gyro = robot.gyro.pigeon.sim_state  # Access the Pigeon 2's sim state
@@ -243,11 +236,17 @@ class PhysicsEngine:
         for m in self.manip_motors:
             m.update(tm_diff)
 
-        for module in self.robot.drivetrain.modules:
-            # Set the cancoder to be what the module wants it to be.
+        # Track steer angles with a lag filter (25% per step) so turning in sim
+        # feels more like the real robot instead of instantaneous.
+        STEER_SIM_ALPHA = 0.35
+        for i, module in enumerate(self.robot.drivetrain.modules):
             desired_ang = module.state.angle.radians()
+            curr = self._sim_steer_angles[i]
+            # Use atan2 to correctly interpolate across the ±π wrap boundary
+            error = math.atan2(math.sin(desired_ang - curr), math.cos(desired_ang - curr))
+            self._sim_steer_angles[i] = curr + STEER_SIM_ALPHA * error
             sigma = (math.radians(0.5) / math.tau) / 2
-            raw = desired_ang / math.tau + np.random.normal(loc=0, scale=sigma)
+            raw = self._sim_steer_angles[i] / math.tau + np.random.normal(loc=0, scale=sigma)
             module.encoder.sim_state.set_raw_position(
                 raw - module.mag_offset
             )
@@ -258,6 +257,9 @@ class PhysicsEngine:
             self.swerve_modules[2].get(),
             self.swerve_modules[3].get(),
         ))
+
+        # Reduce sim turning speed to ~25% to better match real-robot feel
+        speeds.omega *= 0.25
 
         self.current_yaw += math.degrees(speeds.omega * tm_diff)
         sigma = (math.radians(0.5) / math.tau) / 2
