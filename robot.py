@@ -88,6 +88,7 @@ class MyRobot(MagicRobot):
         self.gaspump.go_stop()
         self.tanker.go_drive_local()
         self.shot_calc.set_target("hub")
+        self.drivetrain.stop_snapping()
         # self.drivetrain.set_pose(Pose2d(14.2, 5.0, -1.34))
         # self.gyro.reset_heading(math.degrees(-1.34))
 

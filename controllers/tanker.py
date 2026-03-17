@@ -119,6 +119,7 @@ class Tanker(StateMachine):
         self.drivetrain.set_pose(sp)
 
         if self.current_state != self.follow_path.name:
+            self.drivetrain.stop_snapping()
             self.next_state_now(self.follow_path)
 
     def go_follow_traj_no_reset(self, traj: SwerveTrajectory) -> None:
@@ -126,6 +127,7 @@ class Tanker(StateMachine):
         Use when resuming after a mid-path action so vision corrections are preserved."""
         self.traj = traj
         if self.current_state != self.follow_path.name:
+            self.drivetrain.stop_snapping()
             self.next_state_now(self.follow_path)
 
     @state(must_finish=True)

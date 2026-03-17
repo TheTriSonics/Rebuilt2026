@@ -259,7 +259,7 @@ class PhysicsEngine:
         ))
 
         # Reduce sim turning speed to ~25% to better match real-robot feel
-        speeds.omega *= 0.25
+        speeds.omega *= 0.35
 
         self.current_yaw += math.degrees(speeds.omega * tm_diff)
         sigma = (math.radians(0.5) / math.tau) / 2
