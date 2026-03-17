@@ -135,10 +135,10 @@ class Left_blue_simple(AutonBase):
             self.gaspump.go_shoot()
 
 
-class RightRed(AutonBase):
-    MODE_NAME = "RightRed"
+class RightBump(AutonBase):
+    MODE_NAME = "RightBump"
     DEFAULT = True
-    TRAJ_NAME = "RightRed"
+    TRAJ_NAME = "RightBump"
     traj = load_swerve_trajectory(TRAJ_NAME)
 
     SHOOT_TIMEOUT = tunable(4.0)
@@ -188,14 +188,14 @@ class RightRed(AutonBase):
         self._split_pose = split_sample.get_pose()
 
         # Diagnostics: confirm events loaded correctly
-        print(f"[RightRed] traj.events raw count: {len(self.traj.events)}")
-        print(f"[RightRed] seg1 events ({len(seg1_events)}): "
+        print(f"[RightBump] traj.events raw count: {len(self.traj.events)}")
+        print(f"[RightBump] seg1 events ({len(seg1_events)}): "
               + (", ".join(f"{e.event}@{e.timestamp:.2f}s" for e in seg1_events) or "NONE"))
-        print(f"[RightRed] seg2 events ({len(seg2_events)}): "
+        print(f"[RightBump] seg2 events ({len(seg2_events)}): "
               + (", ".join(f"{e.event}@{e.timestamp:.2f}s" for e in seg2_events) or "NONE"))
-        pn("RightRed/TrajEventCount", len(self.traj.events))
-        pn("RightRed/Seg1EventCount", len(seg1_events))
-        pn("RightRed/Seg2EventCount", len(seg2_events))
+        pn("RightBump/TrajEventCount", len(self.traj.events))
+        pn("RightBump/Seg1EventCount", len(seg1_events))
+        pn("RightBump/Seg2EventCount", len(seg2_events))
 
         sample = self.traj.sample_at(0.0, is_red())
         assert sample
@@ -205,9 +205,9 @@ class RightRed(AutonBase):
                        shoot_next_state: str) -> None:
         for e in events:
             if prev_t < e.timestamp <= curr_t:
-                print(f"[RightRed] event fired: {e.event} at t={e.timestamp:.2f}s")
-                pn("RightRed/LastEventTime", e.timestamp)
-                ps("RightRed/LastEvent", e.event)
+                print(f"[RightBump] event fired: {e.event} at t={e.timestamp:.2f}s")
+                pn("RightBump/LastEventTime", e.timestamp)
+                ps("RightBump/LastEvent", e.event)
                 if e.event == "IntakeOn":
                     self.intake.on()
                 elif e.event == "IntakeOff":
@@ -220,8 +220,8 @@ class RightRed(AutonBase):
         if initial_call:
             self.tanker.go_follow_traj(self._traj1)
             self._prev_t1 = 0.0
-            print(f"[RightRed] follow_segment_1 started, {len(self._traj1.events)} events to watch")
-        pn("RightRed/Seg1Time", state_tm)
+            print(f"[RightBump] follow_segment_1 started, {len(self._traj1.events)} events to watch")
+        pn("RightBump/Seg1Time", state_tm)
         self._handle_events(self._traj1.events, self._prev_t1, state_tm,
                             shoot_next_state="targeting")
         self._prev_t1 = state_tm
