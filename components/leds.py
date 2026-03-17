@@ -8,7 +8,6 @@ from phoenix6.signals import StripTypeValue, RGBWColor
 from components.intake import IntakeComponent
 from components.kicker import KickerComponent
 from components.shooter import ShooterComponent
-from components.singulator import SingulatorComponent
 import ids
 
 
@@ -33,9 +32,8 @@ def _rgbw_to_color8bit(color: RGBWColor) -> wpilib.Color8Bit:
 
 
 class LEDComponent:
-    intake: IntakeComponent
+    # intake: IntakeComponent
     kicker: KickerComponent
-    singulator: SingulatorComponent
     shooter: ShooterComponent
 
     RED = RGBWColor(255, 0, 0)
@@ -97,12 +95,9 @@ class LEDComponent:
             self.bulb_colors[BULB["Kicker"]] = self.GREEN
         else:
             self.bulb_colors[BULB["Kicker"]] = self.GREY
-        if self.singulator.is_forward():
-            self.bulb_colors[BULB["Singulator"]] = self.GREEN
-        elif self.singulator.is_reverse():
-            self.bulb_colors[BULB["Singulator"]] = self.RED
-        else:
-            self.bulb_colors[BULB["Singulator"]] = self.CYAN
+
+        self.bulb_colors[BULB["Singulator"]] = self.CYAN
+
         if self.shooter.is_at_speed():
             self.bulb_colors[BULB["Shooter"]] = self.GREEN
         elif self.shooter.is_active():

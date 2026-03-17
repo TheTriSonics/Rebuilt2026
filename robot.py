@@ -7,10 +7,8 @@ from components.battery_monitor import BatteryMonitorComponent
 from components.drivetrain import DrivetrainComponent
 from components.vision import VisionComponent
 from components.gyro import GyroComponent
-from components.turret import TurretComponent
 from components.kicker import KickerComponent
 from components.climber import ClimberComponent
-from components.singulator import SingulatorComponent
 from components.intake import IntakeComponent
 from components.leds import LEDComponent
 from components.shooter import ShooterComponent
@@ -28,8 +26,6 @@ from choreo import load_swerve_trajectory
 from math import cos, sin
 
 
-OPERATOR_DEBUG = False
-
 
 class MyRobot(MagicRobot):
     # Declare components and controllers here
@@ -40,16 +36,14 @@ class MyRobot(MagicRobot):
     # Components, the order they are declared in determines which one's
     # execute() goes first. This means we can order things a bit.
     kicker: KickerComponent
-    climber: ClimberComponent
-    singulator: SingulatorComponent
+    # climber: ClimberComponent
     intake: IntakeComponent
     gyro: GyroComponent
     vision: VisionComponent
     drivetrain: DrivetrainComponent
     shot_calc: ShotCalculatorComponent
-    turret: TurretComponent
     shooter: ShooterComponent
-    leds: LEDComponent
+    # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 
     apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
@@ -87,8 +81,8 @@ class MyRobot(MagicRobot):
         self.driver_controller = RebuiltDriver()
         self.operator_controller = RebuiltOperator()
         self.tanker.engage()
-        if not OPERATOR_DEBUG:
-            self.gaspump.engage()
+        self.gaspump.engage()
+        self.gaspump.go_stop()
         self.tanker.go_drive_local()
         self.shot_calc.set_target("hub")
         # self.drivetrain.set_pose(Pose2d(14.2, 5.0, -1.34))
@@ -142,7 +136,6 @@ class MyRobot(MagicRobot):
 
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.on()
-            self.singulator.forward()
         if self.operator_controller.intake_flip():  # Y button
             self.intake.tilt()
         if self.operator_controller.intake_idle():  # Left bumper

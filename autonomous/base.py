@@ -19,7 +19,7 @@ ps = SmartDashboard.putString
 # the coopertition bonus.
 class AutonBase(AutonomousStateMachine):
     drivetrain: DrivetrainComponent
-    intake: IntakeComponent
+    # intake: IntakeComponent
     gyro: GyroComponent
 
     pose_set = False

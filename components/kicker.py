@@ -13,11 +13,11 @@ class KickerComponent:
 
     kicker = TalonFX(ids.TalonId.KICKER.id, ids.TalonId.KICKER.bus)
 
-    target_speed = 0.0
+    kicker_speed = tunable(32.0)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(30.0)
-    supply_current_limit = tunable(40.0)
+    stator_current_limit = tunable(120.0)
+    supply_current_limit = tunable(120.0)
     supply_current_lower_limit = tunable(120.0)
     supply_current_lower_time = tunable(0.0)
 
@@ -74,7 +74,7 @@ class KickerComponent:
             self._apply_current_limits()
             self.config_limits = False
         if self.shooter.is_active():
-            self.target_speed = min(self.shooter.target_rps, 50)
+            self.target_speed = self.kicker_speed
         else:
             self.target_speed = 0.0
-        self.kicker.set_control(VelocityVoltage(self.target_speed))
+        self.kicker.set_control(VelocityVoltage(-self.target_speed))

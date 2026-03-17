@@ -25,9 +25,9 @@ class IntakeComponent:
     lower_position = tunable(0.10)
     target_position = tunable(0.3)
 
-    intake_speed = tunable(0.7)
-    outtake_speed = tunable(-0.7)
-    target_speed = tunable(0.5)
+    intake_speed = tunable(-0.35)
+    outtake_speed = tunable(0.35)
+    target_speed = tunable(0.0)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(0.5)
@@ -124,5 +124,6 @@ class IntakeComponent:
         elif self.target_position < self.lower_position:
             self.target_position = self.lower_position
 
-        #self.rotate.set_control(self.rotate_request.with_position(self.target_position))
+        # self.rotate.set_control(self.rotate_request.with_position(self.target_position))
+        print(f'INtake running at {self.target_speed}')
         self.roller.set_control(DutyCycleOut(self.target_speed))

@@ -16,7 +16,9 @@
       "WebFetch(domain:docs.wpilib.org)",
       "WebFetch(domain:www.chiefdelphi.com)",
       "WebFetch(domain:github.wpilib.org)",
-      "WebFetch(domain:choreolib.choreo.autos)"
+      "WebFetch(domain:choreolib.choreo.autos)",
+      "WebFetch(domain:v6.docs.ctr-electronics.com)",
+      "WebFetch(domain:api.ctr-electronics.com)"
     ]
   }
 }

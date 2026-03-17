@@ -70,7 +70,7 @@ class Left_blue_simple(AutonBase):
 
     drivetrain: DrivetrainComponent
     gyro: GyroComponent
-    intake: IntakeComponent
+    # intake: IntakeComponent
     shooter: ShooterComponent
 
     def __init__(self):

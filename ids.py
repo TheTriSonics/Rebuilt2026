@@ -8,7 +8,7 @@ class CANDevice:
 
 
 drive = 'Drive'
-shooter = 'Drive'
+shooter = 'Shooter'
 
 
 class TalonId:
@@ -24,12 +24,11 @@ class TalonId:
 
     ROTATE = CANDevice(50, shooter)
     ROLLER = CANDevice(51, shooter)
-    KICKER = CANDevice(52, shooter)
-    CLIMBER = CANDevice(53, shooter)
-    SINGULATOR = CANDevice(54, shooter)
-    SHOOTER_FRONT = CANDevice(55, shooter)
-    SHOOTER_REAR = CANDevice(56, shooter)
-    TURRET_TURN = CANDevice(57, shooter)
+    KICKER = CANDevice(54, shooter)
+    CLIMBER = CANDevice(63, shooter)
+    SHOOTER_LEFT = CANDevice(53, shooter)
+    SHOOTER_RIGHT = CANDevice(52, shooter)
+    SHOOTER_HOOD = CANDevice(57, shooter)
 
 
 class CancoderId:
@@ -37,7 +36,6 @@ class CancoderId:
     SWERVE_FR = CANDevice(32, drive)
     SWERVE_BR = CANDevice(33, drive)
     SWERVE_BL = CANDevice(34, drive)
-    TURRET = CANDevice(35, drive)
     INTAKE = CANDevice(36, shooter)
 
 

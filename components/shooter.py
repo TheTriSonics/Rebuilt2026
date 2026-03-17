@@ -13,12 +13,14 @@ import ids
 class ShooterComponent:
     shot_calc: ShotCalculatorComponent
 
-    shooter_front = TalonFX(ids.TalonId.SHOOTER_FRONT.id, ids.TalonId.SHOOTER_FRONT.bus)
-    shooter_rear = TalonFX(ids.TalonId.SHOOTER_REAR.id, ids.TalonId.SHOOTER_REAR.bus)
+    shooter_left = TalonFX(ids.TalonId.SHOOTER_LEFT.id, ids.TalonId.SHOOTER_LEFT.bus) # SETUP FOLLOWER ON RIGHT
+    shooter_right = TalonFX(ids.TalonId.SHOOTER_RIGHT.id, ids.TalonId.SHOOTER_RIGHT.bus)
+    shooter_hood = TalonFX(ids.TalonId.SHOOTER_HOOD.id, ids.TalonId.SHOOTER_HOOD.bus)
 
-    coef = tunable(0.6)
-    base = tunable(3.82)
-    target_rps = tunable(0.0)
+    coef = tunable(3.6)
+    base = tunable(35.6)
+    hood_rps = tunable(0.0)
+    flywheel_rps = tunable(40.0)
     active = tunable(False)
 
     config_limits = tunable(False)
@@ -30,9 +32,9 @@ class ShooterComponent:
     def __init__(self):
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.COAST
-        motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
+        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
 
-        front_pid = (
+        left_pid = (
             Slot0Configs()
             .with_k_p(3.0)
             .with_k_i(0.0)
@@ -45,30 +47,50 @@ class ShooterComponent:
             )
         )
 
-        rear_pid = (
+        right_pid = (
             Slot0Configs()
-            .with_k_p(3.1)
+            .with_k_p(3.0)
             .with_k_i(0.0)
             .with_k_d(0.0)
-            .with_k_s(2.3)
-            .with_k_v(0.08)
+            .with_k_s(2.2)
+            .with_k_v(0.025)
+            .with_k_a(0.0)
+            .with_static_feedforward_sign(
+                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
+            )
+        )
+        hood_pid = (
+            Slot0Configs()
+            .with_k_p(3.0)
+            .with_k_i(0.0)
+            .with_k_d(0.0)
+            .with_k_s(2.2)
+            .with_k_v(0.025)
             .with_k_a(0.0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
             )
         )
 
-        self.shooter_front.configurator.apply(motor_config)
-        self.shooter_front.configurator.apply(front_pid, 0.01)
 
-        self.shooter_rear.configurator.apply(motor_config)
-        self.shooter_rear.configurator.apply(rear_pid, 0.01)
+        self.shooter_left.configurator.apply(motor_config)
+        self.shooter_left.configurator.apply(left_pid, 0.01)
 
-        self.velocity_request = VelocityTorqueCurrentFOC(0).with_slot(0)
+        self.shooter_right.configurator.apply(motor_config)
+        self.shooter_right.configurator.apply(right_pid, 0.01)
+
+        self.shooter_hood.configurator.apply(motor_config)
+        self.shooter_hood.configurator.apply(hood_pid, 0.01)
+
+        self.flywheel_velocity_request = VelocityTorqueCurrentFOC(0).with_slot(0)
+        self.hood_velocity_request = VelocityTorqueCurrentFOC(0).with_slot(0)
         self.stop_request = VoltageOut(0)
 
     def setup(self):
         self._apply_current_limits()
+        self.shooter_left.set_control(self.stop_request)
+        self.shooter_right.set_control(self.stop_request)
+        self.shooter_hood.set_control(self.stop_request)
 
     def _apply_current_limits(self):
         current_limits_config = (
@@ -80,14 +102,15 @@ class ShooterComponent:
             .with_supply_current_lower_limit(self.supply_current_lower_limit)
             .with_supply_current_lower_time(self.supply_current_lower_time)
         )
-        self.shooter_front.configurator.apply(current_limits_config)
-        self.shooter_rear.configurator.apply(current_limits_config)
+        self.shooter_left.configurator.apply(current_limits_config)
+        self.shooter_right.configurator.apply(current_limits_config)
+        # self.shooter_hood.configurator.apply(current_limits_config)
 
     def spin_up(self) -> None:
         self.active = True
 
     def stop(self) -> None:
-        self.target_rps = 0.0
+        self.hood_rps = 0.0
         self.active = False
 
     def is_active(self) -> bool:
@@ -97,19 +120,19 @@ class ShooterComponent:
         return not self.active
 
     def is_at_speed(self) -> bool:
-        if not self.active or self.target_rps == 0.0:
+        if not self.active:
             return False
-        front_vel = abs(self.shooter_front.get_velocity().value)
-        rear_vel = abs(self.shooter_rear.get_velocity().value)
-        target = abs(self.target_rps)
-        return front_vel >= target * 0.95 and rear_vel >= target * 0.95
+        left_vel = abs(self.shooter_left.get_velocity().value)
+        right_vel = abs(self.shooter_right.get_velocity().value)
+        hood_vel = abs(self.shooter_hood.get_velocity().value)
+        return left_vel >= self.flywheel_rps * 0.95 and right_vel >= self.flywheel_rps * 0.95 and hood_vel >= self.hood_rps * 0.95
 
     def calc_rps(self) -> float:
         dist = self.shot_calc.get_field_shot_distance()
         dist_in = metersToInches(dist)
         rps = self.coef * dist_in + self.base
-        rps = min(rps, 90)
-        rps = max(rps, 40)
+        rps = min(rps, 50)
+        rps = max(rps, 30)
         return rps
 
     def execute(self) -> None:
@@ -117,10 +140,12 @@ class ShooterComponent:
             self._apply_current_limits()
             self.config_limits = False
 
-        self.target_rps = self.calc_rps()
-        if self.active and self.target_rps != 0.0:
-            self.shooter_front.set_control(self.velocity_request.with_velocity(self.target_rps))
-            self.shooter_rear.set_control(self.velocity_request.with_velocity(-self.target_rps))
+        self.hood_rps = self.calc_rps()
+        if self.active and self.hood_rps != 0.0:
+            self.shooter_left.set_control(self.flywheel_velocity_request.with_velocity(-self.flywheel_rps))
+            self.shooter_right.set_control(self.flywheel_velocity_request.with_velocity(self.flywheel_rps))
+            self.shooter_hood.set_control(self.hood_velocity_request.with_velocity(self.hood_rps))
         else:
-            self.shooter_front.set_control(self.stop_request)
-            self.shooter_rear.set_control(self.stop_request)
+            self.shooter_left.set_control(self.stop_request)
+            self.shooter_right.set_control(self.stop_request)
+            self.shooter_hood.set_control(self.stop_request)

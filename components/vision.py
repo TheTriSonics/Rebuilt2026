@@ -33,18 +33,18 @@ class VisionComponent:
             Translation3d(
                 units.inchesToMeters(-12.0),    # Forward/backward offset
                 units.inchesToMeters(-10.5),   # Left/right offset, left is positive
-                units.inchesToMeters(8.0),      # Up/down offset
+                units.inchesToMeters(8.5),      # Up/down offset
             ),
             # Pitching up is a negative value
-            Rotation3d.fromDegrees(0.0, -22.0, -90.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, -22.0, -85.0),  # roll, pitch, yaw
         )
         self.camera_rl_offset = Transform3d(
             Translation3d(
                 units.inchesToMeters(-12.0),    # Forward/backward offset
                 units.inchesToMeters(10.5),  # Left/right offset, left is positive
-                units.inchesToMeters(8.0),      # Up/down offset
+                units.inchesToMeters(8.5),      # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, -22.0, 90.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, -22.0, 85.0),  # roll, pitch, yaw
         )
         self.camera_back_offset = Transform3d(
             Translation3d(

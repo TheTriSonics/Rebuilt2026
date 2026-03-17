@@ -2,9 +2,6 @@ from magicbot import StateMachine, state, tunable
 
 from components.shooter import ShooterComponent
 from components.kicker import KickerComponent
-from components.singulator import SingulatorComponent
-from components.intake import IntakeComponent
-from components.turret import TurretComponent
 
 
 class GasPump(StateMachine):
@@ -16,11 +13,6 @@ class GasPump(StateMachine):
 
     shooter: ShooterComponent
     kicker: KickerComponent
-    singulator: SingulatorComponent
-    intake: IntakeComponent
-    turret: TurretComponent
-
-    kicker_current_threshold = tunable(20.0)
 
     def __init__(self) -> None:
         ...
@@ -54,41 +46,20 @@ class GasPump(StateMachine):
     @state(first=True, must_finish=True)
     def waiting(self, initial_call: bool) -> None:
         if initial_call:
-            self.intake.off()
+            # self.intake.off()
+            ...
 
     @state(must_finish=True)
     def shooter_off(self, initial_call: bool) -> None:
         if initial_call:
             self.shooter.stop()
-            self.singulator.off()
 
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
         self.shooter.spin_up()
-        self.singulator.forward()
         if self.shooter.is_at_speed():
             self.next_state(self.kicker_spin_up)
 
     @state(must_finish=True)
     def kicker_spin_up(self) -> None:
         self.shooter.spin_up()
-        self.singulator.forward()
-
-    @state(must_finish=True)
-    def intake_running(self, initial_call: bool) -> None:
-        if initial_call:
-            self.singulator.forward()
-            self.intake.rotate_down()
-            self.intake.on()
-
-    @state(must_finish=True)
-    def singulate(self) -> None:
-        self.shooter.stop()
-        self.singulator.forward()
-        self.intake.off()
-
-    @state(must_finish=True)
-    def eject(self) -> None:
-        self.shooter.stop()
-        self.singulator.reverse()
-        self.intake.reverse()
