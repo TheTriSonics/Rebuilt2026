@@ -1,11 +1,14 @@
 import math
+from typing import Callable
 from choreo.trajectory import SwerveTrajectory
 import ntcore
 from wpimath.geometry import Pose2d
 from magicbot import StateMachine, state
 
 from components.drivetrain import DrivetrainComponent
+from components.intake import IntakeComponent
 from components.shot_calculator import ShotCalculatorComponent
+from controllers.gaspump import GasPump
 from utilities.game import is_red
 from choreo import load_swerve_trajectory
 
@@ -15,7 +18,9 @@ class Tanker(StateMachine):
     ROTATION_TOLERANCE_DEG = 1.0
 
     drivetrain: DrivetrainComponent
+    intake: IntakeComponent
     shot_calc: ShotCalculatorComponent
+    gaspump: GasPump
 
     stick_x, stick_y, stick_o = 0, 0, 0
 
@@ -29,6 +34,31 @@ class Tanker(StateMachine):
             .publish()
         )
         self._last_drive_mode = self.go_drive_local
+        self._fired_events: set[int] = set()
+
+    def _get_event_actions(self) -> dict[str, Callable]:
+        return {
+            "intake_on": self.intake.on,
+            "intake_off": self.intake.off,
+            "go_shoot": self.gaspump.go_shoot,
+            "go_eject": self.gaspump.go_eject,
+            "go_stop": self.gaspump.go_stop,
+            "go_intake": self.gaspump.go_intake,
+        }
+
+    def _process_events(self, state_tm: float) -> None:
+        actions = self._get_event_actions()
+        for i, marker in enumerate(self.traj.events):
+            if i in self._fired_events:
+                continue
+            if marker.timestamp <= state_tm:
+                self._fired_events.add(i)
+                action = actions.get(marker.event)
+                if action is not None:
+                    print(f"[Tanker] Event '{marker.event}' fired at t={state_tm:.2f}s")
+                    action()
+                else:
+                    print(f"[Tanker] Unknown event '{marker.event}' at t={marker.timestamp:.2f}s")
 
     def set_stick_values(self, x: float, y: float, rot: float):
         self.stick_x = x
@@ -123,6 +153,11 @@ class Tanker(StateMachine):
 
     @state(must_finish=True)
     def follow_path(self, initial_call: bool, state_tm: float):
+        if initial_call:
+            self._fired_events.clear()
+
+        self._process_events(state_tm)
+
         pose = self.drivetrain.get_pose()
         end_pose = self.traj.get_final_pose(is_red())
         assert end_pose
@@ -130,6 +165,7 @@ class Tanker(StateMachine):
         angle_diff = pose.relativeTo(end_pose).rotation().degrees()
         if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
             self._last_drive_mode()
+            return
         sample = self.traj.sample_at(state_tm, is_red())
         assert sample
         self.drivetrain.follow_path(sample)
