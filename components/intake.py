@@ -26,8 +26,8 @@ class IntakeComponent:
     lower_position = 0.00
     target_position = tunable(0.0)
 
-    intake_speed = tunable(-0.35)
-    outtake_speed = tunable(0.35)
+    intake_speed = tunable(-0.40)
+    outtake_speed = tunable(0.40)
     target_speed = tunable(0.0)
 
     config_limits = tunable(False)

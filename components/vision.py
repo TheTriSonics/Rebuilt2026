@@ -346,7 +346,7 @@ class VisionComponent:
 
             setDevs(stds)
             self.drivetrain.estimator.addVisionMeasurement(pose, ts)
-            self.last_vision_update = wpilib.Timer.getFPGATimestamp()
+            self.last_vision_update = Timer.getFPGATimestamp()
             self._last_std_xy = stds[0]
             self._consecutive_frames = min(self._consecutive_frames + 1, 100)
         else:
