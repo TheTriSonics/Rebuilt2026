@@ -332,6 +332,13 @@ class VisionComponent:
             std_factor = (avg_dist ** 2) / tag_count
             std_xy = self.linear_baseline_std * std_factor
             std_rot = self.angular_baseline * std_factor
+            if not disabled:
+                # Vision should never be more trusted than wheel odometry.
+                # Without this floor, close-range tags produce std devs near
+                # or below the state stds (0.01), letting vision noise
+                # dominate the pose estimate and cause drift.
+                std_xy = max(std_xy, 0.05)
+                std_rot = max(std_rot, 0.5)
             std_devs = (std_xy, std_xy, std_rot)
 
 
