@@ -1,3 +1,5 @@
+from math import dist
+
 from magicbot import tunable, feedback
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityTorqueCurrentFOC, VoltageOut
@@ -173,8 +175,14 @@ class ShooterComponent:
 
     def calc_rps(self) -> float:
         dist = self.shot_calc.get_field_shot_distance()
-        dist_in = metersToInches(dist)
-        rps = self.coef * dist_in + self.base
+
+        if dist < 2.8:
+            rps = 10.0
+        elif dist <= 4.9:
+            rps = 0.0383*dist**3 - 1.3737*dist**2 + 16.66*dist - 22.3
+        else:
+            rps = 3.0*dist + 18.0
+
         rps = min(rps, 50)
         rps = max(rps, 10)
         return rps

@@ -193,6 +193,10 @@ class MyRobot(MagicRobot):
                 selected.set_initial_pose()
                 wpilib.SmartDashboard.putBoolean("Trajectories Ready", True)
 
+        # Vision quality indicator
+        vision_ok = self.vision.has_good_vision()
+        wpilib.SmartDashboard.putBoolean("StartPose/VisionReady", vision_ok)
+
         # Live pose agreement indicator
         if selected and selected.cached_initial_pose is not None:
             robot_pose = self.drivetrain.get_pose()

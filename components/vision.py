@@ -103,6 +103,11 @@ class VisionComponent:
         # Stale timestamp tracking per camera
         self._last_timestamps: list[float] = [0.0] * len(self.cameras)
 
+        # Vision quality tracking for dashboard
+        self.last_vision_update: float = 0.0
+        self._last_std_xy: float = float('inf')
+        self._consecutive_frames: int = 0
+
         # Only needed for single-tag gyro-fused fallback
         # self._yaw_rate_history: deque[float] = deque(maxlen=15)
 
@@ -257,6 +262,12 @@ class VisionComponent:
     #
     #     return robot_pose_3d, twod_pose, is_gyro_fused
 
+    def has_good_vision(self) -> bool:
+        """True when vision data is fresh, low-uncertainty, and stable.
+        Requires a recent estimate (< 2s), std_xy < 0.5m, and 5+ consecutive frames."""
+        age = Timer.getFPGATimestamp() - self.last_vision_update
+        return age < 2.0 and self._last_std_xy < 0.5 and self._consecutive_frames >= 5
+
     def execute(self) -> None:
 
         disabled = is_disabled()
@@ -335,3 +346,8 @@ class VisionComponent:
 
             setDevs(stds)
             self.drivetrain.estimator.addVisionMeasurement(pose, ts)
+            self.last_vision_update = wpilib.Timer.getFPGATimestamp()
+            self._last_std_xy = stds[0]
+            self._consecutive_frames = min(self._consecutive_frames + 1, 100)
+        else:
+            self._consecutive_frames = 0
