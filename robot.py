@@ -97,6 +97,7 @@ class MyRobot(MagicRobot):
         # self.gyro.reset_heading(math.degrees(-1.34))
 
     def teleopPeriodic(self):
+        self.driver_controller.update_lob_allow()
         if self.battery_monitor.is_stop_active():
             print('dead battery')
             # return  # We do NOTHING if the battery is too low. No more robot for you!
