@@ -1,4 +1,4 @@
-from magicbot import tunable
+from magicbot import tunable, feedback
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityTorqueCurrentFOC, VoltageOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs
@@ -17,7 +17,7 @@ class ShooterComponent:
     shooter_right = TalonFX(ids.TalonId.SHOOTER_RIGHT.id, ids.TalonId.SHOOTER_RIGHT.bus)
     shooter_hood = TalonFX(ids.TalonId.SHOOTER_HOOD.id, ids.TalonId.SHOOTER_HOOD.bus)
 
-    coef = tunable(0.214)
+    coef = tunable(0.15)
     base = tunable(3)
     hood_rps = tunable(0.0)
     flywheel_rps = tunable(40.0)
@@ -28,6 +28,13 @@ class ShooterComponent:
     supply_current_limit = tunable(60.0)
     supply_current_lower_limit = tunable(40.0)
     supply_current_lower_time = tunable(1.0)
+
+    at_speed_counter = 0
+    at_speed_stable = False
+
+    shooter_left_velocity = 0.0
+    shooter_right_velocity = 0.0
+    shooter_hood_velocity = 0.0
 
     def __init__(self):
         motor_config = MotorOutputConfigs()
@@ -40,7 +47,7 @@ class ShooterComponent:
             .with_k_i(0.0)
             .with_k_d(0.0)
             .with_k_s(2.2)
-            .with_k_v(0.025)
+            .with_k_v(0.45)
             .with_k_a(0.0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -53,7 +60,7 @@ class ShooterComponent:
             .with_k_i(0.0)
             .with_k_d(0.0)
             .with_k_s(2.2)
-            .with_k_v(0.025)
+            .with_k_v(0.45)
             .with_k_a(0.0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -65,7 +72,7 @@ class ShooterComponent:
             .with_k_i(0.0)
             .with_k_d(0.0)
             .with_k_s(2.2)
-            .with_k_v(0.025)
+            .with_k_v(0.75)
             .with_k_a(0.0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -119,23 +126,64 @@ class ShooterComponent:
     def is_off(self) -> bool:
         return not self.active
 
+    @feedback
+    def shooter_velocity_left(self) -> float:
+        return self.shooter_left_velocity
+
+    @feedback
+    def shooter_velocity_right(self) -> float:
+        return self.shooter_right_velocity
+
+    @feedback
+    def hood_velocity(self) -> float:
+        return self.shooter_hood_velocity
+
+    @feedback
+    def get_shooter_target(self) -> float:
+        return self.flywheel_rps
+
+    @feedback
+    def get_hood_target(self) -> float:
+        return self.hood_rps
+
+    
+    @feedback
+    def shooter_at_speed(self) -> bool:
+        return self.at_speed_stable
+    
+
     def is_at_speed(self) -> bool:
         if not self.active:
             return False
-        left_vel = abs(self.shooter_left.get_velocity().value)
-        right_vel = abs(self.shooter_right.get_velocity().value)
-        hood_vel = abs(self.shooter_hood.get_velocity().value)
-        return left_vel >= self.flywheel_rps * 0.95 and right_vel >= self.flywheel_rps * 0.95 and hood_vel >= self.hood_rps * 0.95
+
+        margin = 0.95
+        left_vel = self.shooter_left_velocity
+        right_vel = self.shooter_right_velocity
+        hood_vel = self.shooter_hood_velocity
+        at_speed = left_vel >= self.flywheel_rps * margin and right_vel >= self.flywheel_rps * margin and hood_vel >= self.hood_rps * margin
+        if at_speed:
+            self.at_speed_counter += 1
+        else:
+            self.at_speed_counter = 0
+        
+        self.at_speed_stable = False
+        if self.at_speed_counter >= 10:
+            self.at_speed_stable = True
+        return self.at_speed_stable 
 
     def calc_rps(self) -> float:
         dist = self.shot_calc.get_field_shot_distance()
         dist_in = metersToInches(dist)
         rps = self.coef * dist_in + self.base
         rps = min(rps, 50)
-        rps = max(rps, 30)
+        rps = max(rps, 10)
         return rps
 
     def execute(self) -> None:
+        self.shooter_left_velocity = abs(self.shooter_left.get_velocity().value)
+        self.shooter_right_velocity = abs(self.shooter_right.get_velocity().value)
+        self.shooter_hood_velocity = abs(self.shooter_hood.get_velocity().value)
+
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False

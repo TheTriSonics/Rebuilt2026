@@ -1,19 +1,17 @@
 import ids
 
 from phoenix6.hardware import TalonFX
-from phoenix6.controls import VelocityVoltage
+from phoenix6.controls import VelocityVoltage, DutyCycleOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs, FeedbackConfigs
 from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
-from components.shooter import ShooterComponent
 from magicbot import tunable
 
 
 class KickerComponent:
-    shooter: ShooterComponent
-
     kicker = TalonFX(ids.TalonId.KICKER.id, ids.TalonId.KICKER.bus)
 
-    kicker_speed = tunable(32.0)
+    kicker_speed = tunable(-32.0)
+    active = False
 
     config_limits = tunable(False)
     stator_current_limit = tunable(120.0)
@@ -60,21 +58,18 @@ class KickerComponent:
         )
         self.kicker.configurator.apply(current_limits_config)
 
-    def is_active(self) -> bool:
-        return self.target_speed != 0.0
+    def on(self) -> None:
+        self.active = True
 
-    def is_reverse(self) -> bool:
-        return self.target_speed < 0.0
+    def off(self) -> None:
+        self.active = False
 
-    def is_off(self) -> bool:
-        return self.target_speed == 0.0
 
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
             self.config_limits = False
-        if self.shooter.is_active():
-            self.target_speed = self.kicker_speed
+        if self.active:
+            self.kicker.set_control(VelocityVoltage(self.kicker_speed))
         else:
-            self.target_speed = 0.0
-        self.kicker.set_control(VelocityVoltage(-self.target_speed))
+            self.kicker.set_control(DutyCycleOut(0))

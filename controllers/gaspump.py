@@ -53,6 +53,7 @@ class GasPump(StateMachine):
     def shooter_off(self, initial_call: bool) -> None:
         if initial_call:
             self.shooter.stop()
+            self.kicker.off()
 
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
@@ -62,4 +63,4 @@ class GasPump(StateMachine):
 
     @state(must_finish=True)
     def kicker_spin_up(self) -> None:
-        self.shooter.spin_up()
+        self.kicker.on()
