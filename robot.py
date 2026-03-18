@@ -140,8 +140,9 @@ class MyRobot(MagicRobot):
 
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.on()
+            self.intake.rotate_down()
         if self.operator_controller.intake_flip():  # Y button
-            self.intake.tilt()
+            self.intake.rotate_tilt()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
         # if self.operator_controller.eject():  # X

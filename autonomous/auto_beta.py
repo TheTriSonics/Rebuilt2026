@@ -58,6 +58,7 @@ class Right2Hopper(AutonBase):
             self.tanker.go_follow_traj(self.traj)
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
+            ...
 
 
 

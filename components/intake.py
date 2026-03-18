@@ -21,9 +21,10 @@ from phoenix6.configs import (
 
 class IntakeComponent:
 
-    upper_position = tunable(0.70)
-    lower_position = tunable(0.10)
-    target_position = tunable(0.3)
+    upper_position = 0.30
+    tilt_position = 0.15
+    lower_position = 0.00
+    target_position = tunable(0.0)
 
     intake_speed = tunable(-0.35)
     outtake_speed = tunable(0.35)
@@ -43,27 +44,27 @@ class IntakeComponent:
     def __init__(self):
         motor_config = MotorOutputConfigs()
         motor_config.neutral_mode = NeutralModeValue.BRAKE
-        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+        motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
-        self.mag_offset = 0.451904296875
+        self.mag_offset = -0.4560546875
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
-        enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.CLOCKWISE_POSITIVE)
+        enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.COUNTER_CLOCKWISE_POSITIVE)
         self.rotate_encoder.configurator.apply(enc_config)
 
         feedback_config = FeedbackConfigs()
         feedback_config.feedback_remote_sensor_id = ids.CancoderId.INTAKE.id
         feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
         feedback_config.sensor_to_mechanism_ratio = 1.0
-        feedback_config.rotor_to_sensor_ratio = 135.0
+        feedback_config.rotor_to_sensor_ratio = 249.23
 
         pid = (
             Slot0Configs()
-            .with_k_p(18.0)
-            .with_k_i(2.0)
-            .with_k_d(0.0)
+            .with_k_p(75.0)
+            .with_k_i(0.0)
+            .with_k_d(10.0)
             .with_k_s(0.3)
-            .with_k_v(1.8)
+            .with_k_v(2.0)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -91,6 +92,9 @@ class IntakeComponent:
     def rotate_down(self) -> None:
         self.target_position = self.lower_position
 
+    def rotate_tilt(self) -> None:
+        self.target_position = self.tilt_position
+
     def rotate_up(self) -> None:
         self.target_position = self.upper_position
 
@@ -98,14 +102,9 @@ class IntakeComponent:
         self.target_speed = speed
 
     def on(self) -> None:
-        self.target_position = self.lower_position
         self.set_speed(self.intake_speed)
 
-    def tilt(self) -> None:
-        self.target_position = self.lower_position + 0.4
-
     def off(self) -> None:
-        self.target_position = self.upper_position
         self.set_speed(0)
 
     def reverse(self) -> None:
