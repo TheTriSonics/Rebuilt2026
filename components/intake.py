@@ -30,9 +30,9 @@ class IntakeComponent:
     target_speed = tunable(0.0)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(0.5)
-    supply_current_limit = tunable(1.0)
-    supply_current_lower_limit = tunable(2.0)
+    stator_current_limit = tunable(15)
+    supply_current_limit = tunable(15)
+    supply_current_lower_limit = tunable(15)
     supply_current_lower_time = tunable(1.0)
 
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
@@ -45,7 +45,7 @@ class IntakeComponent:
         motor_config.neutral_mode = NeutralModeValue.BRAKE
         motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
 
-        self.mag_offset = -0.21728515625
+        self.mag_offset = 0.451904296875
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
         enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.CLOCKWISE_POSITIVE)
@@ -80,9 +80,9 @@ class IntakeComponent:
         current_limits_config = (
             CurrentLimitsConfigs()
             .with_stator_current_limit(self.stator_current_limit)
-            .with_stator_current_limit_enable(False)
+            .with_stator_current_limit_enable(True)
             .with_supply_current_limit(self.supply_current_limit)
-            .with_supply_current_limit_enable(False)
+            .with_supply_current_limit_enable(True)
             .with_supply_current_lower_limit(self.supply_current_lower_limit)
             .with_supply_current_lower_time(self.supply_current_lower_time)
         )
@@ -124,6 +124,6 @@ class IntakeComponent:
         elif self.target_position < self.lower_position:
             self.target_position = self.lower_position
 
-        # self.rotate.set_control(self.rotate_request.with_position(self.target_position))
+        self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         # print(f'INtake running at {self.target_speed}')
         self.roller.set_control(DutyCycleOut(self.target_speed))

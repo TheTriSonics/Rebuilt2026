@@ -144,8 +144,8 @@ class MyRobot(MagicRobot):
             self.intake.tilt()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
-        if self.operator_controller.eject():  # X
-            self.gaspump.go_eject()
+        # if self.operator_controller.eject():  # X
+        #     self.gaspump.go_eject()
         if self.operator_controller.shooter_shoot(): # Right bumper
             self.gaspump.go_shoot()
         if self.operator_controller.shooter_off(): # A button

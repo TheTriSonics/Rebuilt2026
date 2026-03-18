@@ -17,8 +17,8 @@ class ShooterComponent:
     shooter_right = TalonFX(ids.TalonId.SHOOTER_RIGHT.id, ids.TalonId.SHOOTER_RIGHT.bus)
     shooter_hood = TalonFX(ids.TalonId.SHOOTER_HOOD.id, ids.TalonId.SHOOTER_HOOD.bus)
 
-    coef = tunable(3.6)
-    base = tunable(35.6)
+    coef = tunable(0.214)
+    base = tunable(3)
     hood_rps = tunable(0.0)
     flywheel_rps = tunable(40.0)
     active = tunable(False)

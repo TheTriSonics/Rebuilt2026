@@ -58,7 +58,6 @@ class Right2Hopper(AutonBase):
             self.tanker.go_follow_traj(self.traj)
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
-            self.gaspump.go_intake()
 
 
 
@@ -72,7 +71,7 @@ class Left_blue_simple(AutonBase):
 
     drivetrain: DrivetrainComponent
     gyro: GyroComponent
-    # intake: IntakeComponent
+    intake: IntakeComponent
     shooter: ShooterComponent
 
     def __init__(self):

@@ -27,14 +27,14 @@ class GasPump(StateMachine):
         """Abort shooting and kill all motors."""
         self.next_state_now(self.waiting)
 
-    def go_intake(self) -> None:
-        self.next_state_now(self.intake_running)
+    # def go_intake_on(self) -> None:
+    #     self.next_state_now(self.intake_running)
 
-    def go_singulate(self) -> None:
-        self.next_state_now(self.singulate)
+    # def go_singulate(self) -> None:
+    #     self.next_state_now(self.singulate)
 
-    def go_eject(self) -> None:
-        self.next_state_now(self.eject)
+    # def go_eject(self) -> None:
+    #     self.next_state_now(self.eject)
 
     def go_intake_off(self) -> None:
         self.next_state_now(self.waiting)
