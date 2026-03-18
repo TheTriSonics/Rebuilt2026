@@ -88,10 +88,12 @@ class VisionComponent:
         self.pose_estimators = [
             self.pose_estimator_rr,
             self.pose_estimator_rl,
+            self.pose_estimator_back,
         ]
         self.publishers = [
             self.publisher_rr,
             self.publisher_rl,
+            self.publisher_back,
         ]
 
         # Only needed for single-tag estimation
