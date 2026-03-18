@@ -115,6 +115,22 @@ class IntakeComponent:
     def get_rotate_position(self) -> float:
         return self.rotate_encoder.get_position().value
 
+    @feedback
+    def get_target_position(self) -> float:
+        return self.target_position
+
+    @feedback
+    def get_rotate_error(self) -> float:
+        return self.target_position - self.rotate_encoder.get_position().value
+
+    @feedback
+    def get_roller_speed(self) -> float:
+        return self.target_speed
+
+    @feedback
+    def get_rotate_motor_output(self) -> float:
+        return self.rotate.get_motor_voltage().value
+
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
@@ -124,6 +140,5 @@ class IntakeComponent:
         elif self.target_position < self.lower_position:
             self.target_position = self.lower_position
 
-        # self.rotate.set_control(self.rotate_request.with_position(self.target_position))
-        print(f'INtake running at {self.target_speed}')
+        self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         self.roller.set_control(DutyCycleOut(self.target_speed))
