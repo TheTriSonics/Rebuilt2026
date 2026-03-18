@@ -5,7 +5,8 @@ from wpimath.geometry import Pose2d, Transform2d, Rotation2d
 from magicbot import AutonomousStateMachine, state, feedback, tunable
 
 from components.intake import IntakeComponent
-from utilities.game import is_red
+from utilities.game import is_red, is_left
+from utilities.choreo_utils import mirrored
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from controllers.tanker import Tanker
@@ -43,19 +44,21 @@ class Right2Hopper(AutonBase):
     # the origin, positon 0, 0, which is behind a player station on the blue
     # side.
     def get_initial_pose(self) -> Pose2d:
-        intake_on_time = self.traj.splits[1] * 0.02
-        intake_on_sample = self.traj.sample_at(intake_on_time, is_red())
+        _base = mirrored(self.traj) if is_left() else self.traj
+        intake_on_time = _base.splits[1] * 0.02
+        intake_on_sample = _base.sample_at(intake_on_time, is_red())
         assert intake_on_sample
         self.intake_on_pose = intake_on_sample.get_pose()
 
-        sample = self.traj.sample_at(0.0, is_red())
+        sample = _base.sample_at(0.0, is_red())
         assert sample
+        self._active_traj = _base
         return sample.get_pose()
 
     @state(first=True, must_finish=True)
     def begin_path(self, initial_call: bool):
         if initial_call:
-            self.tanker.go_follow_traj(self.traj)
+            self.tanker.go_follow_traj(self._active_traj)
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             ...
@@ -154,19 +157,21 @@ class RightBump(AutonBase):
         super().__init__()
 
     def get_initial_pose(self) -> Pose2d:
+        _base = mirrored(self.traj) if is_left() else self.traj
+
         # splits[0] == 0 (always prepended by loader), splits[1] == first real split
-        split_idx = self.traj.splits[1]
-        t_split = self.traj.samples[split_idx].timestamp
+        split_idx = _base.splits[1]
+        t_split = _base.samples[split_idx].timestamp
 
         # Segment 1: start through split point (inclusive)
-        seg1_samples = self.traj.samples[:split_idx + 1]
-        seg1_events = [e for e in self.traj.events if e.timestamp <= t_split]
+        seg1_samples = _base.samples[:split_idx + 1]
+        seg1_events = [e for e in _base.events if e.timestamp <= t_split]
         self._traj1 = SwerveTrajectory(
-            self.traj.name + "_1", seg1_samples, [0], seg1_events
+            _base.name + "_1", seg1_samples, [0], seg1_events
         )
 
         # Segment 2: split point onward, timestamps re-zeroed so state_tm aligns
-        seg2_raw = self.traj.samples[split_idx:]
+        seg2_raw = _base.samples[split_idx:]
         seg2_samples = [
             SwerveSample(
                 s.timestamp - t_split, s.x, s.y, s.heading,
@@ -176,28 +181,28 @@ class RightBump(AutonBase):
         ]
         seg2_events = [
             e.offset_by(-t_split)
-            for e in self.traj.events if e.timestamp > t_split
+            for e in _base.events if e.timestamp > t_split
         ]
         self._traj2 = SwerveTrajectory(
-            self.traj.name + "_2", seg2_samples, [0], seg2_events
+            _base.name + "_2", seg2_samples, [0], seg2_events
         )
 
         # Precompute alliance-flipped poses for use in state checks
-        split_sample = self.traj.sample_at(t_split, is_red())
+        split_sample = _base.sample_at(t_split, is_red())
         assert split_sample
         self._split_pose = split_sample.get_pose()
 
         # Diagnostics: confirm events loaded correctly
-        print(f"[RightBump] traj.events raw count: {len(self.traj.events)}")
+        print(f"[RightBump] traj.events raw count: {len(_base.events)}")
         print(f"[RightBump] seg1 events ({len(seg1_events)}): "
               + (", ".join(f"{e.event}@{e.timestamp:.2f}s" for e in seg1_events) or "NONE"))
         print(f"[RightBump] seg2 events ({len(seg2_events)}): "
               + (", ".join(f"{e.event}@{e.timestamp:.2f}s" for e in seg2_events) or "NONE"))
-        pn("RightBump/TrajEventCount", len(self.traj.events))
+        pn("RightBump/TrajEventCount", len(_base.events))
         pn("RightBump/Seg1EventCount", len(seg1_events))
         pn("RightBump/Seg2EventCount", len(seg2_events))
 
-        sample = self.traj.sample_at(0.0, is_red())
+        sample = _base.sample_at(0.0, is_red())
         assert sample
         return sample.get_pose()
 

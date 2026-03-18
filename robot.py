@@ -20,7 +20,7 @@ from hid.xbox_operator import RebuiltOperator
 
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
-from utilities.game import is_sim, is_red
+from utilities.game import is_sim, is_red, is_left, init_side_chooser
 from utilities.scalers import clamp_degrees
 from choreo import load_swerve_trajectory
 from math import cos, sin
@@ -61,6 +61,10 @@ class MyRobot(MagicRobot):
         wpilib.SmartDashboard.putData(self.field)
 
         self._last_auton_selection = None
+        self._last_config_key = None
+        init_side_chooser()
+        wpilib.SmartDashboard.putBoolean("Load Trajectories", False)
+        wpilib.SmartDashboard.putBoolean("Trajectories Ready", False)
 
         if is_sim():
             self.control_loop_wait_time = 0.1
@@ -169,14 +173,40 @@ class MyRobot(MagicRobot):
         heading = clamp_degrees(self.drivetrain.get_pose().rotation().degrees())
         wpilib.SmartDashboard.putNumber("Estimated Heading", heading)
         self.gyro.reset_heading(heading)
-        # If a new auton mode is selected set the drivetrain's position to that
-        # vision will correct any subtle differences (hopefully!) before it
-        # starts running.
 
         selected = self._automodes.chooser.getSelected()
-        if selected != self._last_auton_selection:
+        config_key = ('red' if is_red() else 'blue') + ('_left' if is_left() else '_right')
+
+        # Auto-set pose and clear Ready when selection or side changes
+        if selected != self._last_auton_selection or config_key != self._last_config_key:
             self._last_auton_selection = selected
+            self._last_config_key = config_key
+            wpilib.SmartDashboard.putBoolean("Trajectories Ready", False)
             if selected:
-                initial_pose = selected.get_initial_pose()
-                self.drivetrain.set_pose(initial_pose)
+                selected.set_initial_pose()
+
+        # Manual Load button — force recompute + set Ready indicator
+        if wpilib.SmartDashboard.getBoolean("Load Trajectories", False):
+            wpilib.SmartDashboard.putBoolean("Load Trajectories", False)
+            if selected:
+                selected.pose_set = False
+                selected.set_initial_pose()
+                wpilib.SmartDashboard.putBoolean("Trajectories Ready", True)
+
+        # Live pose agreement indicator
+        if selected and selected.cached_initial_pose is not None:
+            robot_pose = self.drivetrain.get_pose()
+            expected = selected.cached_initial_pose
+            dx = robot_pose.x - expected.x
+            dy = robot_pose.y - expected.y
+            dist = math.hypot(dx, dy)
+            raw_err = abs(math.degrees(
+                robot_pose.rotation().radians() - expected.rotation().radians()
+            ))
+            heading_err = min(raw_err, 360.0 - raw_err)
+            wpilib.SmartDashboard.putNumber("StartPose/DistanceM", dist)
+            wpilib.SmartDashboard.putNumber("StartPose/XErrorM", dx)
+            wpilib.SmartDashboard.putNumber("StartPose/YErrorM", dy)
+            wpilib.SmartDashboard.putNumber("StartPose/HeadingErrDeg", heading_err)
+            wpilib.SmartDashboard.putBoolean("StartPose/PoseMatch", dist < 0.15 and heading_err < 5.0)
 

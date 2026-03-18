@@ -4,7 +4,7 @@ from wpilib import SmartDashboard
 from wpimath.geometry import Pose2d
 from magicbot import AutonomousStateMachine, state, feedback, tunable
 
-from utilities.game import is_red, is_sim
+from utilities.game import is_red, is_sim, is_left
 
 from components.drivetrain import DrivetrainComponent
 from components.intake import IntakeComponent
@@ -24,6 +24,7 @@ class AutonBase(AutonomousStateMachine):
 
     pose_set = False
     selected_alliance = None
+    cached_initial_pose = None
 
     initial_pose = None
     failure_pose = None
@@ -39,8 +40,8 @@ class AutonBase(AutonomousStateMachine):
 
     def set_initial_pose(self) -> None:
         # No need to set the pose twice!
-        alliance = 'red' if is_red() else 'blue'
-        if alliance is not self.selected_alliance:
+        config_key = ('red' if is_red() else 'blue') + ('_left' if is_left() else '_right')
+        if config_key != self.selected_alliance:
             self.pose_set = False
 
         if self.pose_set is True:
@@ -49,7 +50,8 @@ class AutonBase(AutonomousStateMachine):
         initial_pose = self.get_initial_pose()
         assert initial_pose
         self.drivetrain.set_pose(initial_pose)
-        self.selected_alliance = alliance
+        self.cached_initial_pose = initial_pose
+        self.selected_alliance = config_key
         self.pose_set = True
 
     def at_pose(self, pose: Pose2d, tolerance: float | None = None) -> bool:
