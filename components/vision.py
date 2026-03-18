@@ -84,7 +84,7 @@ class VisionComponent:
             self.camera_back_offset,
         ]
 
-        self.cameras = [self.camera_rr, self.camera_rl]
+        self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]
         self.pose_estimators = [
             self.pose_estimator_rr,
             self.pose_estimator_rl,
