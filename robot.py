@@ -8,22 +8,15 @@ from components.drivetrain import DrivetrainComponent
 from components.vision import VisionComponent
 from components.gyro import GyroComponent
 from components.kicker import KickerComponent
-from components.climber import ClimberComponent
 from components.intake import IntakeComponent
-from components.leds import LEDComponent
 from components.shooter import ShooterComponent
 from utilities.scalers import rescale_js
-from wpimath.geometry import Pose2d, Rotation2d
-from robotpy_apriltag import AprilTagField, AprilTagFieldLayout
 from hid.xbox_driver import RebuiltDriver
 from hid.xbox_operator import RebuiltOperator
 
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
 from utilities.game import is_sim, is_red, is_left, init_side_chooser
-from utilities.scalers import clamp_degrees
-from choreo import load_swerve_trajectory
-from math import cos, sin
 
 
 
@@ -45,8 +38,6 @@ class MyRobot(MagicRobot):
     shooter: ShooterComponent
     # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
-
-    apriltags = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
@@ -93,8 +84,6 @@ class MyRobot(MagicRobot):
         self.tanker.go_drive_local()
         self.shot_calc.set_target("hub")
         self.drivetrain.stop_snapping()
-        # self.drivetrain.set_pose(Pose2d(14.2, 5.0, -1.34))
-        # self.gyro.reset_heading(math.degrees(-1.34))
 
     def teleopPeriodic(self):
         self.driver_controller.update_lob_allow()
@@ -139,10 +128,6 @@ class MyRobot(MagicRobot):
         else:
             self.tanker.go_drive_last_mode()
 
-        # operator_turret = rescale_js(self.operator_controller.turret_movement(), 0.05, 1.0)
-        # driver_turret = self.driver_controller.turret_left() + self.driver_controller.turret_right()
-        # self.turret.set_manual_speed(operator_turret if operator_turret != 0 else driver_turret)
-
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.on()
             self.intake.rotate_down()
@@ -150,8 +135,6 @@ class MyRobot(MagicRobot):
             self.intake.rotate_tilt()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
-        # if self.operator_controller.eject():  # X
-        #     self.gaspump.go_eject()
         if self.operator_controller.shooter_shoot(): # Right bumper
             self.gaspump.go_shoot()
         if self.operator_controller.shooter_off(): # A button
@@ -170,10 +153,6 @@ class MyRobot(MagicRobot):
         # us where it can
         self.vision.execute()
         self.drivetrain.update_odometry()
-        # Force the gyro to honor our estimated pose that way it'll align when we begin auton
-        heading = clamp_degrees(self.drivetrain.get_pose().rotation().degrees())
-        wpilib.SmartDashboard.putNumber("Estimated Heading", heading)
-        self.gyro.reset_heading(heading)
 
         selected = self._automodes.chooser.getSelected()
         config_key = ('red' if is_red() else 'blue') + ('_left' if is_left() else '_right')
