@@ -31,10 +31,10 @@ class IntakeComponent:
     target_speed = tunable(0.0)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(15)
-    supply_current_limit = tunable(15)
-    supply_current_lower_limit = tunable(15)
-    supply_current_lower_time = tunable(1.0)
+    stator_current_limit = tunable(60)
+    supply_current_limit = tunable(120)
+    supply_current_lower_limit = tunable(0)
+    supply_current_lower_time = tunable(0.0)
 
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
     roller = TalonFX(ids.TalonId.ROLLER.id, ids.TalonId.ROLLER.bus)
@@ -56,15 +56,15 @@ class IntakeComponent:
         feedback_config.feedback_remote_sensor_id = ids.CancoderId.INTAKE.id
         feedback_config.feedback_sensor_source = FeedbackSensorSourceValue.FUSED_CANCODER
         feedback_config.sensor_to_mechanism_ratio = 1.0
-        feedback_config.rotor_to_sensor_ratio = 249.23
+        feedback_config.rotor_to_sensor_ratio = 49.846
 
         pid = (
             Slot0Configs()
             .with_k_p(60.0)
             .with_k_i(0.0)
-            .with_k_d(10.0)
-            .with_k_s(0.3)
-            .with_k_v(3.0)
+            .with_k_d(15.0)
+            .with_k_s(0.5)
+            .with_k_v(2.0)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
