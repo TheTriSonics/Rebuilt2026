@@ -16,7 +16,7 @@ from hid.xbox_operator import RebuiltOperator
 
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
-from utilities.game import is_sim, is_red, is_left, init_side_chooser
+from utilities.game import is_sim, is_red, is_left, init_side_chooser, hub_shoot_indicator
 
 
 
@@ -146,6 +146,10 @@ class MyRobot(MagicRobot):
             self.shot_calc.set_target("left")
         if self.operator_controller.turret_aim_right():
             self.shot_calc.set_target("right")
+
+        can_shoot, phase_left = hub_shoot_indicator()
+        wpilib.SmartDashboard.putBoolean("Shoot/CanShoot", can_shoot)
+        wpilib.SmartDashboard.putNumber("Shoot/PhaseTimeLeft", phase_left)
 
 
     def disabledPeriodic(self):

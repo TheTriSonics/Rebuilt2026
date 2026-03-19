@@ -179,7 +179,8 @@ class ShooterComponent:
         if dist < 2.8:
             rps = 10.0
         elif dist <= 4.9:
-            rps = 0.0383*dist**3 - 1.3737*dist**2 + 16.66*dist - 22.3
+            # rps = 0.0383*dist**3 - 1.3737*dist**2 + 16.66*dist - 22.3
+            rps = -3.7967*dist**3 + 40.801*dist**2 - 131.4*dist + 141.69
         else:
             rps = 3.0*dist + 18.0
 

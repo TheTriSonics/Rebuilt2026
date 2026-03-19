@@ -10,7 +10,7 @@ import phoenix6.unmanaged
 import wpilib
 import robotpy_apriltag
 from pyfrc.physics.core import PhysicsInterface
-from wpilib.simulation import DCMotorSim
+from wpilib.simulation import DCMotorSim, DriverStationSim
 
 from wpimath.geometry import Pose3d, Rotation3d, Translation3d, Rotation2d
 from wpimath.kinematics import SwerveDrive4Kinematics
@@ -198,12 +198,25 @@ class PhysicsEngine:
             self.robot.vision.camera_back_offset,
         )
 
+        # Sim-only chooser: which alliance won autonomous?
+        # The FMS game message is the alliance whose HUB goes inactive FIRST —
+        # the LOSER of auto — so the labels here are the inverse of the raw char.
+        self._auton_winner_chooser: wpilib.SendableChooser = wpilib.SendableChooser()
+        self._auton_winner_chooser.setDefaultOption("Unknown (both active)", "")
+        self._auton_winner_chooser.addOption("Red Won Auto  → Blue inactive first", "B")
+        self._auton_winner_chooser.addOption("Blue Won Auto → Red inactive first",  "R")
+        wpilib.SmartDashboard.putData("Sim/AutonWinner", self._auton_winner_chooser)
 
     def update_sim(self, now: float, tm_diff: float) -> None:
         # Enable the Phoenix6 simulated devices
         # TODO: delete when phoenix6 integrates with wpilib
         if wpilib.DriverStation.isEnabled():
             phoenix6.unmanaged.feed_enable(0.1)
+
+        # Inject the simulated FMS game message so hub_shoot_indicator() works in sim
+        DriverStationSim.setGameSpecificMessage(
+            self._auton_winner_chooser.getSelected() or ""
+        )
 
         if False:
             poses: list[Pose3d] = []
