@@ -97,30 +97,15 @@ class Tanker(StateMachine):
         if at_pos:
             self._last_drive_mode()
 
-    # JJB: We may remove this
-    def go_follow_path(self, path_name:str) -> None:
-        #load choreo path
-        self.traj = load_swerve_trajectory(path_name)
-        # JJB: Not sure about this bit, we should be letting vision and odometry
-        # tell us where we are not, the trajectory.
-        sample = self.traj.sample_at(0.0, is_red())
-        assert sample
-        sp = sample.get_pose()
-        self.drivetrain.set_pose(sp)
-
-        if self.current_state != self.follow_path.name:
-            self.next_state_now(self.follow_path)
-
-    def go_follow_traj(self, traj: SwerveTrajectory) -> None:
+    def go_follow_traj(self, traj: SwerveTrajectory, set_pose: bool = True) -> None:
         self.traj = traj
-        sample = self.traj.sample_at(0.0, is_red())
-        assert sample
-        sp = sample.get_pose()
-        self.drivetrain.set_pose(sp)
-
-        if self.current_state != self.follow_path.name:
-            self.drivetrain.stop_snapping()
-            self.next_state_now(self.follow_path)
+        if set_pose:
+            sample = self.traj.sample_at(0.0, is_red())
+            assert sample
+            sp = sample.get_pose()
+            self.drivetrain.set_pose(sp)
+        self.drivetrain.stop_snapping()
+        self.next_state_now(self.follow_path)
 
     def go_follow_traj_no_reset(self, traj: SwerveTrajectory) -> None:
         """Follow a trajectory without resetting the drivetrain pose.
@@ -132,13 +117,13 @@ class Tanker(StateMachine):
 
     @state(must_finish=True)
     def follow_path(self, initial_call: bool, state_tm: float):
-        pose = self.drivetrain.get_pose()
-        end_pose = self.traj.get_final_pose(is_red())
-        assert end_pose
-        dist = pose.relativeTo(end_pose).translation().norm()
-        angle_diff = pose.relativeTo(end_pose).rotation().degrees()
-        if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
-            self._last_drive_mode()
+        # pose = self.drivetrain.get_pose()
+        # end_pose = self.traj.get_final_pose(is_red())
+        # assert end_pose
+        # dist = pose.relativeTo(end_pose).translation().norm()
+        # angle_diff = pose.relativeTo(end_pose).rotation().degrees()
+        # if dist < self.POSITION_TOLERANCE_M and abs(angle_diff) < self.ROTATION_TOLERANCE_DEG:
+        #     self._last_drive_mode()
         sample = self.traj.sample_at(state_tm, is_red())
         assert sample
         self.drivetrain.follow_path(sample)
