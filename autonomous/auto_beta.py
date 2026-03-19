@@ -4,6 +4,7 @@ from wpimath.geometry import Pose2d
 from magicbot import AutonomousStateMachine, state, tunable
 
 from components.intake import IntakeComponent
+from components.shot_calculator import ShotCalculatorComponent
 from utilities.game import is_red, is_left
 from utilities.choreo_utils import mirrored
 from components.drivetrain import DrivetrainComponent
@@ -20,7 +21,7 @@ pn = SmartDashboard.putNumber
 ps = SmartDashboard.putString
 
 
-# 
+#
 class HopperShoot(AutonBase):
     MODE_NAME = "HopperShoot"
     TRAJ_NAME = "HopperShoot"
@@ -32,6 +33,7 @@ class HopperShoot(AutonBase):
     drivetrain: DrivetrainComponent
     gyro: GyroComponent
     intake: IntakeComponent
+    shot_calc: ShotCalculatorComponent
 
     def get_initial_pose(self) -> Pose2d:
         self.traj = mirrored(self.raw_traj) if is_left() else self.raw_traj
@@ -41,14 +43,21 @@ class HopperShoot(AutonBase):
 
         self.intake_on_pose = self.get_event_pose("IntakeOn")
         self.intake_off_pose = self.get_event_pose("IntakeOff")
-        self.shoot_on_pose = self.get_event_pose("ShooterOn")
-        self.shoot_off_pose = self.get_event_pose("ShooterOff")
+        self.last_pose = self.traj.get_final_pose(is_red())
 
-        sample = self.traj.sample_at(0.0, is_red())
-        assert sample
-        return sample.get_pose()
-
+        pose = self.traj.get_initial_pose(is_red())
+        assert pose
+        return pose
     @state(first=True, must_finish=True)
+    def intake_down(self, initial_call: bool):
+        if initial_call:
+            self.intake.rotate_down()
+
+        if self.intake.get_rotate_position() < 0.05:
+            self.next_state(self.begin_path)
+
+
+    @state(must_finish=True)
     def begin_path(self, initial_call: bool):
         if initial_call:
             assert self.traj
@@ -57,11 +66,31 @@ class HopperShoot(AutonBase):
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.intake.on()
 
-        if self.at_pose(self.intake_off_pose, tolerance=0.15):
-            self.intake.off()
+        # JJB: Nope. don't do that. Just keep it going.
+        # if self.at_pose(self.intake_off_pose, tolerance=0.15):
+        #     self.intake.off()
 
-        if self.at_pose(self.shoot_on_pose, tolerance=0.15):
+        assert self.last_pose
+        if self.at_pose(self.last_pose, tolerance=0.15):
+            self.next_state(self.shoot)
+
+    @state(must_finish=True)
+    def shoot(self, initial_call: bool, state_tm: float):
+        self.shot_calc.set_target('hub')
+        self.tanker.go_drive_auto_target()
+        if state_tm > 0.5:
             self.gaspump.go_shoot()
+        if state_tm > 3.0:
+            self.intake.rotate_tilt()
+            self.intake.on()
+        if state_tm > 6.0:
+            self.next_state(self.end)
 
-        if self.at_pose(self.shoot_off_pose, tolerance=0.15):
+    @state(must_finish=True)
+    def end(self, initial_call: bool):
+        if initial_call:
+            self.intake.off()
             self.gaspump.go_shoot_off()
+            self.intake.rotate_up()
+
+

@@ -22,8 +22,8 @@ from phoenix6.configs import (
 class IntakeComponent:
 
     upper_position = 0.30
-    tilt_position = 0.15
-    lower_position = 0.00
+    tilt_position = 0.20
+    lower_position = -0.01
     target_position = tunable(0.0)
 
     intake_speed = tunable(-0.40)
@@ -60,11 +60,11 @@ class IntakeComponent:
 
         pid = (
             Slot0Configs()
-            .with_k_p(75.0)
+            .with_k_p(60.0)
             .with_k_i(0.0)
             .with_k_d(10.0)
             .with_k_s(0.3)
-            .with_k_v(2.0)
+            .with_k_v(3.0)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
