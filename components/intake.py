@@ -23,7 +23,7 @@ class IntakeComponent:
 
     upper_position = 0.30
     tilt_position = 0.20
-    lower_position = -0.01
+    lower_position = -0.015
     target_position = tunable(0.0)
 
     intake_speed = tunable(-0.45)

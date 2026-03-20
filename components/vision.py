@@ -48,11 +48,11 @@ class VisionComponent:
         )
         self.camera_back_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-10.0), # Forward/backward offset
+                units.inchesToMeters(-13.0), # Forward/backward offset
                 units.inchesToMeters(0.0), # Left/right offset, right is negative
                 units.inchesToMeters(7.5), # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, -10.0, 180.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, -25.0, 180.0),  # roll, pitch, yaw
         )
         self.linear_baseline_std = 0.10  # meters
 
