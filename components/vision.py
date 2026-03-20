@@ -113,6 +113,26 @@ class VisionComponent:
         # Only needed for single-tag gyro-fused fallback
         # self._yaw_rate_history: deque[float] = deque(maxlen=15)
 
+        # Worker mode: on real robot, a separate process handles camera
+        # processing and fusion, publishing results via NetworkTables.
+        # In sim, we process inline because physics.py injects simulated
+        # camera data through our PhotonCamera objects.
+        self._use_worker = not self.sim
+
+    def setup(self):
+        """Called by MagicBot after dependency injection."""
+        if self._use_worker:
+            nt = ntcore.NetworkTableInstance.getDefault()
+            table = nt.getTable("/vision_worker")
+            self._fused_sub = table.getDoubleArrayTopic(
+                "fused_estimate"
+            ).subscribe([])
+            self._enabled_pub = table.getBooleanTopic("robot_enabled").publish()
+            self._robot_pose_pub = table.getDoubleArrayTopic(
+                "robot_pose"
+            ).publish()
+            self._last_worker_ts = 0.0
+
     def _compute_std_devs(
         self, avg_dist: float, tag_count: int, is_single_tag_gyro_fused: bool
     ) -> tuple[float, float, float]:
@@ -271,6 +291,43 @@ class VisionComponent:
         return age < 2.0 and self._last_std_xy < 0.5 and self._consecutive_frames >= 5
 
     def execute(self) -> None:
+        if self._use_worker:
+            self._execute_worker()
+        else:
+            self._execute_inline()
+
+    def _execute_worker(self) -> None:
+        """Read fused pose from the vision worker process via NetworkTables."""
+        # Publish robot state so the worker can apply rejection filters
+        disabled = is_disabled()
+        self._enabled_pub.set(not disabled)
+        pose = self.drivetrain.get_pose()
+        self._robot_pose_pub.set([pose.x, pose.y, pose.rotation().radians()])
+
+        # Read fused estimate from worker
+        data = self._fused_sub.get()
+        if len(data) != 7:
+            self._consecutive_frames = 0
+            return
+
+        x, y, rot, ts, std_x, std_y, std_rot = data
+
+        # Skip if we've already processed this timestamp
+        if ts <= self._last_worker_ts:
+            return
+        self._last_worker_ts = ts
+
+        fused_pose = Pose2d(x, y, Rotation2d(rot))
+        stds = (std_x, std_y, std_rot)
+
+        self.drivetrain.estimator.setVisionMeasurementStdDevs(stds)
+        self.drivetrain.estimator.addVisionMeasurement(fused_pose, ts)
+        self.last_vision_update = Timer.getFPGATimestamp()
+        self._last_std_xy = std_x
+        self._consecutive_frames = min(self._consecutive_frames + 1, 100)
+
+    def _execute_inline(self) -> None:
+        """Process vision inline (simulation mode) — original pipeline."""
         disabled = is_disabled()
 
         valid_estimates: list[tuple[Pose2d, float, tuple[float, float, float]]] = []
@@ -294,22 +351,15 @@ class VisionComponent:
             if best_target and best_target.poseAmbiguity > 0.2:
                 continue
 
-            # Try multi-tag estimation first (most accurate)
             pupdate = pose_est.estimateCoprocMultiTagPose(res)
             if pupdate is None:
-                # No updated multi-tag pose? We skip this loop
                 continue
 
-            # is_gyro_fused = False  # Only used for single-tag estimation
             ts = pupdate.timestampSeconds
             pose3d = pupdate.estimatedPose
-            # TODO: Should we check the Z axis and reject things that aren't
-            # very close to the floor?
             twod_pose = pose3d.toPose2d()
-            # TODO: Reject poses more than 1 meter away when we're enabled
             pub.set(twod_pose)
 
-            # Compute std devs
             tag_count = len(targets)
             total_dist = sum(
                 t.getBestCameraToTarget().translation().norm() for t in targets
@@ -318,23 +368,13 @@ class VisionComponent:
             if avg_dist > 2.0 and not disabled:
                 continue
 
-            # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
-            # Record timestamp
-            # Only used in _reject_estimate which is not active.
-            # self._last_timestamps[cam_idx] = ts
-
             std_factor = (avg_dist ** 2) / tag_count
             std_xy = self.linear_baseline_std * std_factor
             std_rot = self.angular_baseline * std_factor
             if not disabled:
-                # Vision should never be more trusted than wheel odometry.
-                # Without this floor, close-range tags produce std devs near
-                # or below the state stds (0.01), letting vision noise
-                # dominate the pose estimate and cause drift.
                 std_xy = max(std_xy, 0.05)
                 std_rot = max(std_rot, 0.5)
             std_devs = (std_xy, std_xy, std_rot)
-
 
             valid_estimates.append((twod_pose, ts, std_devs))
 

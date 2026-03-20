@@ -1,4 +1,9 @@
+import atexit
 import math
+import os
+import subprocess
+import sys
+
 import wpilib
 
 from magicbot import tunable, MagicRobot
@@ -60,6 +65,29 @@ class MyRobot(MagicRobot):
         if is_sim():
             self.control_loop_wait_time = 0.1
             wpilib.DriverStation.silenceJoystickConnectionWarning(True)
+
+        # Launch vision worker as a separate OS process (real robot only).
+        # The worker reads PhotonVision cameras, fuses poses, and publishes
+        # results via NetworkTables.  In sim, VisionComponent processes inline
+        # because physics.py injects simulated data through camera objects.
+        self._vision_worker = None
+        if not is_sim():
+            worker_dir = os.path.dirname(os.path.abspath(__file__))
+            self._vision_worker = subprocess.Popen(
+                [sys.executable, os.path.join(worker_dir, "vision_worker.py")],
+                stdin=subprocess.PIPE,
+                close_fds=True,
+                cwd=worker_dir,
+            )
+            atexit.register(self._kill_vision_worker)
+
+    def _kill_vision_worker(self):
+        if self._vision_worker and self._vision_worker.poll() is None:
+            self._vision_worker.terminate()
+            try:
+                self._vision_worker.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._vision_worker.kill()
 
     def autonomousInit(self):
         curr_pose = self.drivetrain.get_pose()
