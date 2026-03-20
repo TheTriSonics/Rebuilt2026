@@ -20,7 +20,10 @@
       "WebFetch(domain:v6.docs.ctr-electronics.com)",
       "WebFetch(domain:api.ctr-electronics.com)",
       "Bash(grep:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(python3 -c \"import wpilib; print\\(dir\\(wpilib.CameraServer\\)\\)\")",
+      "Bash(git checkout:*)"
     ]
   }
 }
