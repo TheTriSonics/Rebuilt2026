@@ -254,12 +254,14 @@ class PlayerStationBump(AutonBase):
         if initial_call:
             self.tanker.go_follow_traj(self.traj_seg1)
 
-        if self.at_pose(self.pause_pose, tolerance=0.15):
+        if self.at_pose(self.pause_pose, tolerance=0.05):
             self.next_state(self.wait_at_split)
 
     @state(must_finish=True)
     def wait_at_split(self, initial_call: bool, state_tm: float):
         """Sit still at the split point for 5 seconds."""
+        if initial_call:
+            self.tanker.go_drive_field()
         if state_tm > self.wait_delay:
             self.next_state(self.follow_seg2)
 
@@ -358,12 +360,23 @@ class PlayerStationBumpNoHang(AutonBase):
         if initial_call:
             self.tanker.go_follow_traj(self.traj_seg1)
 
-        if self.at_pose(self.pause_pose, tolerance=0.15):
+        if self.at_pose(self.pause_pose, tolerance=0.05):
+            # self.next_state(self.line_it_up)
+            self.next_state(self.wait_at_split)
+
+    @state(must_finish=True)
+    def line_it_up(self, initial_call: bool, state_tm: float):
+        if initial_call:
+            self.drivetrain.drive_to_pose(self.pause_pose)
+        if state_tm > self.wait_delay:
+            self.tanker.go_drive_field()
             self.next_state(self.wait_at_split)
 
     @state(must_finish=True)
     def wait_at_split(self, initial_call: bool, state_tm: float):
         """Sit still at the split point for 5 seconds."""
+        if initial_call:
+            self.tanker.go_drive_field()
         if state_tm > self.wait_delay:
             self.next_state(self.follow_seg2)
 
