@@ -50,9 +50,9 @@ class VisionComponent:
             Translation3d(
                 units.inchesToMeters(-10.0), # Forward/backward offset
                 units.inchesToMeters(0.0), # Left/right offset, right is negative
-                units.inchesToMeters(15.0), # Up/down offset
+                units.inchesToMeters(7.5), # Up/down offset
             ),
-            Rotation3d.fromDegrees(0.0, 10.0, 180.0),  # roll, pitch, yaw
+            Rotation3d.fromDegrees(0.0, -10.0, 180.0),  # roll, pitch, yaw
         )
         self.linear_baseline_std = 0.10  # meters
 
@@ -270,66 +270,7 @@ class VisionComponent:
         age = Timer.getFPGATimestamp() - self.last_vision_update
         return age < 2.0 and self._last_std_xy < 0.5 and self._consecutive_frames >= 5
 
-    # ------------------------------------------------------------------
-    # execute — delegates to the appropriate mode
-    # ------------------------------------------------------------------
     def execute(self) -> None:
-        if self.sim:
-            self._execute_sim()
-        else:
-            self._execute_real()
-
-    # ------------------------------------------------------------------
-    # REAL MODE: read fused result from vision_process via NT
-    # ------------------------------------------------------------------
-    def _execute_real(self) -> None:
-        heartbeat = self._heartbeat_sub.get()
-        if heartbeat == self._last_heartbeat:
-            # No new data from vision process
-            self._consecutive_frames = 0
-            return
-        self._last_heartbeat = heartbeat
-
-        count = self._count_sub.get()
-        if count == 0:
-            self._consecutive_frames = 0
-            return
-
-        std_devs = self._std_sub.get()
-        if len(std_devs) != 3:
-            self._consecutive_frames = 0
-            return
-
-        pose = self._pose_sub.get()
-        ts = self._ts_sub.get()
-        std_xy, _, std_rot = std_devs
-
-        disabled = is_disabled()
-
-        # Distance rejection when enabled — vision_process uses a generous
-        # 4 m gate; we apply the tighter 2 m gate here when driving.
-        if not disabled:
-            robot_pose = self.drivetrain.get_pose()
-            dist = robot_pose.relativeTo(pose).translation().norm()
-            if dist > 1.0:
-                self._consecutive_frames = 0
-                return
-
-            # Floor std devs so vision never dominates wheel odometry
-            std_xy = max(std_xy, 0.05)
-            std_rot = max(std_rot, 0.5)
-
-        stds = (std_xy, std_xy, std_rot)
-        self.drivetrain.estimator.setVisionMeasurementStdDevs(stds)
-        self.drivetrain.estimator.addVisionMeasurement(pose, ts)
-        self.last_vision_update = Timer.getFPGATimestamp()
-        self._last_std_xy = std_xy
-        self._consecutive_frames = min(self._consecutive_frames + 1, 100)
-
-    # ------------------------------------------------------------------
-    # SIM MODE: full in-process pipeline (mirrors old behaviour)
-    # ------------------------------------------------------------------
-    def _execute_sim(self) -> None:
         disabled = is_disabled()
 
         valid_estimates: list[tuple[Pose2d, float, tuple[float, float, float]]] = []
@@ -404,7 +345,7 @@ class VisionComponent:
             else:
                 pose, ts, stds = self._fuse_estimates(valid_estimates)
 
-            setDevs(stds)
+            self.drivetrain.estimator.setVisionMeasurementStdDevs(stds)
             self.drivetrain.estimator.addVisionMeasurement(pose, ts)
             self.last_vision_update = Timer.getFPGATimestamp()
             self._last_std_xy = stds[0]

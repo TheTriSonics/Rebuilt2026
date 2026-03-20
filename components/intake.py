@@ -26,7 +26,7 @@ class IntakeComponent:
     lower_position = -0.01
     target_position = tunable(0.0)
 
-    intake_speed = tunable(-0.40)
+    intake_speed = tunable(-0.45)
     outtake_speed = tunable(0.40)
     target_speed = tunable(0.0)
 

@@ -234,8 +234,8 @@ class DrivetrainComponent:
         self.snap_heading: float | None = None
 
         # Used for path following and driving directly to a specific point
-        self.path_pid_control = PIDController(10, 0, 0)
-        self.path_heading_pid_control = PIDController(8.2, 0, 0)
+        self.path_pid_control = PIDController(7.0, 0, 0)
+        self.path_heading_pid_control = PIDController(7.0, 0, 0)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi) 
 
         # Define each of the four swerve modules using the SwerveModule class
