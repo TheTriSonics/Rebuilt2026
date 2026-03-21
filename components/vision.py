@@ -141,7 +141,7 @@ class VisionComponent:
 
         # Distance from current pose check (existing)
         dist = robot_pose.relativeTo(twod_pose).translation().norm()
-        if dist > 1.0 and not disabled:
+        if dist > 4.0 and not disabled:
             return True
 
         return False
