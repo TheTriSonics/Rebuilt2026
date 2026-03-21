@@ -51,7 +51,7 @@ class RebuiltOperator:
     def eject(self):
         return self.controller.getXButtonPressed()
     
-    def singulating(self):
+    def fixed_shot(self):
         return self.controller.getLeftTriggerAxis() > 0.1
     
     def shooter_shoot(self):

@@ -139,6 +139,10 @@ class MyRobot(MagicRobot):
             self.gaspump.go_shoot()
         if self.operator_controller.shooter_off(): # A button
             self.gaspump.go_shoot_off()
+        if self.operator_controller.fixed_shot():
+            self.shooter.fixed_shot = True
+        else:
+            self.shooter.fixed_shot = False
 
         if self.operator_controller.turret_aim_hub():
             self.shot_calc.set_target("hub")

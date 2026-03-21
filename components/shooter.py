@@ -33,6 +33,8 @@ class ShooterComponent:
 
     at_speed_counter = 0
     at_speed_stable = False
+    fixed_shot = False
+    hood_fixed_speed = 13.3517
 
     shooter_left_velocity = 0.0
     shooter_right_velocity = 0.0
@@ -198,6 +200,8 @@ class ShooterComponent:
             self.config_limits = False
 
         self.hood_rps = self.calc_rps()
+        if self.fixed_shot:
+            self.hood_rps = self.hood_fixed_speed
         if self.active and self.hood_rps != 0.0:
             self.shooter_left.set_control(self.flywheel_velocity_request.with_velocity(-self.flywheel_rps))
             self.shooter_right.set_control(self.flywheel_velocity_request.with_velocity(self.flywheel_rps))
