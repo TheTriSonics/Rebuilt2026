@@ -59,6 +59,9 @@ class RebuiltDriver:
     def set_heading_to_vision(self):
         return self.controller.getLeftTriggerAxis() > 0.5
 
+    def slow_mode(self):
+        return self.controller.getRightTriggerAxis() > 0.5
+
     def reset_yaw(self):
         return self.controller.getPOV() == 180
 
