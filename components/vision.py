@@ -326,7 +326,8 @@ class VisionComponent:
             # Reject poses wildly divergent from current estimate, unless
             # disabled or off-field where we want vision to pull us back.
             dist = current_pose.relativeTo(twod_pose).translation().norm()
-            if dist > 4.0 and not disabled and not off_field:
+            accept_dist = 1.0 if is_auton() else 4.0
+            if dist > accept_dist and not disabled and not off_field:
                 continue
 
             # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
