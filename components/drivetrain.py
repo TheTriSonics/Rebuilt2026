@@ -148,6 +148,17 @@ class SwerveModule:
     def get_distance_traveled(self) -> float:
         return self.drive.get_position().value
 
+    def get_drive_current(self) -> float:
+        return self.drive.get_stator_current().value
+
+    def publish_telemetry(self) -> None:
+        wpilib.SmartDashboard.putNumber(
+            f"Module/{self.name}/drive_current", self.get_drive_current()
+        )
+        wpilib.SmartDashboard.putNumber(
+            f"Module/{self.name}/drive_speed", self.get_speed()
+        )
+
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
         no_drive = False
@@ -421,6 +432,7 @@ class DrivetrainComponent:
 
         for state, module in zip(desired_states, self.modules, strict=True):
             module.set(state)
+            module.publish_telemetry()
 
         self.update_odometry()
 

@@ -10,7 +10,7 @@ from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from wpimath import units
-from utilities.game import is_sim, is_disabled
+from utilities.game import is_auton, is_sim, is_disabled
 
 
 class VisionComponent:
@@ -270,8 +270,14 @@ class VisionComponent:
         age = Timer.getFPGATimestamp() - self.last_vision_update
         return age < 2.0 and self._last_std_xy < 0.5 and self._consecutive_frames >= 5
 
+    def _is_off_field(self, pose: Pose2d) -> bool:
+        return pose.x < -0.5 or pose.x > 17.0 or pose.y < -0.5 or pose.y > 8.5
+
     def execute(self) -> None:
+        self.linear_baseline_std = 0.10 if is_auton() else 0.02
         disabled = is_disabled()
+        current_pose = self.drivetrain.estimator.getEstimatedPosition()
+        off_field = self._is_off_field(current_pose)
 
         valid_estimates: list[tuple[Pose2d, float, tuple[float, float, float]]] = []
 
@@ -306,7 +312,6 @@ class VisionComponent:
             # TODO: Should we check the Z axis and reject things that aren't
             # very close to the floor?
             twod_pose = pose3d.toPose2d()
-            # TODO: Reject poses more than 1 meter away when we're enabled
             pub.set(twod_pose)
 
             # Compute std devs
@@ -318,6 +323,12 @@ class VisionComponent:
             if avg_dist > 2.0 and not disabled:
                 continue
 
+            # Reject poses wildly divergent from current estimate, unless
+            # disabled or off-field where we want vision to pull us back.
+            dist = current_pose.relativeTo(twod_pose).translation().norm()
+            if dist > 4.0 and not disabled and not off_field:
+                continue
+
             # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
             # Record timestamp
             # Only used in _reject_estimate which is not active.
@@ -326,7 +337,11 @@ class VisionComponent:
             std_factor = (avg_dist ** 2) / tag_count
             std_xy = self.linear_baseline_std * std_factor
             std_rot = self.angular_baseline * std_factor
-            if not disabled:
+            if off_field:
+                # Robot is off-field: snap fully to vision, ignore odometry drift
+                std_xy = 0.001
+                std_rot = 0.001
+            elif not disabled:
                 # Vision should never be more trusted than wheel odometry.
                 # Without this floor, close-range tags produce std devs near
                 # or below the state stds (0.01), letting vision noise
@@ -334,7 +349,6 @@ class VisionComponent:
                 std_xy = max(std_xy, 0.05)
                 std_rot = max(std_rot, 0.5)
             std_devs = (std_xy, std_xy, std_rot)
-
 
             valid_estimates.append((twod_pose, ts, std_devs))
 
