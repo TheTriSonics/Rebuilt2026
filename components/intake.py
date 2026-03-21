@@ -46,7 +46,7 @@ class IntakeComponent:
         motor_config.neutral_mode = NeutralModeValue.BRAKE
         motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
-        self.mag_offset = -0.4560546875
+        self.mag_offset = -0.42578125
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
         enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.COUNTER_CLOCKWISE_POSITIVE)
