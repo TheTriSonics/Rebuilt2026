@@ -1,4 +1,4 @@
-from magicbot import tunable
+from magicbot import tunable, feedback
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import PositionVoltage
 import ids
@@ -79,6 +79,10 @@ class ClimberComponent:
 
     def raise_up(self) -> None:
         self.target_position = self.upper_position
+
+    @feedback
+    def climber_motor_temp(self) -> float:
+        return self.climber.get_device_temp().value
 
     def execute(self) -> None:
         if self.config_limits:
