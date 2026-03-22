@@ -86,7 +86,7 @@ class HopperShoot(AutonBase):
         self.gaspump.go_shoot_off()
         self.intake.off()
         # TODO: remove this before competition, or make it not do it with an FMS connected
-        self.intake.rotate_up()
+        self.intake.rotate_down()
 
 
 class HopperShootTwo(AutonBase):
@@ -289,7 +289,7 @@ class PlayerStationBump(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        self.intake.rotate_up()
+        self.intake.rotate_down()
 
 
 class PlayerStationBumpNoHang(AutonBase):
@@ -393,7 +393,7 @@ class PlayerStationBumpNoHang(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        self.intake.rotate_up()
+        self.intake.rotate_down()
 
 
 
