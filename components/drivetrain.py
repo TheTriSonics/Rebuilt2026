@@ -151,12 +151,24 @@ class SwerveModule:
     def get_drive_current(self) -> float:
         return self.drive.get_stator_current().value
 
+    def get_drive_temp(self) -> float:
+        return self.drive.get_device_temp().value
+
+    def get_steer_temp(self) -> float:
+        return self.steer.get_device_temp().value
+
     def publish_telemetry(self) -> None:
         wpilib.SmartDashboard.putNumber(
             f"Module/{self.name}/drive_current", self.get_drive_current()
         )
         wpilib.SmartDashboard.putNumber(
             f"Module/{self.name}/drive_speed", self.get_speed()
+        )
+        wpilib.SmartDashboard.putNumber(
+            f"Module/{self.name}/drive_temp", self.get_drive_temp()
+        )
+        wpilib.SmartDashboard.putNumber(
+            f"Module/{self.name}/steer_temp", self.get_steer_temp()
         )
 
     def set(self, desired_state: SwerveModuleState):

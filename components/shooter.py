@@ -154,6 +154,18 @@ class ShooterComponent:
     @feedback
     def shooter_at_speed(self) -> bool:
         return self.at_speed_stable
+
+    @feedback
+    def shooter_left_temp(self) -> float:
+        return self.shooter_left.get_device_temp().value
+
+    @feedback
+    def shooter_right_temp(self) -> float:
+        return self.shooter_right.get_device_temp().value
+
+    @feedback
+    def shooter_hood_temp(self) -> float:
+        return self.shooter_hood.get_device_temp().value
     
 
     def is_at_speed(self) -> bool:

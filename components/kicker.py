@@ -4,7 +4,7 @@ from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityVoltage, DutyCycleOut
 from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Configs, FeedbackConfigs
 from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
-from magicbot import tunable
+from magicbot import tunable, feedback
 
 
 class KickerComponent:
@@ -64,6 +64,10 @@ class KickerComponent:
     def off(self) -> None:
         self.active = False
 
+
+    @feedback
+    def kicker_motor_temp(self) -> float:
+        return self.kicker.get_device_temp().value
 
     def execute(self) -> None:
         if self.config_limits:
