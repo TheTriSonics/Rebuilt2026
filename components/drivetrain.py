@@ -35,7 +35,6 @@ from ids import TalonId, CancoderId
 
 
 class SwerveModule:
-
     def __init__(
         self,
         name: str,
@@ -48,7 +47,7 @@ class SwerveModule:
         busname: str,
         mag_offset: float = 0.0,
         drive_reversed: bool = False,
-        steer_reversed: bool = False
+        steer_reversed: bool = False,
     ):
         """
         x, y: where the module is relative to the center of the robot
@@ -155,9 +154,7 @@ class SwerveModule:
         wpilib.SmartDashboard.putNumber(
             f"Module/{self.name}/drive_current", self.get_drive_current()
         )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_speed", self.get_speed()
-        )
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/drive_speed", self.get_speed())
 
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
@@ -171,7 +168,7 @@ class SwerveModule:
         wpilib.SmartDashboard.putNumber("tar", target_angle_rotations)
         diff = self.state.angle - current_angle
         if no_steer is False:
-            if (abs(diff.degrees()) < 1):
+            if abs(diff.degrees()) < 1:
                 self.steer.set_control(DutyCycleOut(0))
             else:
                 # Use Phoenix 6 closed-loop position control with FusedCANCoder
@@ -185,7 +182,6 @@ class SwerveModule:
                 self.drive.set_control(self.stop_request)
             else:
                 self.drive.set_control(self.drive_request.with_velocity(target_speed))
-
 
     def get_position(self) -> SwerveModulePosition:
         return SwerveModulePosition(self.get_distance_traveled(), self.get_rotation())
@@ -207,6 +203,12 @@ class DrivetrainComponent:
     send_modules = magicbot.tunable(False)
     snapping_to_heading = magicbot.tunable(False)
 
+    # Acceleration limits — prevents instant full-speed changes that
+    # cause wheel slip, tipping, and wild odometry drift.
+    max_linear_accel = magicbot.tunable(8.0)  # m/s^2
+    max_linear_decel = magicbot.tunable(12.0)  # m/s^2 (allow faster stopping)
+    max_angular_accel = magicbot.tunable(40.0)  # rad/s^2
+
     def __init__(self) -> None:
         self.last_odometry_update_time: float = wpilib.Timer.getFPGATimestamp()
         # Theoretical max RPM that a Kraken X60 can reach
@@ -217,6 +219,11 @@ class DrivetrainComponent:
         drive_motor_rev_to_meters = wheel_circumference / TunerConstants._drive_gear_ratio
         self.max_wheel_speed = drive_motor_rev_to_meters * DRIVE_MOTOR_MAX_RPM
 
+        # Previously commanded speeds for acceleration limiting
+        self._prev_commanded_vx = 0.0
+        self._prev_commanded_vy = 0.0
+        self._prev_commanded_omega = 0.0
+
         # Placeholders for current robot velocity
         self.vx = 0
         self.vy = 0
@@ -226,14 +233,12 @@ class DrivetrainComponent:
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
         self._vy_samples: deque[float] = deque(maxlen=self._velocity_samples)
         # Weights for exponential weighting (most recent sample has highest weight)
-        self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
+        self._velocity_weights = [1.2**i for i in range(self._velocity_samples)]
 
         # Plotting the location of this in AdvantageScope shows the robot's
         # estimated position on the field
         self.fused_pose_pub = (
-            ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("FusedPose", Pose2d)
-            .publish()
+            ntcore.NetworkTableInstance.getDefault().getStructTopic("FusedPose", Pose2d).publish()
         )
 
         # Used to lock the robot onto a heading; currently not used.
@@ -247,7 +252,7 @@ class DrivetrainComponent:
         # Used for path following and driving directly to a specific point
         self.path_pid_control = PIDController(7.0, 0, 0)
         self.path_heading_pid_control = PIDController(7.0, 0, 0)
-        self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi) 
+        self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
 
         # Define each of the four swerve modules using the SwerveModule class
         # also found in this file.
@@ -328,7 +333,9 @@ class DrivetrainComponent:
     def get_chassis_speeds(self) -> ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.get_module_states())
 
-    def get_module_states(self) -> tuple[
+    def get_module_states(
+        self,
+    ) -> tuple[
         SwerveModuleState,
         SwerveModuleState,
         SwerveModuleState,
@@ -360,9 +367,7 @@ class DrivetrainComponent:
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""
         current_heading = self.get_rotation()
-        self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-            vx, vy, omega, current_heading
-        )
+        self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, omega, current_heading)
 
     def drive_to_pose(self, target_pose: Pose2d):
         self.drive_to_position(target_pose.x, target_pose.y, target_pose.rotation().radians())
@@ -378,7 +383,9 @@ class DrivetrainComponent:
         robot_pose = self.get_pose()
         xvel = sample.vx + self.path_pid_control.calculate(robot_pose.x, sample.x)
         yvel = sample.vy + self.path_pid_control.calculate(robot_pose.y, sample.y)
-        ovel = sample.omega + self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), sample.heading)
+        ovel = sample.omega + self.path_heading_pid_control.calculate(
+            robot_pose.rotation().radians(), sample.heading
+        )
         self.drive_field(xvel, yvel, ovel)
 
     def get_robot_speeds(self) -> tuple[float, float]:
@@ -414,6 +421,51 @@ class DrivetrainComponent:
             return False
         return self.heading_controller.atGoal()
 
+    def _rate_limit_speeds(self, desired: ChassisSpeeds, dt: float) -> ChassisSpeeds:
+        """Limit acceleration to prevent wheel slip and tipping.
+
+        Computes the delta from previously commanded speeds and scales it
+        down if it exceeds the configured acceleration limits. Linear and
+        angular axes are limited independently.
+        """
+        if dt <= 0:
+            return desired
+
+        dvx = desired.vx - self._prev_commanded_vx
+        dvy = desired.vy - self._prev_commanded_vy
+
+        linear_delta = math.sqrt(dvx * dvx + dvy * dvy)
+        if linear_delta > 0:
+            # Use different limits for speeding up vs slowing down.
+            # Check if we're decelerating: the speed magnitude is decreasing.
+            prev_speed = math.sqrt(self._prev_commanded_vx**2 + self._prev_commanded_vy**2)
+            desired_speed = math.sqrt(desired.vx**2 + desired.vy**2)
+            if desired_speed < prev_speed:
+                max_accel = self.max_linear_decel
+            else:
+                max_accel = self.max_linear_accel
+
+            max_delta = max_accel * dt
+            if linear_delta > max_delta:
+                scale = max_delta / linear_delta
+                dvx *= scale
+                dvy *= scale
+
+        domega = desired.omega - self._prev_commanded_omega
+        max_omega_delta = self.max_angular_accel * dt
+        if abs(domega) > max_omega_delta:
+            domega = math.copysign(max_omega_delta, domega)
+
+        new_vx = self._prev_commanded_vx + dvx
+        new_vy = self._prev_commanded_vy + dvy
+        new_omega = self._prev_commanded_omega + domega
+
+        self._prev_commanded_vx = new_vx
+        self._prev_commanded_vy = new_vy
+        self._prev_commanded_omega = new_omega
+
+        return ChassisSpeeds(new_vx, new_vy, new_omega)
+
     def execute(self) -> None:
         if self.snapping_to_heading:
             self.chassis_speeds.omega = self.heading_controller.calculate(
@@ -424,7 +476,10 @@ class DrivetrainComponent:
                 self.get_rotation().radians(), self.get_rotational_velocity()
             )
 
-        desired_speeds = self.chassis_speeds
+        now = wpilib.Timer.getFPGATimestamp()
+        dt = now - self.last_odometry_update_time
+        desired_speeds = self._rate_limit_speeds(self.chassis_speeds, dt)
+
         desired_states = self.kinematics.toSwerveModuleStates(desired_speeds)
         desired_states = self.kinematics.desaturateWheelSpeeds(
             desired_states, attainableMaxSpeed=self.max_wheel_speed
@@ -443,6 +498,9 @@ class DrivetrainComponent:
         While we should be building the pose buffer while disabled, this
         accounts for the edge case of crashing mid match and immediately
         enabling with an empty buffer"""
+        self._prev_commanded_vx = 0.0
+        self._prev_commanded_vy = 0.0
+        self._prev_commanded_omega = 0.0
         self.update_odometry()
 
     def get_rotational_velocity(self) -> float:
@@ -471,9 +529,7 @@ class DrivetrainComponent:
             self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
-        self.estimator.resetPosition(
-            self.gyro.get_Rotation2d(), self.get_module_positions(), pose
-        )
+        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
         self.fused_pose_pub.set(pose)
 
     def reset_yaw(self) -> None:
@@ -482,7 +538,9 @@ class DrivetrainComponent:
         default_heading = 180 if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d.fromDegrees(default_heading)))
 
-    def get_module_positions(self) -> tuple[
+    def get_module_positions(
+        self,
+    ) -> tuple[
         SwerveModulePosition,
         SwerveModulePosition,
         SwerveModulePosition,
