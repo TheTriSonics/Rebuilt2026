@@ -213,6 +213,12 @@ class DrivetrainComponent:
         drive_motor_rev_to_meters = wheel_circumference / TunerConstants._drive_gear_ratio
         self.max_wheel_speed = drive_motor_rev_to_meters * DRIVE_MOTOR_MAX_RPM
 
+        # Odometry freeze: when drift is detected, we pass stale positions
+        # to the estimator so it sees zero wheel movement. This reference
+        # tracks the "last positions we fed the estimator" and gets snapped
+        # to real encoder values each cycle so there's no jump on un-freeze.
+        self._frozen_module_positions: tuple | None = None
+
         # Placeholders for current robot velocity
         self.vx = 0
         self.vy = 0
@@ -452,7 +458,20 @@ class DrivetrainComponent:
 
     def update_odometry(self) -> None:
         orig_pose = self.get_pose()
-        self.estimator.update(self.gyro.get_Rotation2d(), self.get_module_positions())
+
+        real_positions = self.get_module_positions()
+        if self.gyro.is_drift_detected() and self._frozen_module_positions is not None:
+            # Drift active: feed the estimator our PREVIOUS positions so it
+            # sees zero wheel delta. Snap the frozen reference to real encoder
+            # values so there's no jump when drift ends.
+            positions_to_use = self._frozen_module_positions
+            self._frozen_module_positions = real_positions
+        else:
+            # Normal operation or first cycle: use real encoder positions
+            positions_to_use = real_positions
+            self._frozen_module_positions = real_positions
+
+        self.estimator.update(self.gyro.get_Rotation2d(), positions_to_use)
         curr_pose = self.get_pose()
 
         dx = curr_pose.x - orig_pose.x
