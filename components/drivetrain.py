@@ -35,7 +35,6 @@ from ids import TalonId, CancoderId
 
 
 class SwerveModule:
-
     def __init__(
         self,
         name: str,
@@ -48,7 +47,7 @@ class SwerveModule:
         busname: str,
         mag_offset: float = 0.0,
         drive_reversed: bool = False,
-        steer_reversed: bool = False
+        steer_reversed: bool = False,
     ):
         """
         x, y: where the module is relative to the center of the robot
@@ -155,9 +154,7 @@ class SwerveModule:
         wpilib.SmartDashboard.putNumber(
             f"Module/{self.name}/drive_current", self.get_drive_current()
         )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_speed", self.get_speed()
-        )
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/drive_speed", self.get_speed())
 
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
@@ -171,7 +168,7 @@ class SwerveModule:
         wpilib.SmartDashboard.putNumber("tar", target_angle_rotations)
         diff = self.state.angle - current_angle
         if no_steer is False:
-            if (abs(diff.degrees()) < 1):
+            if abs(diff.degrees()) < 1:
                 self.steer.set_control(DutyCycleOut(0))
             else:
                 # Use Phoenix 6 closed-loop position control with FusedCANCoder
@@ -185,7 +182,6 @@ class SwerveModule:
                 self.drive.set_control(self.stop_request)
             else:
                 self.drive.set_control(self.drive_request.with_velocity(target_speed))
-
 
     def get_position(self) -> SwerveModulePosition:
         return SwerveModulePosition(self.get_distance_traveled(), self.get_rotation())
@@ -226,14 +222,12 @@ class DrivetrainComponent:
         self._vx_samples: deque[float] = deque(maxlen=self._velocity_samples)
         self._vy_samples: deque[float] = deque(maxlen=self._velocity_samples)
         # Weights for exponential weighting (most recent sample has highest weight)
-        self._velocity_weights = [1.2 ** i for i in range(self._velocity_samples)]
+        self._velocity_weights = [1.2**i for i in range(self._velocity_samples)]
 
         # Plotting the location of this in AdvantageScope shows the robot's
         # estimated position on the field
         self.fused_pose_pub = (
-            ntcore.NetworkTableInstance.getDefault()
-            .getStructTopic("FusedPose", Pose2d)
-            .publish()
+            ntcore.NetworkTableInstance.getDefault().getStructTopic("FusedPose", Pose2d).publish()
         )
 
         # Used to lock the robot onto a heading; currently not used.
@@ -247,7 +241,7 @@ class DrivetrainComponent:
         # Used for path following and driving directly to a specific point
         self.path_pid_control = PIDController(7.0, 0, 0)
         self.path_heading_pid_control = PIDController(7.0, 0, 0)
-        self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi) 
+        self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
 
         # Define each of the four swerve modules using the SwerveModule class
         # also found in this file.
@@ -328,7 +322,9 @@ class DrivetrainComponent:
     def get_chassis_speeds(self) -> ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.get_module_states())
 
-    def get_module_states(self) -> tuple[
+    def get_module_states(
+        self,
+    ) -> tuple[
         SwerveModuleState,
         SwerveModuleState,
         SwerveModuleState,
@@ -360,9 +356,7 @@ class DrivetrainComponent:
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""
         current_heading = self.get_rotation()
-        self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-            vx, vy, omega, current_heading
-        )
+        self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, omega, current_heading)
 
     def drive_to_pose(self, target_pose: Pose2d):
         self.drive_to_position(target_pose.x, target_pose.y, target_pose.rotation().radians())
@@ -378,7 +372,9 @@ class DrivetrainComponent:
         robot_pose = self.get_pose()
         xvel = sample.vx + self.path_pid_control.calculate(robot_pose.x, sample.x)
         yvel = sample.vy + self.path_pid_control.calculate(robot_pose.y, sample.y)
-        ovel = sample.omega + self.path_heading_pid_control.calculate(robot_pose.rotation().radians(), sample.heading)
+        ovel = sample.omega + self.path_heading_pid_control.calculate(
+            robot_pose.rotation().radians(), sample.heading
+        )
         self.drive_field(xvel, yvel, ovel)
 
     def get_robot_speeds(self) -> tuple[float, float]:
@@ -434,6 +430,11 @@ class DrivetrainComponent:
             module.set(state)
             module.publish_telemetry()
 
+        # Feed robot speed to gyro's drift detector
+        speeds = self.get_chassis_speeds()
+        robot_speed = math.sqrt(speeds.vx**2 + speeds.vy**2)
+        self.gyro.update_drift_detection(robot_speed)
+
         self.update_odometry()
 
     def on_enable(self) -> None:
@@ -471,9 +472,7 @@ class DrivetrainComponent:
             self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
-        self.estimator.resetPosition(
-            self.gyro.get_Rotation2d(), self.get_module_positions(), pose
-        )
+        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
         self.fused_pose_pub.set(pose)
 
     def reset_yaw(self) -> None:
@@ -482,7 +481,9 @@ class DrivetrainComponent:
         default_heading = 180 if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d.fromDegrees(default_heading)))
 
-    def get_module_positions(self) -> tuple[
+    def get_module_positions(
+        self,
+    ) -> tuple[
         SwerveModulePosition,
         SwerveModulePosition,
         SwerveModulePosition,
