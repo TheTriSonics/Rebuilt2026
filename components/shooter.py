@@ -1,5 +1,3 @@
-from math import dist
-
 from magicbot import tunable, feedback
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityTorqueCurrentFOC, VoltageOut
@@ -7,7 +5,11 @@ from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Conf
 from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
 
 from components.shot_calculator import ShotCalculatorComponent
-from wpimath.units import metersToInches
+from utilities.shot_tables import (
+    HOOD_RPS_TABLE,
+    FLYWHEEL_RPS_TABLE,
+    RADIAL_VELOCITY_TO_RPS,
+)
 
 import ids
 
@@ -15,14 +17,14 @@ import ids
 class ShooterComponent:
     shot_calc: ShotCalculatorComponent
 
-    shooter_left = TalonFX(ids.TalonId.SHOOTER_LEFT.id, ids.TalonId.SHOOTER_LEFT.bus) # SETUP FOLLOWER ON RIGHT
+    shooter_left = TalonFX(ids.TalonId.SHOOTER_LEFT.id, ids.TalonId.SHOOTER_LEFT.bus)
     shooter_right = TalonFX(ids.TalonId.SHOOTER_RIGHT.id, ids.TalonId.SHOOTER_RIGHT.bus)
     shooter_hood = TalonFX(ids.TalonId.SHOOTER_HOOD.id, ids.TalonId.SHOOTER_HOOD.bus)
 
     coef = tunable(0.15)
     base = tunable(3)
     hood_rps = tunable(0.0)
-    flywheel_rps = tunable(40.0)
+    flywheel_rps = tunable(0.0)
     active = tunable(False)
 
     config_limits = tunable(False)
@@ -53,9 +55,7 @@ class ShooterComponent:
             .with_k_s(2.2)
             .with_k_v(0.45)
             .with_k_a(0.0)
-            .with_static_feedforward_sign(
-                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
-            )
+            .with_static_feedforward_sign(StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN)
         )
 
         right_pid = (
@@ -66,9 +66,7 @@ class ShooterComponent:
             .with_k_s(2.2)
             .with_k_v(0.45)
             .with_k_a(0.0)
-            .with_static_feedforward_sign(
-                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
-            )
+            .with_static_feedforward_sign(StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN)
         )
         hood_pid = (
             Slot0Configs()
@@ -78,11 +76,8 @@ class ShooterComponent:
             .with_k_s(2.2)
             .with_k_v(0.75)
             .with_k_a(0.0)
-            .with_static_feedforward_sign(
-                StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
-            )
+            .with_static_feedforward_sign(StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN)
         )
-
 
         self.shooter_left.configurator.apply(motor_config)
         self.shooter_left.configurator.apply(left_pid, 0.01)
@@ -115,13 +110,13 @@ class ShooterComponent:
         )
         self.shooter_left.configurator.apply(current_limits_config)
         self.shooter_right.configurator.apply(current_limits_config)
-        # self.shooter_hood.configurator.apply(current_limits_config)
 
     def spin_up(self) -> None:
         self.active = True
 
     def stop(self) -> None:
         self.hood_rps = 0.0
+        self.flywheel_rps = 0.0
         self.active = False
 
     def is_active(self) -> bool:
@@ -150,11 +145,9 @@ class ShooterComponent:
     def get_hood_target(self) -> float:
         return self.hood_rps
 
-    
     @feedback
     def shooter_at_speed(self) -> bool:
         return self.at_speed_stable
-    
 
     def is_at_speed(self) -> bool:
         if not self.active:
@@ -164,31 +157,39 @@ class ShooterComponent:
         left_vel = self.shooter_left_velocity
         right_vel = self.shooter_right_velocity
         hood_vel = self.shooter_hood_velocity
-        at_speed = left_vel >= self.flywheel_rps * margin and right_vel >= self.flywheel_rps * margin and hood_vel >= self.hood_rps * margin
+        at_speed = (
+            left_vel >= self.flywheel_rps * margin
+            and right_vel >= self.flywheel_rps * margin
+            and hood_vel >= self.hood_rps * margin
+        )
         if at_speed:
             self.at_speed_counter += 1
         else:
             self.at_speed_counter = 0
-        
+
         self.at_speed_stable = False
         if self.at_speed_counter >= 10:
             self.at_speed_stable = True
-        return self.at_speed_stable 
+        return self.at_speed_stable
 
-    def calc_rps(self) -> float:
-        dist = self.shot_calc.get_field_shot_distance()
+    def calc_hood_rps(self) -> float:
+        """Look up hood RPS from the interpolation table using effective distance."""
+        dist = self.shot_calc.get_effective_distance()
+        return HOOD_RPS_TABLE.get(dist)
 
-        if dist < 2.8:
-            rps = 10.0
-        elif dist <= 4.9:
-            # rps = 0.0383*dist**3 - 1.3737*dist**2 + 16.66*dist - 22.3
-            rps = -3.7967*dist**3 + 40.801*dist**2 - 131.4*dist + 141.69
-        else:
-            rps = 3.0*dist + 18.0
+    def calc_flywheel_rps(self) -> float:
+        """Look up flywheel RPS from the interpolation table, then compensate
+        for radial robot velocity (moving toward target = need less speed)."""
+        dist = self.shot_calc.get_effective_distance()
+        base_rps = FLYWHEEL_RPS_TABLE.get(dist)
 
-        rps = min(rps, 50)
-        rps = max(rps, 10)
-        return rps
+        # Radial velocity compensation: if we're moving toward the target,
+        # the ball already has some of that velocity, so reduce flywheel speed.
+        radial_v = self.shot_calc.get_radial_velocity()
+        compensation = radial_v * RADIAL_VELOCITY_TO_RPS
+        adjusted_rps = base_rps - compensation
+
+        return max(adjusted_rps, 10.0)
 
     def execute(self) -> None:
         self.shooter_left_velocity = abs(self.shooter_left.get_velocity().value)
@@ -199,12 +200,19 @@ class ShooterComponent:
             self._apply_current_limits()
             self.config_limits = False
 
-        self.hood_rps = self.calc_rps()
+        self.hood_rps = self.calc_hood_rps()
+        self.flywheel_rps = self.calc_flywheel_rps()
+
         if self.fixed_shot:
             self.hood_rps = self.hood_fixed_speed
+
         if self.active and self.hood_rps != 0.0:
-            self.shooter_left.set_control(self.flywheel_velocity_request.with_velocity(-self.flywheel_rps))
-            self.shooter_right.set_control(self.flywheel_velocity_request.with_velocity(self.flywheel_rps))
+            self.shooter_left.set_control(
+                self.flywheel_velocity_request.with_velocity(-self.flywheel_rps)
+            )
+            self.shooter_right.set_control(
+                self.flywheel_velocity_request.with_velocity(self.flywheel_rps)
+            )
             self.shooter_hood.set_control(self.hood_velocity_request.with_velocity(self.hood_rps))
         else:
             self.shooter_left.set_control(self.stop_request)
