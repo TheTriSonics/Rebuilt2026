@@ -94,8 +94,8 @@ class MyRobot(MagicRobot):
         y = -rescale_js(self.driver_controller.get_left_x(), 0.05, 1.0) * self.max_speed
         omega = -rescale_js(self.driver_controller.get_right_x(), 0.10, 2.0) * self.max_rotation
         if self.driver_controller.slow_mode():
-            x /= 8
-            y /= 8
+            x /= 4
+            y /= 4
             omega /= 4
 
         self.tanker.set_stick_values(x, y, omega)

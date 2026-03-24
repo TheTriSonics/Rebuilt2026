@@ -58,6 +58,17 @@ class AutonBase(AutonomousStateMachine):
         self.selected_alliance = config_key
         self.pose_set = True
 
+    def at_pose_and_heading(self, pose: Pose2d, tolerance: float | None = None) -> bool:
+        if tolerance is None:
+            tolerance = 0.15 if is_sim() else 0.040
+        robot_pose = self.drivetrain.get_pose()
+        dist = robot_pose.relativeTo(pose).translation().norm()
+        self.pose_error = dist
+        self.pose_check = dist < tolerance
+        heading_error = abs(robot_pose.rotation().radians() - pose.rotation().radians())
+        heading_check = math.degrees(heading_error) < 5.0
+        return self.pose_check and heading_check
+
     def at_pose(self, pose: Pose2d, tolerance: float | None = None) -> bool:
         if tolerance is None:
             tolerance = 0.15 if is_sim() else 0.040
