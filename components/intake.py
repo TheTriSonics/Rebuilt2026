@@ -114,6 +114,14 @@ class IntakeComponent:
     def get_rotate_position(self) -> float:
         return self.rotate_encoder.get_position().value
 
+    @feedback
+    def rotate_motor_temp(self) -> float:
+        return self.rotate.get_device_temp().value
+
+    @feedback
+    def roller_motor_temp(self) -> float:
+        return self.roller.get_device_temp().value
+
     def execute(self) -> None:
         if self.config_limits:
             self._apply_current_limits()
