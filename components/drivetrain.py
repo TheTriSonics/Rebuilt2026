@@ -205,8 +205,8 @@ class DrivetrainComponent:
 
     # Acceleration limits — prevents instant full-speed changes that
     # cause wheel slip, tipping, and wild odometry drift.
-    max_linear_accel = magicbot.tunable(8.0)  # m/s^2
-    max_linear_decel = magicbot.tunable(12.0)  # m/s^2 (allow faster stopping)
+    max_linear_accel = magicbot.tunable(16.0)  # m/s^2
+    max_linear_decel = magicbot.tunable(36.0)  # m/s^2 (allow faster stopping)
     max_angular_accel = magicbot.tunable(40.0)  # rad/s^2
 
     def __init__(self) -> None:
