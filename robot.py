@@ -43,6 +43,7 @@ class MyRobot(MagicRobot):
     max_speed = tunable(8.0)
     # Robot's max rotation speed in radians per second
     max_rotation = tunable(4*math.tau)
+    game_msg = ""
 
     def createObjects(self):
         # Create logging and such here; actual robot components are above
@@ -84,6 +85,8 @@ class MyRobot(MagicRobot):
         self.tanker.go_drive_local()
         self.shot_calc.set_target("hub")
         self.drivetrain.stop_snapping()
+        self.game_msg = wpilib.DriverStation.getGameSpecificMessage()
+        
 
     def teleopPeriodic(self):
         self.driver_controller.update_lob_allow()
@@ -155,7 +158,7 @@ class MyRobot(MagicRobot):
         if self.operator_controller.turret_aim_right():
             self.shot_calc.set_target("right")
 
-        can_shoot, phase_left = hub_shoot_indicator()
+        can_shoot, phase_left = hub_shoot_indicator(self.game_msg)
         wpilib.SmartDashboard.putBoolean("Shoot/CanShoot", can_shoot)
         wpilib.SmartDashboard.putNumber("Shoot/PhaseTimeLeft", phase_left)
 

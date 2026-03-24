@@ -373,7 +373,7 @@ class DrivetrainComponent:
             self.get_heading(),
             self.get_module_positions(),
             initial_pose,
-            stateStdDevs=(0.01, 0.01, 0.01),  # How much to trust wheel odometry
+            stateStdDevs=(0.10, 0.10, 0.10),  # How much to trust wheel odometry
             visionMeasurementStdDevs=(0.4, 0.4, 0.2),
         )
         self.set_pose(initial_pose)

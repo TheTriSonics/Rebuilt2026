@@ -87,7 +87,7 @@ def _hub_active_at(match_time: float, game_msg: str) -> bool:
     return not our_hub_inactive
 
 
-def hub_shoot_indicator() -> tuple[bool, float]:
+def hub_shoot_indicator(game_msg: str = "") -> tuple[bool, float]:
     """Return (can_shoot, phase_seconds_remaining).
 
     can_shoot is True when our HUB is active, extended by _SHOOT_BUFFER_S on
@@ -98,7 +98,9 @@ def hub_shoot_indicator() -> tuple[bool, float]:
     match_time = wpilib.DriverStation.getMatchTime()
     if match_time < 0:
         match_time = 0.0
-    game_msg = wpilib.DriverStation.getGameSpecificMessage()
+    
+    if game_msg is "":
+        game_msg = wpilib.DriverStation.getGameSpecificMessage()
 
     can_shoot = (
         _hub_active_at(match_time, game_msg)

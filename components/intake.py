@@ -113,6 +113,10 @@ class IntakeComponent:
     @feedback
     def get_rotate_position(self) -> float:
         return self.rotate_encoder.get_position().value
+    
+    @feedback
+    def get_intake_on(self) -> bool:
+        return self.target_speed != 0
 
     @feedback
     def rotate_motor_temp(self) -> float:
