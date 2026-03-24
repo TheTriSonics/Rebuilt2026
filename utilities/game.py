@@ -43,11 +43,11 @@ def is_disabled() -> bool:
 
 
 # ── REBUILT 2026 Shift Timing Constants (seconds remaining in teleop) ─────────
-_TRANSITION_END_S = 125.0   # Shift 1 begins
-_SHIFT_2_START_S  = 100.0
-_SHIFT_3_START_S  =  75.0
-_SHIFT_4_START_S  =  50.0
-_ENDGAME_START_S  =  25.0
+_TRANSITION_END_S = 130.0   # Shift 1 begins
+_SHIFT_2_START_S  = 105.0
+_SHIFT_3_START_S  =  80.0
+_SHIFT_4_START_S  =  55.0
+_ENDGAME_START_S  =  30.0
 _SHOOT_BUFFER_S   =   1.0   # pre/post buffer for indicator
 
 
