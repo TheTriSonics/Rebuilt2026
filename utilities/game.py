@@ -98,8 +98,8 @@ def hub_shoot_indicator(game_msg: str = "") -> tuple[bool, float]:
     match_time = wpilib.DriverStation.getMatchTime()
     if match_time < 0:
         match_time = 0.0
-    
-    if game_msg is "":
+
+    if game_msg == "":
         game_msg = wpilib.DriverStation.getGameSpecificMessage()
 
     can_shoot = (
