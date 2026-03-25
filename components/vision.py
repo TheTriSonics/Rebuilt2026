@@ -15,7 +15,6 @@ from utilities.game import is_auton, is_sim, is_disabled, is_match
 # Max trail length for AdvantageScope trajectory visualization
 _TRAIL_MAX = 100
 
-
 class VisionComponent:
     drivetrain: DrivetrainComponent
     gyro: GyroComponent
@@ -115,6 +114,11 @@ class VisionComponent:
         self._last_std_xy: float = float("inf")
         self._consecutive_frames: int = 0
 
+        # Pose stability tracking — ring buffer of (timestamp, x, y)
+        self._pose_history: deque[tuple[float, float, float]] = deque(maxlen=20)
+
+        # Only needed for single-tag gyro-fused fallback
+        # self._yaw_rate_history: deque[float] = deque(maxlen=15)
         # Debug NT publishers — created lazily on first non-FMS execute
         self._debug_pubs_created = False
         self._single_tag_pubs: list | None = None
@@ -294,6 +298,22 @@ class VisionComponent:
         age = Timer.getFPGATimestamp() - self.last_vision_update
         return age < 2.0 and self._last_std_xy < 0.5 and self._consecutive_frames >= 5
 
+    def has_stable_pose(
+        self, min_count: int = 6, tolerance: float = 0.10, max_age: float = 1.0
+    ) -> bool:
+        """True when enough recent vision poses are spatially consistent.
+
+        Checks that at least *min_count* poses received in the last *max_age*
+        seconds all fall within *tolerance* metres of their centroid.
+        """
+        now = Timer.getFPGATimestamp()
+        recent = [(x, y) for ts, x, y in self._pose_history if now - ts <= max_age]
+        if len(recent) < min_count:
+            return False
+        cx = sum(x for x, y in recent) / len(recent)
+        cy = sum(y for x, y in recent) / len(recent)
+        return all(math.hypot(x - cx, y - cy) <= tolerance for x, y in recent)
+
     def _is_off_field(self, pose: Pose2d) -> bool:
         return pose.x < -0.5 or pose.x > 17.0 or pose.y < -0.5 or pose.y > 8.5
 
@@ -362,6 +382,11 @@ class VisionComponent:
             if dist > accept_dist and not disabled and not off_field:
                 continue
 
+            # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
+            # Record timestamp
+            # Only used in _reject_estimate which is not active.
+            # self._last_timestamps[cam_idx] = ts
+
             std_factor = (avg_dist**2) / tag_count
             std_xy = self.linear_baseline_std * std_factor
             std_rot = self.angular_baseline * std_factor
@@ -389,9 +414,11 @@ class VisionComponent:
 
             self.drivetrain.estimator.setVisionMeasurementStdDevs(stds)
             self.drivetrain.estimator.addVisionMeasurement(pose, ts)
-            self.last_vision_update = Timer.getFPGATimestamp()
+            now = Timer.getFPGATimestamp()
+            self.last_vision_update = now
             self._last_std_xy = stds[0]
             self._consecutive_frames = min(self._consecutive_frames + 1, 100)
+            self._pose_history.append((now, pose.x, pose.y))
 
             if debug:
                 self._multi_tag_trail.append(pose)
