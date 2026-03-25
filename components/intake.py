@@ -26,9 +26,10 @@ class IntakeComponent:
     lower_position = -0.015
     target_position = tunable(0.0)
 
-    intake_speed = tunable(-0.45)
-    outtake_speed = tunable(0.40)
-    target_speed = tunable(0.0)
+    intake_speed = tunable(0.45)
+    sushi_speed = tunable(-0.425)
+    target_intake_speed = tunable(0.0)
+    target_sushi_speed = tunable(0.0)
 
     config_limits = tunable(False)
     stator_current_limit = tunable(60)
@@ -38,6 +39,7 @@ class IntakeComponent:
 
     rotate = TalonFX(ids.TalonId.ROTATE.id, ids.TalonId.ROTATE.bus)
     roller = TalonFX(ids.TalonId.ROLLER.id, ids.TalonId.ROLLER.bus)
+    sushi = TalonFX(ids.TalonId.SUSHI.id, ids.TalonId.SUSHI.bus)
     rotate_encoder = CANcoder(ids.CancoderId.INTAKE.id, ids.CancoderId.INTAKE.bus)
     rotate_request = PositionVoltage(0).with_slot(0)
 
@@ -46,7 +48,7 @@ class IntakeComponent:
         motor_config.neutral_mode = NeutralModeValue.BRAKE
         motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
-        self.mag_offset = -0.42578125 
+        self.mag_offset = -0.42578125
         enc_config = CANcoderConfiguration()
         enc_config.magnet_sensor.with_magnet_offset(self.mag_offset)
         enc_config.magnet_sensor.with_sensor_direction(SensorDirectionValue.COUNTER_CLOCKWISE_POSITIVE)
@@ -98,25 +100,26 @@ class IntakeComponent:
     def rotate_up(self) -> None:
         self.target_position = self.upper_position
 
-    def set_speed(self, speed: float) -> None:
-        self.target_speed = speed
+    def set_speed(self, intake_speed: float, sushi_speed: float) -> None:
+        self.target_intake_speed = intake_speed
+        self.target_sushi_speed = sushi_speed
 
     def on(self) -> None:
-        self.set_speed(self.intake_speed)
+        self.set_speed(self.intake_speed, self.sushi_speed)
 
     def off(self) -> None:
-        self.set_speed(0)
+        self.set_speed(0, 0)
 
     def reverse(self) -> None:
-        self.set_speed(self.outtake_speed)
+        self.set_speed(-self.intake_speed, -self.sushi_speed)
 
     @feedback
     def get_rotate_position(self) -> float:
         return self.rotate_encoder.get_position().value
-    
+
     @feedback
     def get_intake_on(self) -> bool:
-        return self.target_speed != 0
+        return self.target_intake_speed != 0
 
     @feedback
     def rotate_motor_temp(self) -> float:
@@ -125,6 +128,10 @@ class IntakeComponent:
     @feedback
     def roller_motor_temp(self) -> float:
         return self.roller.get_device_temp().value
+
+    @feedback
+    def sushi_motor_temp(self) -> float:
+        return self.sushi.get_device_temp().value
 
     def execute(self) -> None:
         if self.config_limits:
@@ -137,4 +144,5 @@ class IntakeComponent:
 
         self.rotate.set_control(self.rotate_request.with_position(self.target_position))
         # print(f'INtake running at {self.target_speed}')
-        self.roller.set_control(DutyCycleOut(self.target_speed))
+        self.roller.set_control(DutyCycleOut(self.target_intake_speed))
+        self.sushi.set_control(DutyCycleOut(self.target_sushi_speed))

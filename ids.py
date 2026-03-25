@@ -22,6 +22,7 @@ class TalonId:
     TURN_BR = CANDevice(23, drive)
     TURN_BL = CANDevice(24, drive)
 
+    SUSHI = CANDevice(7, shooter)
     ROTATE = CANDevice(50, shooter)
     ROLLER = CANDevice(51, shooter)
     KICKER = CANDevice(54, shooter)
