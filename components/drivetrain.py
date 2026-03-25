@@ -243,6 +243,11 @@ class DrivetrainComponent:
     max_linear_decel = magicbot.tunable(36.0)  # m/s^2 (allow faster stopping)
     max_angular_accel = magicbot.tunable(40.0)  # rad/s^2
 
+    # Slow-mode settings — caps velocity and acceleration when engaged
+    slow_mode_speed_divisor = magicbot.tunable(4.0)
+    slow_mode_max_linear_accel = magicbot.tunable(2.0)  # m/s^2
+    _slow_mode = magicbot.will_reset_to(False)
+
     def __init__(self) -> None:
         self.last_odometry_update_time: float = wpilib.Timer.getFPGATimestamp()
         # Theoretical max RPM that a Kraken X60 can reach
@@ -437,6 +442,10 @@ class DrivetrainComponent:
         #     self.snap_to_heading(self.get_heading().radians())
         self.chassis_speeds = ChassisSpeeds(vx, vy, omega)
 
+    def set_slow_mode(self, enabled: bool) -> None:
+        """Enable slow mode: reduces velocity and acceleration limits."""
+        self._slow_mode = enabled
+
     # Note that heading should be in radians
     def snap_to_heading(self, heading: float) -> None:
         """set a heading target for the heading controller"""
@@ -476,6 +485,8 @@ class DrivetrainComponent:
             desired_speed = math.sqrt(desired.vx**2 + desired.vy**2)
             if desired_speed < prev_speed:
                 max_accel = self.max_linear_decel
+            elif self._slow_mode:
+                max_accel = self.slow_mode_max_linear_accel
             else:
                 max_accel = self.max_linear_accel
 
@@ -508,6 +519,14 @@ class DrivetrainComponent:
         else:
             self.heading_controller.reset(
                 self.get_rotation().radians(), self.get_rotational_velocity()
+            )
+
+        if self._slow_mode:
+            d = self.slow_mode_speed_divisor
+            self.chassis_speeds = ChassisSpeeds(
+                self.chassis_speeds.vx / d,
+                self.chassis_speeds.vy / d,
+                self.chassis_speeds.omega / d,
             )
 
         now = wpilib.Timer.getFPGATimestamp()
