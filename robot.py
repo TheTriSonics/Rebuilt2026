@@ -10,6 +10,7 @@ from components.gyro import GyroComponent
 from components.kicker import KickerComponent
 from components.intake import IntakeComponent
 from components.shooter import ShooterComponent
+from components.leds import LEDComponent
 from utilities.scalers import rescale_js
 from hid.xbox_driver import RebuiltDriver
 from hid.xbox_operator import RebuiltOperator
@@ -17,7 +18,6 @@ from hid.xbox_operator import RebuiltOperator
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
 from utilities.game import is_sim, is_red, is_left, init_side_chooser, hub_shoot_indicator
-
 
 
 class MyRobot(MagicRobot):
@@ -36,13 +36,13 @@ class MyRobot(MagicRobot):
     drivetrain: DrivetrainComponent
     shot_calc: ShotCalculatorComponent
     shooter: ShooterComponent
-    # leds: LEDComponent
+    leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
     # Robot's max rotation speed in radians per second
-    max_rotation = tunable(4*math.tau)
+    max_rotation = tunable(4 * math.tau)
     game_msg = ""
 
     def createObjects(self):
@@ -86,12 +86,12 @@ class MyRobot(MagicRobot):
         self.shot_calc.set_target("hub")
         self.drivetrain.stop_snapping()
         self.game_msg = wpilib.DriverStation.getGameSpecificMessage()
-        
+        self.leds.set_game_msg(self.game_msg)
 
     def teleopPeriodic(self):
         self.driver_controller.update_lob_allow()
         if self.battery_monitor.is_stop_active():
-            print('dead battery')
+            print("dead battery")
             # return  # We do NOTHING if the battery is too low. No more robot for you!
         x = -rescale_js(self.driver_controller.get_left_y(), 0.05, 1.0) * self.max_speed
         y = -rescale_js(self.driver_controller.get_left_x(), 0.05, 1.0) * self.max_speed
@@ -119,19 +119,21 @@ class MyRobot(MagicRobot):
             # internally, so we don't need to reset the hardware gyro
             self.drivetrain.set_pose(curr_pose)
 
-
         if self.driver_controller.intake_up():
             self.intake.rotate_up()
 
         if self.driver_controller.target_lob_left():
             self.shot_calc.set_target("left")
             self.tanker.go_drive_auto_target()
+            self.leds.set_targeting(True)
         elif self.driver_controller.target_lob_right():
             self.shot_calc.set_target("right")
             self.tanker.go_drive_auto_target()
+            self.leds.set_targeting(True)
         elif self.driver_controller.target_hub():
             self.shot_calc.set_target("hub")
             self.tanker.go_drive_auto_target()
+            self.leds.set_targeting(True)
         else:
             self.tanker.go_drive_last_mode()
 
@@ -142,9 +144,9 @@ class MyRobot(MagicRobot):
             self.intake.rotate_tilt()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
-        if self.operator_controller.shooter_shoot(): # Right bumper
+        if self.operator_controller.shooter_shoot():  # Right bumper
             self.gaspump.go_shoot()
-        if self.operator_controller.shooter_off(): # A button
+        if self.operator_controller.shooter_off():  # A button
             self.gaspump.go_shoot_off()
         if self.operator_controller.fixed_shot():
             self.shooter.fixed_shot = True
@@ -162,7 +164,6 @@ class MyRobot(MagicRobot):
         wpilib.SmartDashboard.putBoolean("Shoot/CanShoot", can_shoot)
         wpilib.SmartDashboard.putNumber("Shoot/PhaseTimeLeft", phase_left)
 
-
     def disabledPeriodic(self):
         # this keeps us updating odometry even when disabled, vision will put
         # us where it can
@@ -170,7 +171,7 @@ class MyRobot(MagicRobot):
         self.drivetrain.update_odometry()
 
         selected = self._automodes.chooser.getSelected()
-        config_key = ('red' if is_red() else 'blue') + ('_left' if is_left() else '_right')
+        config_key = ("red" if is_red() else "blue") + ("_left" if is_left() else "_right")
 
         # Auto-set pose and clear Ready when selection or side changes
         if selected != self._last_auton_selection or config_key != self._last_config_key:
@@ -199,13 +200,14 @@ class MyRobot(MagicRobot):
             dx = robot_pose.x - expected.x
             dy = robot_pose.y - expected.y
             dist = math.hypot(dx, dy)
-            raw_err = abs(math.degrees(
-                robot_pose.rotation().radians() - expected.rotation().radians()
-            ))
+            raw_err = abs(
+                math.degrees(robot_pose.rotation().radians() - expected.rotation().radians())
+            )
             heading_err = min(raw_err, 360.0 - raw_err)
             wpilib.SmartDashboard.putNumber("StartPose/DistanceM", dist)
             wpilib.SmartDashboard.putNumber("StartPose/XErrorM", dx)
             wpilib.SmartDashboard.putNumber("StartPose/YErrorM", dy)
             wpilib.SmartDashboard.putNumber("StartPose/HeadingErrDeg", heading_err)
-            wpilib.SmartDashboard.putBoolean("StartPose/PoseMatch", dist < 0.15 and heading_err < 5.0)
-
+            wpilib.SmartDashboard.putBoolean(
+                "StartPose/PoseMatch", dist < 0.15 and heading_err < 5.0
+            )

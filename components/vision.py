@@ -1,5 +1,5 @@
 import math
-# from collections import deque  # Only needed for single-tag estimation
+from collections import deque
 
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 from wpilib import Timer
@@ -14,7 +14,6 @@ from utilities.game import is_auton, is_sim, is_disabled
 
 
 class VisionComponent:
-
     drivetrain: DrivetrainComponent
     gyro: GyroComponent
 
@@ -23,7 +22,9 @@ class VisionComponent:
         self.timer = Timer()
         self.angular_baseline_std = math.radians(10)
         self.angular_baseline_std_sim = math.radians(30)
-        self.angular_baseline = self.angular_baseline_std_sim if self.sim else self.angular_baseline_std
+        self.angular_baseline = (
+            self.angular_baseline_std_sim if self.sim else self.angular_baseline_std
+        )
 
         self.camera_rr = PhotonCamera("Rear_Right")
         self.camera_rl = PhotonCamera("Rear_Left")
@@ -31,26 +32,26 @@ class VisionComponent:
 
         self.camera_rr_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-12.0),    # Forward/backward offset
-                units.inchesToMeters(-10.5),   # Left/right offset, left is positive
-                units.inchesToMeters(8.5),      # Up/down offset
+                units.inchesToMeters(-12.0),  # Forward/backward offset
+                units.inchesToMeters(-10.5),  # Left/right offset, left is positive
+                units.inchesToMeters(8.5),  # Up/down offset
             ),
             # Pitching up is a negative value
             Rotation3d.fromDegrees(0.0, -22.0, -85.0),  # roll, pitch, yaw
         )
         self.camera_rl_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-12.0),    # Forward/backward offset
+                units.inchesToMeters(-12.0),  # Forward/backward offset
                 units.inchesToMeters(10.5),  # Left/right offset, left is positive
-                units.inchesToMeters(8.5),      # Up/down offset
+                units.inchesToMeters(8.5),  # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -22.0, 85.0),  # roll, pitch, yaw
         )
         self.camera_back_offset = Transform3d(
             Translation3d(
-                units.inchesToMeters(-13.0), # Forward/backward offset
-                units.inchesToMeters(0.0), # Left/right offset, right is negative
-                units.inchesToMeters(7.5), # Up/down offset
+                units.inchesToMeters(-13.0),  # Forward/backward offset
+                units.inchesToMeters(0.0),  # Left/right offset, right is negative
+                units.inchesToMeters(7.5),  # Up/down offset
             ),
             Rotation3d.fromDegrees(0.0, -25.0, 180.0),  # roll, pitch, yaw
         )
@@ -107,8 +108,11 @@ class VisionComponent:
 
         # Vision quality tracking for dashboard
         self.last_vision_update: float = 0.0
-        self._last_std_xy: float = float('inf')
+        self._last_std_xy: float = float("inf")
         self._consecutive_frames: int = 0
+
+        # Pose stability tracking — ring buffer of (timestamp, x, y)
+        self._pose_history: deque[tuple[float, float, float]] = deque(maxlen=20)
 
         # Only needed for single-tag gyro-fused fallback
         # self._yaw_rate_history: deque[float] = deque(maxlen=15)
@@ -117,7 +121,7 @@ class VisionComponent:
         self, avg_dist: float, tag_count: int, is_single_tag_gyro_fused: bool
     ) -> tuple[float, float, float]:
         """Compute standard deviations for a vision measurement."""
-        std_factor = (avg_dist ** 2) / tag_count
+        std_factor = (avg_dist**2) / tag_count
         std_xy = self.linear_baseline_std * std_factor
         std_rot = self.angular_baseline * std_factor
         # Only needed for single-tag gyro-fused fallback:
@@ -127,8 +131,14 @@ class VisionComponent:
         return (std_xy, std_xy, std_rot)
 
     def _reject_measurement(
-        self, pose3d: Pose3d, twod_pose: Pose2d, ts: float, cam_idx: int,
-        targets: list, robot_pose: Pose2d, disabled: bool
+        self,
+        pose3d: Pose3d,
+        twod_pose: Pose2d,
+        ts: float,
+        cam_idx: int,
+        targets: list,
+        robot_pose: Pose2d,
+        disabled: bool,
     ) -> bool:
         """Return True if the measurement should be rejected."""
         # Z-height check: reject poses that claim robot is far off ground
@@ -270,6 +280,22 @@ class VisionComponent:
         age = Timer.getFPGATimestamp() - self.last_vision_update
         return age < 2.0 and self._last_std_xy < 0.5 and self._consecutive_frames >= 5
 
+    def has_stable_pose(
+        self, min_count: int = 6, tolerance: float = 0.10, max_age: float = 1.0
+    ) -> bool:
+        """True when enough recent vision poses are spatially consistent.
+
+        Checks that at least *min_count* poses received in the last *max_age*
+        seconds all fall within *tolerance* metres of their centroid.
+        """
+        now = Timer.getFPGATimestamp()
+        recent = [(x, y) for ts, x, y in self._pose_history if now - ts <= max_age]
+        if len(recent) < min_count:
+            return False
+        cx = sum(x for x, y in recent) / len(recent)
+        cy = sum(y for x, y in recent) / len(recent)
+        return all(math.hypot(x - cx, y - cy) <= tolerance for x, y in recent)
+
     def _is_off_field(self, pose: Pose2d) -> bool:
         return pose.x < -0.5 or pose.x > 17.0 or pose.y < -0.5 or pose.y > 8.5
 
@@ -316,9 +342,7 @@ class VisionComponent:
 
             # Compute std devs
             tag_count = len(targets)
-            total_dist = sum(
-                t.getBestCameraToTarget().translation().norm() for t in targets
-            )
+            total_dist = sum(t.getBestCameraToTarget().translation().norm() for t in targets)
             avg_dist = total_dist / tag_count
             if avg_dist > 2.0 and not disabled:
                 continue
@@ -335,7 +359,7 @@ class VisionComponent:
             # Only used in _reject_estimate which is not active.
             # self._last_timestamps[cam_idx] = ts
 
-            std_factor = (avg_dist ** 2) / tag_count
+            std_factor = (avg_dist**2) / tag_count
             std_xy = self.linear_baseline_std * std_factor
             std_rot = self.angular_baseline * std_factor
             if off_field:
@@ -362,8 +386,10 @@ class VisionComponent:
 
             self.drivetrain.estimator.setVisionMeasurementStdDevs(stds)
             self.drivetrain.estimator.addVisionMeasurement(pose, ts)
-            self.last_vision_update = Timer.getFPGATimestamp()
+            now = Timer.getFPGATimestamp()
+            self.last_vision_update = now
             self._last_std_xy = stds[0]
             self._consecutive_frames = min(self._consecutive_frames + 1, 100)
+            self._pose_history.append((now, pose.x, pose.y))
         else:
             self._consecutive_frames = 0
