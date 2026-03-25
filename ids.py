@@ -40,7 +40,7 @@ class CancoderId:
 
 
 class CANdleId:
-    CANDLE = CANDevice(5, drive)
+    CANDLE = CANDevice(5, shooter)
 
 
 class CanId:
