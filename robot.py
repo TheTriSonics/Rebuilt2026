@@ -87,6 +87,10 @@ class MyRobot(MagicRobot):
         self.drivetrain.stop_snapping()
         self.game_msg = wpilib.DriverStation.getGameSpecificMessage()
         self.leds.set_game_msg(self.game_msg)
+        curr_pose = self.drivetrain.get_pose()
+        # resetPosition (called inside set_pose) re-syncs the gyro offset
+        # internally, so we don't need to reset the hardware gyro
+        self.drivetrain.set_pose_teleop_estimator(curr_pose)
 
     def teleopPeriodic(self):
         self.driver_controller.update_lob_allow()
@@ -138,6 +142,8 @@ class MyRobot(MagicRobot):
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.on()
             self.intake.rotate_down()
+        if self.operator_controller.eject():
+            self.intake.reverse()
         if self.operator_controller.intake_flip():  # Y button
             self.intake.rotate_tilt()
         if self.operator_controller.intake_idle():  # Left bumper

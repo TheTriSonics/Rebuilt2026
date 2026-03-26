@@ -5,6 +5,7 @@ import magicbot
 import ntcore
 import wpilib
 from phoenix6 import BaseStatusSignal
+from utilities.game import is_auton
 from phoenix6.configs import (
     CANcoderConfiguration,
     ClosedLoopGeneralConfigs,
@@ -126,14 +127,6 @@ class SwerveModule:
         self.drive.configurator.apply(self.drive_pid, 0.01)
         self.drive.configurator.apply(drive_gear_ratio_config)
 
-        # Store telemetry signal references for batch reading
-        self.drive_velocity_signal = self.drive.get_velocity(False)
-        self.drive_position_signal = self.drive.get_position(False)
-        self.drive_stator_current_signal = self.drive.get_stator_current(False)
-        self.drive_temp_signal = self.drive.get_device_temp(False)
-        self.steer_position_signal = self.steer.get_position(False)
-        self.steer_temp_signal = self.steer.get_device_temp(False)
-
         self.central_angle = Rotation2d(x, y)
 
         # Create Phoenix 6 control requests
@@ -143,7 +136,7 @@ class SwerveModule:
 
     def get_angle_absolute(self) -> float:
         """Gets steer angle (rot) from absolute encoder (now fused with motor)"""
-        return self.steer_position_signal.value * math.tau
+        return self.steer.get_position().value * math.tau
 
     def get_rotation(self) -> Rotation2d:
         """Get the steer angle as a Rotation2d"""
@@ -154,7 +147,7 @@ class SwerveModule:
         return self.drive.get_velocity().value
 
     def get_distance_traveled(self) -> float:
-        return self.drive_position_signal.value
+        return self.drive.get_position().value
 
     def get_drive_current(self) -> float:
         return self.drive.get_stator_current().value
@@ -165,29 +158,18 @@ class SwerveModule:
     def get_steer_temp(self) -> float:
         return self.steer.get_device_temp().value
 
-    def get_telemetry_signals(self):
-        """Return all telemetry signals for batch operations"""
-        return [
-            self.drive_velocity_signal,
-            self.drive_position_signal,
-            self.drive_stator_current_signal,
-            self.drive_temp_signal,
-            self.steer_position_signal,
-            self.steer_temp_signal,
-        ]
-
     def publish_telemetry(self) -> None:
         wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_current", self.drive_stator_current_signal.value
+            f"Module/{self.name}/drive_current", self.get_drive_current()
         )
         wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_speed", self.drive_velocity_signal.value
+            f"Module/{self.name}/drive_speed", self.get_speed()
         )
         wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_temp", self.drive_temp_signal.value
+            f"Module/{self.name}/drive_temp", self.get_drive_temp()
         )
         wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/steer_temp", self.steer_temp_signal.value
+            f"Module/{self.name}/steer_temp", self.get_steer_temp()
         )
 
     def set(self, desired_state: SwerveModuleState):
@@ -280,9 +262,13 @@ class DrivetrainComponent:
             ntcore.NetworkTableInstance.getDefault().getStructTopic("FusedPose", Pose2d).publish()
         )
 
+        self.desired_pose_pub = (
+            ntcore.NetworkTableInstance.getDefault().getStructTopic("DesiredPose", Pose2d).publish()
+        )
+
         # Used to lock the robot onto a heading; currently not used.
         self.heading_controller = ProfiledPIDControllerRadians(
-            8.2, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
+            6.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
@@ -398,7 +384,7 @@ class DrivetrainComponent:
             self.get_heading(),
             self.get_module_positions(),
             initial_pose,
-            stateStdDevs=(0.10, 0.10, 0.10),  # How much to trust wheel odometry
+            stateStdDevs=(0.01, 0.01, 0.01),  # How much to trust wheel odometry
             visionMeasurementStdDevs=(0.4, 0.4, 0.2),
         )
         self.set_pose(initial_pose)
@@ -425,6 +411,8 @@ class DrivetrainComponent:
         ovel = sample.omega + self.path_heading_pid_control.calculate(
             robot_pose.rotation().radians(), sample.heading
         )
+        desired_pose = Pose2d(Translation2d(sample.x, sample.y), Rotation2d(sample.heading))
+        self.desired_pose_pub.set(desired_pose)
         self.drive_field(xvel, yvel, ovel)
 
     def get_robot_speeds(self) -> tuple[float, float]:
@@ -531,18 +519,16 @@ class DrivetrainComponent:
 
         now = wpilib.Timer.getFPGATimestamp()
         dt = now - self.last_odometry_update_time
-        desired_speeds = self._rate_limit_speeds(self.chassis_speeds, dt)
+        # Only do this in teleop
+        if not is_auton():
+            desired_speeds = self._rate_limit_speeds(self.chassis_speeds, dt)
+        else:
+            desired_speeds = self.chassis_speeds
 
         desired_states = self.kinematics.toSwerveModuleStates(desired_speeds)
         desired_states = self.kinematics.desaturateWheelSpeeds(
             desired_states, attainableMaxSpeed=self.max_wheel_speed
         )
-
-        # Batch refresh all telemetry signals for efficient CAN reading
-        all_signals = []
-        for module in self.modules:
-            all_signals.extend(module.get_telemetry_signals())
-        BaseStatusSignal.refresh_all(*all_signals)
 
         for state, module in zip(desired_states, self.modules, strict=True):
             module.set(state)
@@ -588,6 +574,30 @@ class DrivetrainComponent:
             self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
+        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
+        self.fused_pose_pub.set(pose)
+
+    def set_pose_auton_estimator(self, pose: Pose2d) -> None:
+        self.estimator = SwerveDrive4PoseEstimator(
+            self.kinematics,
+            self.get_heading(),
+            self.get_module_positions(),
+            pose,
+            stateStdDevs=(0.01, 0.01, 0.01),  # How much to trust wheel odometry
+            visionMeasurementStdDevs=(0.4, 0.4, 0.2),
+        )
+        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
+        self.fused_pose_pub.set(pose)
+
+    def set_pose_teleop_estimator(self, pose: Pose2d) -> None:
+        self.estimator = SwerveDrive4PoseEstimator(
+            self.kinematics,
+            self.get_heading(),
+            self.get_module_positions(),
+            pose,
+            stateStdDevs=(0.1, 0.1, 0.1),  # How much to trust wheel odometry
+            visionMeasurementStdDevs=(0.4, 0.4, 0.2),
+        )
         self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
         self.fused_pose_pub.set(pose)
 

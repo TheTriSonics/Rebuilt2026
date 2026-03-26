@@ -22,7 +22,7 @@ class ShotCalculatorComponent:
     gyro: GyroComponent
     drivetrain: DrivetrainComponent
 
-    flight_time = tunable(1.0)
+    flight_time = tunable(0.4)
     # Lob target offsets from corner of own alliance zone (meters, ~4 ft default)
     lob_alliance_wall_offset = tunable(1.219)  # distance inward from end wall (X axis)
     lob_side_wall_offset     = tunable(1.219)  # distance inward from side wall (Y axis)

@@ -19,8 +19,7 @@ class ShooterComponent:
     shooter_right = TalonFX(ids.TalonId.SHOOTER_RIGHT.id, ids.TalonId.SHOOTER_RIGHT.bus)
     shooter_hood = TalonFX(ids.TalonId.SHOOTER_HOOD.id, ids.TalonId.SHOOTER_HOOD.bus)
 
-    coef = tunable(0.15)
-    base = tunable(3)
+    base = tunable(136.0)
     hood_rps = tunable(0.0)
     flywheel_rps = tunable(40.0)
     active = tunable(False)
@@ -150,7 +149,7 @@ class ShooterComponent:
     def get_hood_target(self) -> float:
         return self.hood_rps
 
-    
+
     @feedback
     def shooter_at_speed(self) -> bool:
         return self.at_speed_stable
@@ -166,7 +165,7 @@ class ShooterComponent:
     @feedback
     def shooter_hood_temp(self) -> float:
         return self.shooter_hood.get_device_temp().value
-    
+
 
     def is_at_speed(self) -> bool:
         if not self.active:
@@ -181,11 +180,11 @@ class ShooterComponent:
             self.at_speed_counter += 1
         else:
             self.at_speed_counter = 0
-        
+
         self.at_speed_stable = False
         if self.at_speed_counter >= 10:
             self.at_speed_stable = True
-        return self.at_speed_stable 
+        return self.at_speed_stable
 
     def calc_rps(self) -> float:
         dist = self.shot_calc.get_field_shot_distance()
@@ -193,8 +192,7 @@ class ShooterComponent:
         if dist < 2.8:
             rps = 10.0
         elif dist <= 4.9:
-            # rps = 0.0383*dist**3 - 1.3737*dist**2 + 16.66*dist - 22.3
-            rps = -3.7967*dist**3 + 40.801*dist**2 - 131.4*dist + 141.69
+            rps = -3.7967*dist**3 + 40.801*dist**2 - 131.4*dist + self.base
         else:
             rps = 3.0*dist + 18.0
 
