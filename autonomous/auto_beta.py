@@ -502,3 +502,7 @@ class HopperShoot_Move(AutonBase):
             self.intake.on()
         if state_tm > 4.0:
             self.next_state(self.end)
+
+    @state(must_finish=True)
+    def end(self, initial_call: bool, state_tm: float):
+        ...
