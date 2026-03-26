@@ -91,7 +91,7 @@ class HopperShoot(AutonBase):
 
 class HopperShootTwo(AutonBase):
     MODE_NAME = "HopperShootTwo"
-    raw_traj = load_swerve_trajectory(MODE_NAME)
+    raw_traj = load_swerve_trajectory("HopperShoot")
     raw_second_traj = load_swerve_trajectory("HopperShootTwo")
 
     tanker: Tanker
