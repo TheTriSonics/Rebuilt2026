@@ -36,7 +36,7 @@ class MyRobot(MagicRobot):
     drivetrain: DrivetrainComponent
     shot_calc: ShotCalculatorComponent
     shooter: ShooterComponent
-    leds: LEDComponent
+    # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
 
     # Robot's max speed in X/Y plane
@@ -86,7 +86,7 @@ class MyRobot(MagicRobot):
         self.shot_calc.set_target("hub")
         self.drivetrain.stop_snapping()
         self.game_msg = wpilib.DriverStation.getGameSpecificMessage()
-        self.leds.set_game_msg(self.game_msg)
+        # self.leds.set_game_msg(self.game_msg)
         curr_pose = self.drivetrain.get_pose()
         # resetPosition (called inside set_pose) re-syncs the gyro offset
         # internally, so we don't need to reset the hardware gyro
@@ -127,15 +127,15 @@ class MyRobot(MagicRobot):
         if self.driver_controller.target_lob_left():
             self.shot_calc.set_target("left")
             self.tanker.go_drive_auto_target()
-            self.leds.set_targeting(True)
+            # self.leds.set_targeting(True)
         elif self.driver_controller.target_lob_right():
             self.shot_calc.set_target("right")
             self.tanker.go_drive_auto_target()
-            self.leds.set_targeting(True)
+            # self.leds.set_targeting(True)
         elif self.driver_controller.target_hub():
             self.shot_calc.set_target("hub")
             self.tanker.go_drive_auto_target()
-            self.leds.set_targeting(True)
+            # self.leds.set_targeting(True)
         else:
             self.tanker.go_drive_last_mode()
 

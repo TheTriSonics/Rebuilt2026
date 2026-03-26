@@ -11,7 +11,6 @@ from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from controllers.tanker import Tanker
 from controllers.gaspump import GasPump
-from components.shot_calculator import ShotCalculatorComponent
 
 from autonomous.base import AutonBase
 from choreo import load_swerve_trajectory

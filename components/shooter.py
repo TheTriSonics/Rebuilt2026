@@ -1,5 +1,3 @@
-from math import dist
-
 from magicbot import tunable, feedback
 from phoenix6.hardware import TalonFX
 from phoenix6.controls import VelocityTorqueCurrentFOC, VoltageOut
@@ -7,7 +5,6 @@ from phoenix6.configs import CurrentLimitsConfigs, MotorOutputConfigs, Slot0Conf
 from phoenix6.signals import InvertedValue, NeutralModeValue, StaticFeedforwardSignValue
 
 from components.shot_calculator import ShotCalculatorComponent
-from wpimath.units import metersToInches
 
 import ids
 

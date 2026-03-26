@@ -148,42 +148,42 @@ class VisionComponent:
             "/components/vision/multi_tag_trail", Pose2d
         ).publish()
 
-    def _estimate_single_tag(self, targets: list, cam_idx: int) -> Pose2d | None:
-        """Estimate robot pose from the best single tag using transform math.
+    # def _estimate_single_tag(self, targets: list, cam_idx: int) -> Pose2d | None:
+    #     """Estimate robot pose from the best single tag using transform math.
 
-        Uses pre-computed camera-to-target transforms from PhotonVision.
-        Returns a Pose2d or None.  This is for debug visualization only —
-        the result is NOT fed to the pose estimator.
-        """
-        if not targets:
-            return None
+    #     Uses pre-computed camera-to-target transforms from PhotonVision.
+    #     Returns a Pose2d or None.  This is for debug visualization only —
+    #     the result is NOT fed to the pose estimator.
+    #     """
+    #     if not targets:
+    #         return None
 
-        # Pick the lowest ambiguity target
-        target = min(targets, key=lambda t: t.getPoseAmbiguity())
-        tag_id = target.getFiducialId()
-        tag_pose = self.field.getTagPose(tag_id)
-        if tag_pose is None:
-            return None
+    #     # Pick the lowest ambiguity target
+    #     target = min(targets, key=lambda t: t.getPoseAmbiguity())
+    #     tag_id = target.getFiducialId()
+    #     tag_pose = self.field.getTagPose(tag_id)
+    #     if tag_pose is None:
+    #         return None
 
-        # Compute robot pose: field_to_tag * inv(cam_to_tag) * inv(robot_to_cam)
-        camera_to_target = target.getBestCameraToTarget()
-        robot_pose_3d = tag_pose.transformBy(camera_to_target.inverse()).transformBy(
-            self._camera_offsets_inv[cam_idx]
-        )
+    #     # Compute robot pose: field_to_tag * inv(cam_to_tag) * inv(robot_to_cam)
+    #     camera_to_target = target.getBestCameraToTarget()
+    #     robot_pose_3d = tag_pose.transformBy(camera_to_target.inverse()).transformBy(
+    #         self._camera_offsets_inv[cam_idx]
+    #     )
 
-        twod_pose = robot_pose_3d.toPose2d()
+    #     twod_pose = robot_pose_3d.toPose2d()
 
-        # Correct the heading by 180 degrees
-        # NOTE: This flip is likely a coordinate-system workaround.
-        # 254's 2025 code avoids this entirely by re-projecting the
-        # robot-to-tag vector with the gyro heading.  Phase 2 will
-        # adopt that approach — for now we keep the flip so the debug
-        # visualization matches historical behaviour.
-        vision_heading = twod_pose.rotation().radians()
-        flipped_heading = (vision_heading + math.pi) % math.tau
-        twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
+    #     # Correct the heading by 180 degrees
+    #     # NOTE: This flip is likely a coordinate-system workaround.
+    #     # 254's 2025 code avoids this entirely by re-projecting the
+    #     # robot-to-tag vector with the gyro heading.  Phase 2 will
+    #     # adopt that approach — for now we keep the flip so the debug
+    #     # visualization matches historical behaviour.
+    #     vision_heading = twod_pose.rotation().radians()
+    #     flipped_heading = (vision_heading + math.pi) % math.tau
+    #     twod_pose = Pose2d(twod_pose.x, twod_pose.y, Rotation2d(flipped_heading))
 
-        return twod_pose
+    #     return twod_pose
 
     def _compute_std_devs(
         self, avg_dist: float, tag_count: int, is_single_tag_gyro_fused: bool
@@ -301,6 +301,7 @@ class VisionComponent:
     def has_stable_pose(
         self, min_count: int = 6, tolerance: float = 0.10, max_age: float = 1.0
     ) -> bool:
+        return False
         """True when enough recent vision poses are spatially consistent.
 
         Checks that at least *min_count* poses received in the last *max_age*
@@ -347,11 +348,11 @@ class VisionComponent:
 
             # Single-tag debug estimation — always attempted, never used for
             # pose estimation.  Published to NT only when not on FMS.
-            if debug and self._single_tag_pubs is not None:
-                st_pose = self._estimate_single_tag(targets, cam_idx)
-                if st_pose is not None:
-                    self._single_tag_pubs[cam_idx].set(st_pose)
-                    self._single_tag_trail.append(st_pose)
+            # if debug and self._single_tag_pubs is not None:
+            #     st_pose = self._estimate_single_tag(targets, cam_idx)
+            #     if st_pose is not None:
+            #         self._single_tag_pubs[cam_idx].set(st_pose)
+            #         self._single_tag_trail.append(st_pose)
 
             best_target = res.getBestTarget()
             if best_target and best_target.poseAmbiguity > 0.2:
@@ -420,12 +421,12 @@ class VisionComponent:
             self._consecutive_frames = min(self._consecutive_frames + 1, 100)
             self._pose_history.append((now, pose.x, pose.y))
 
-            if debug:
-                self._multi_tag_trail.append(pose)
+            # if debug:
+            #     self._multi_tag_trail.append(pose)
         else:
             self._consecutive_frames = 0
 
         # Publish trails for AdvantageScope visualization
-        if debug and self._single_tag_trail_pub is not None:
-            self._single_tag_trail_pub.set(list(self._single_tag_trail))
-            self._multi_tag_trail_pub.set(list(self._multi_tag_trail))
+        # if debug and self._single_tag_trail_pub is not None:
+        #     self._single_tag_trail_pub.set(list(self._single_tag_trail))
+        #     self._multi_tag_trail_pub.set(list(self._multi_tag_trail))

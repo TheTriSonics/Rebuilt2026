@@ -1,10 +1,9 @@
+import wpilib
 import math
 from collections import deque
 
 import magicbot
 import ntcore
-import wpilib
-from phoenix6 import BaseStatusSignal
 from utilities.game import is_auton
 from phoenix6.configs import (
     CANcoderConfiguration,
