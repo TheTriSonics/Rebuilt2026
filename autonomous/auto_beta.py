@@ -529,6 +529,7 @@ class ShootTwoFast(AutonBase):
 
         self.intake_on_pose = self.get_event_pose("IntakeOn")
         self.last_pose = self.traj.get_final_pose(is_red())
+        self.second_last_pose = self.second_traj.get_final_pose(is_red())
 
         pose = self.traj.get_initial_pose(is_red())
         assert pose
@@ -582,12 +583,10 @@ class ShootTwoFast(AutonBase):
             assert self.second_traj
             self.tanker.go_follow_traj(self.second_traj, set_pose=False)
 
-        if self.at_pose(self.intake_on_pose, tolerance=0.15):
-            self.intake.on()
-
-        assert self.last_pose
-        if self.at_pose(self.last_pose, tolerance=0.15):
-            self.next_state(self.shoot)
+        if state_tm > 3.0:
+            assert self.second_last_pose
+            if self.at_pose(self.second_last_pose, tolerance=0.15):
+                self.next_state(self.shoot2)
 
     @state(must_finish=True)
     def shoot2(self, initial_call: bool, state_tm: float):
