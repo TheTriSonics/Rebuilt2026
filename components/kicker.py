@@ -12,6 +12,7 @@ class KickerComponent:
 
     kicker_speed = tunable(-32.0)
     active = False
+    run_reverse = False
 
     config_limits = tunable(False)
     stator_current_limit = tunable(120.0)
@@ -60,10 +61,14 @@ class KickerComponent:
 
     def on(self) -> None:
         self.active = True
+        self.run_reverse = False
 
     def off(self) -> None:
         self.active = False
-
+        self.run_reverse = False
+    
+    def reverse(self):
+        self.run_reverse = True
 
     @feedback
     def kicker_motor_temp(self) -> float:
@@ -75,5 +80,7 @@ class KickerComponent:
             self.config_limits = False
         if self.active:
             self.kicker.set_control(VelocityVoltage(self.kicker_speed))
+        elif self.run_reverse:
+            self.kicker.set_control(VelocityVoltage(-self.kicker_speed))
         else:
             self.kicker.set_control(DutyCycleOut(0))

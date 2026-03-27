@@ -373,7 +373,11 @@ class VisionComponent:
             tag_count = len(targets)
             total_dist = sum(t.getBestCameraToTarget().translation().norm() for t in targets)
             avg_dist = total_dist / tag_count
-            if avg_dist > 2.0 and not disabled:
+
+            # JJB: We might need to bump this up. We can pick up a pose further
+            # away than this with our cameras running in high resolution mode.
+            # Orig value: 2.0
+            if avg_dist > 3.0 and not disabled:
                 continue
 
             # Reject poses wildly divergent from current estimate, unless
