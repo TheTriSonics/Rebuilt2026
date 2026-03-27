@@ -144,6 +144,7 @@ class MyRobot(MagicRobot):
             self.intake.rotate_down()
         if self.operator_controller.eject():
             self.intake.reverse()
+            self.kicker.reverse()
         if self.operator_controller.intake_flip():  # Y button
             self.intake.rotate_tilt()
         if self.operator_controller.intake_idle():  # Left bumper
