@@ -365,6 +365,10 @@ class VisionComponent:
                 continue
 
             ts = pupdate.timestampSeconds
+            if self._last_timestamps[cam_idx] == ts:
+                # We've already processed this pose estimate, skip it
+                continue
+            self._last_timestamps[cam_idx] = ts
             pose3d = pupdate.estimatedPose
             twod_pose = pose3d.toPose2d()
             pub.set(twod_pose)
@@ -388,9 +392,6 @@ class VisionComponent:
                 continue
 
             # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
-            # Record timestamp
-            # Only used in _reject_estimate which is not active.
-            # self._last_timestamps[cam_idx] = ts
 
             std_factor = (avg_dist**2) / tag_count
             std_xy = self.linear_baseline_std * std_factor
