@@ -377,7 +377,7 @@ class VisionComponent:
             # JJB: We might need to bump this up. We can pick up a pose further
             # away than this with our cameras running in high resolution mode.
             # Orig value: 2.0
-            if avg_dist > 3.0 and not disabled:
+            if avg_dist > 7.0 and not disabled:
                 continue
 
             # Reject poses wildly divergent from current estimate, unless
