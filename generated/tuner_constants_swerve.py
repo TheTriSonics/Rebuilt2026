@@ -153,7 +153,7 @@ class TunerConstants:
     _front_right_drive_motor_id = 12
     _front_right_steer_motor_id = 22
     _front_right_encoder_id = 32
-    _front_right_encoder_offset: units.rotation = -0.351318359375
+    _front_right_encoder_offset: units.rotation = -0.07080078125
     _front_right_steer_motor_inverted = False
     _front_right_encoder_inverted = False
 
@@ -164,7 +164,7 @@ class TunerConstants:
     _back_left_drive_motor_id = 14
     _back_left_steer_motor_id = 24
     _back_left_encoder_id = 34
-    _back_left_encoder_offset: units.rotation = 0.472900390625
+    _back_left_encoder_offset: units.rotation = 0.47314453125
     _back_left_steer_motor_inverted = False
     _back_left_encoder_inverted = False
 
