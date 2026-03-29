@@ -19,7 +19,7 @@ from wpimath.controller import (
     SimpleMotorFeedforwardMeters,
     PIDController,
 )
-from wpimath.estimator import SwerveDrive4PoseEstimator
+from utilities.robot_state import RobotState
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
 from wpimath.kinematics import (
     ChassisSpeeds,
@@ -161,15 +161,9 @@ class SwerveModule:
         wpilib.SmartDashboard.putNumber(
             f"Module/{self.name}/drive_current", self.get_drive_current()
         )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_speed", self.get_speed()
-        )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_temp", self.get_drive_temp()
-        )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/steer_temp", self.get_steer_temp()
-        )
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/drive_speed", self.get_speed())
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/drive_temp", self.get_drive_temp())
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/steer_temp", self.get_steer_temp())
 
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
@@ -378,13 +372,13 @@ class DrivetrainComponent:
     def setup(self) -> None:
         initial_pose = Pose2d(Translation2d(0, 0), Rotation2d(0))
 
-        self.estimator = SwerveDrive4PoseEstimator(
+        self.estimator = RobotState(
             self.kinematics,
             self.get_heading(),
             self.get_module_positions(),
             initial_pose,
-            stateStdDevs=(0.01, 0.01, 0.01),  # How much to trust wheel odometry
-            visionMeasurementStdDevs=(0.4, 0.4, 0.2),
+            state_std_devs=(0.01, 0.01, 0.01),
+            vision_measurement_std_devs=(0.4, 0.4, 0.2),
         )
         self.set_pose(initial_pose)
 
@@ -573,36 +567,26 @@ class DrivetrainComponent:
             self.measurements_publisher.set([module.get() for module in self.modules])
 
     def set_pose(self, pose: Pose2d) -> None:
-        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
+        self.estimator.reset_position(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
         self.fused_pose_pub.set(pose)
 
     def set_pose_auton_estimator(self, pose: Pose2d) -> None:
-        self.estimator = SwerveDrive4PoseEstimator(
-            self.kinematics,
-            self.get_heading(),
-            self.get_module_positions(),
-            pose,
-            stateStdDevs=(0.01, 0.01, 0.01),  # How much to trust wheel odometry
-            visionMeasurementStdDevs=(0.4, 0.4, 0.2),
-        )
-        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
+        self.estimator.set_odometry_std_devs((0.01, 0.01, 0.01))
+        self.estimator.reset_position(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
         self.fused_pose_pub.set(pose)
 
     def set_pose_teleop_estimator(self, pose: Pose2d) -> None:
-        self.estimator = SwerveDrive4PoseEstimator(
-            self.kinematics,
-            self.get_heading(),
-            self.get_module_positions(),
-            pose,
-            stateStdDevs=(0.1, 0.1, 0.1),  # How much to trust wheel odometry
-            visionMeasurementStdDevs=(0.4, 0.4, 0.2),
-        )
-        self.estimator.resetPosition(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
+        self.estimator.set_odometry_std_devs((0.1, 0.1, 0.1))
+        self.estimator.reset_position(self.gyro.get_Rotation2d(), self.get_module_positions(), pose)
         self.fused_pose_pub.set(pose)
+
+    def set_state_std_devs(self, std_devs: tuple[float, float, float]) -> None:
+        """Change odometry trust without resetting the estimator."""
+        self.estimator.set_odometry_std_devs(std_devs)
 
     def reset_yaw(self) -> None:
         """Sets pose to current pose but with a heading of forwards"""
-        cur_pose = self.estimator.getEstimatedPosition()
+        cur_pose = self.estimator.get_estimated_position()
         default_heading = 180 if is_red() else 0
         self.set_pose(Pose2d(cur_pose.translation(), Rotation2d.fromDegrees(default_heading)))
 
@@ -623,7 +607,7 @@ class DrivetrainComponent:
 
     def get_pose(self) -> Pose2d:
         """Get the current location of the robot relative to ???"""
-        return self.estimator.getEstimatedPosition()
+        return self.estimator.get_estimated_position()
 
     def get_rotation(self) -> Rotation2d:
         """Get the current heading of the robot."""
