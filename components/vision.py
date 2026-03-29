@@ -366,6 +366,15 @@ class VisionComponent:
 
             ts = pupdate.timestampSeconds
             pose3d = pupdate.estimatedPose
+
+            # Skip frames we've already fed to the estimator.
+            # Without this, the same camera frame (30 fps) is applied on every
+            # robot loop (50 Hz), which with a high Kalman gain overcorrects
+            # the fused pose and displaces its baseline when vision drops out.
+            if ts <= self._last_timestamps[cam_idx]:
+                continue
+            self._last_timestamps[cam_idx] = ts
+
             twod_pose = pose3d.toPose2d()
             pub.set(twod_pose)
 
@@ -386,11 +395,6 @@ class VisionComponent:
             accept_dist = 1.0 if is_auton() else 4.0
             if dist > accept_dist and not disabled and not off_field:
                 continue
-
-            # std_devs = self._compute_std_devs(avg_dist, tag_count, is_gyro_fused)
-            # Record timestamp
-            # Only used in _reject_estimate which is not active.
-            # self._last_timestamps[cam_idx] = ts
 
             std_factor = (avg_dist**2) / tag_count
             std_xy = self.linear_baseline_std * std_factor

@@ -33,7 +33,9 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(find /home/jbuist/git/frc/Rebuilt2026 -maxdepth 2 -type f -name *.md -o -name *.txt -o -name Makefile -o -name .github -o -name .cursor*)",
-      "Bash(git -C /home/jbuist/git/frc/Rebuilt2026 log --oneline)"
+      "Bash(git -C /home/jbuist/git/frc/Rebuilt2026 log --oneline)",
+      "Bash(python -c \"from magicbot import StateMachine; import inspect; src = inspect.getsource\\(StateMachine\\); print\\(src[9000:12000]\\)\")",
+      "Bash(python -c \":*)"
     ]
   }
 }

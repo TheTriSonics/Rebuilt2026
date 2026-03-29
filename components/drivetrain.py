@@ -161,15 +161,9 @@ class SwerveModule:
         wpilib.SmartDashboard.putNumber(
             f"Module/{self.name}/drive_current", self.get_drive_current()
         )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_speed", self.get_speed()
-        )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/drive_temp", self.get_drive_temp()
-        )
-        wpilib.SmartDashboard.putNumber(
-            f"Module/{self.name}/steer_temp", self.get_steer_temp()
-        )
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/drive_speed", self.get_speed())
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/drive_temp", self.get_drive_temp())
+        wpilib.SmartDashboard.putNumber(f"Module/{self.name}/steer_temp", self.get_steer_temp())
 
     def set(self, desired_state: SwerveModuleState):
         no_steer = False
@@ -228,6 +222,16 @@ class DrivetrainComponent:
     slow_mode_speed_divisor = magicbot.tunable(4.0)
     slow_mode_max_linear_accel = magicbot.tunable(2.0)  # m/s^2
     _slow_mode = magicbot.will_reset_to(False)
+
+    # Characterization support — set True by Commissioning controller to suppress
+    # the normal module.set() loop in execute() while voltage tests are running.
+    # NOT a will_reset_to: must persist across loops within a test.
+    # Always reset to False in on_enable() so a crash can never leave it stuck.
+    _characterization_active: bool = False
+
+    # Hard voltage cap applied by apply_drive_voltage / apply_steer_voltage.
+    # Provides a safety backstop independent of the controller's own max_voltage_v.
+    max_char_voltage = magicbot.tunable(7.0)
 
     def __init__(self) -> None:
         self.last_odometry_update_time: float = wpilib.Timer.getFPGATimestamp()
@@ -529,11 +533,68 @@ class DrivetrainComponent:
             desired_states, attainableMaxSpeed=self.max_wheel_speed
         )
 
-        for state, module in zip(desired_states, self.modules, strict=True):
-            module.set(state)
-            module.publish_telemetry()
+        if not self._characterization_active:
+            for state, module in zip(desired_states, self.modules, strict=True):
+                module.set(state)
+                module.publish_telemetry()
+        else:
+            for module in self.modules:
+                module.publish_telemetry()
 
         self.update_odometry()
+
+    # =========================================================================
+    # Characterization support (used by controllers/commissioning.py)
+    # =========================================================================
+
+    def begin_characterization(self) -> None:
+        """Suppress normal module.set() in execute() so VoltageOut commands
+        from the Commissioning controller are not overwritten each loop."""
+        self._characterization_active = True
+
+    def end_characterization(self) -> None:
+        """Re-enable normal module.set() and zero all motors."""
+        self._characterization_active = False
+        self.stop_characterization()
+
+    def stop_characterization(self) -> None:
+        """Send VoltageOut(0) to every drive and steer motor immediately."""
+        zero = VoltageOut(0.0)
+        for module in self.modules:
+            module.drive.set_control(zero)
+            module.steer.set_control(zero)
+
+    def apply_drive_voltage(self, volts: float, module_index: int = 4) -> None:
+        """Apply open-loop voltage to drive motor(s).
+
+        Args:
+            volts: Desired voltage. Clamped to ±max_char_voltage.
+            module_index: 0-3 for a single module, 4 (default) for all.
+        """
+        capped = max(-self.max_char_voltage, min(self.max_char_voltage, volts))
+        targets = self.modules if module_index == 4 else [self.modules[module_index]]
+        for module in targets:
+            module.drive.set_control(VoltageOut(capped))
+
+    def apply_steer_voltage(self, volts: float, module_index: int = 4) -> None:
+        """Apply open-loop voltage to steer motor(s).
+
+        Args:
+            volts: Desired voltage. Clamped to ±max_char_voltage.
+            module_index: 0-3 for a single module, 4 (default) for all.
+        """
+        capped = max(-self.max_char_voltage, min(self.max_char_voltage, volts))
+        targets = self.modules if module_index == 4 else [self.modules[module_index]]
+        for module in targets:
+            module.steer.set_control(VoltageOut(capped))
+
+    def get_module_drive_velocities(self) -> list[float]:
+        """Return drive motor velocities (m/s) for all modules, FL→FR→BL→BR."""
+        return [m.get_speed() for m in self.modules]
+
+    def get_module_steer_velocities(self) -> list[float]:
+        """Return steer motor velocities (rot/s) for all modules, FL→FR→BL→BR."""
+        return [m.steer.get_velocity().value for m in self.modules]
 
     def on_enable(self) -> None:
         """update the odometry so the pose estimator doesn't have an empty
@@ -545,6 +606,7 @@ class DrivetrainComponent:
         self._prev_commanded_vx = 0.0
         self._prev_commanded_vy = 0.0
         self._prev_commanded_omega = 0.0
+        self._characterization_active = False
         self.update_odometry()
 
     def get_rotational_velocity(self) -> float:
