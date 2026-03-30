@@ -15,6 +15,8 @@ step-by-step tuning procedure.
 import math
 import wpilib
 
+from collections.abc import Callable
+
 from magicbot import MagicRobot, tunable
 from phoenix6 import SignalLogger
 
@@ -78,56 +80,57 @@ class MyRobot(MagicRobot):
         # --- Test triggers ---
         # Auto-starts SignalLogger when a test is triggered so you don't have to
         # manually press Back first, but you can still toggle it independently.
-        def _trigger_test(go_fn) -> None:
-            if not self._signal_logger_running:
-                SignalLogger.start()
-                self._signal_logger_running = True
-            go_fn()
-
         if self.tech_controller.turn_quasistatic_fwd():
-            _trigger_test(self.commissioning.go_turn_quasistatic_fwd)
+            self._trigger_test(self.commissioning.go_turn_quasistatic_fwd)
         elif self.tech_controller.turn_quasistatic_rev():
-            _trigger_test(self.commissioning.go_turn_quasistatic_rev)
+            self._trigger_test(self.commissioning.go_turn_quasistatic_rev)
         elif self.tech_controller.turn_dynamic_fwd():
-            _trigger_test(self.commissioning.go_turn_dynamic_fwd)
+            self._trigger_test(self.commissioning.go_turn_dynamic_fwd)
         elif self.tech_controller.turn_dynamic_rev():
-            _trigger_test(self.commissioning.go_turn_dynamic_rev)
+            self._trigger_test(self.commissioning.go_turn_dynamic_rev)
         elif self.tech_controller.drive_quasistatic_fwd():
-            _trigger_test(self.commissioning.go_drive_quasistatic_fwd)
+            self._trigger_test(self.commissioning.go_drive_quasistatic_fwd)
         elif self.tech_controller.drive_quasistatic_rev():
-            _trigger_test(self.commissioning.go_drive_quasistatic_rev)
+            self._trigger_test(self.commissioning.go_drive_quasistatic_rev)
         elif self.tech_controller.drive_dynamic_fwd():
-            _trigger_test(self.commissioning.go_drive_dynamic_fwd)
+            self._trigger_test(self.commissioning.go_drive_dynamic_fwd)
         elif self.tech_controller.drive_dynamic_rev():
-            _trigger_test(self.commissioning.go_drive_dynamic_rev)
+            self._trigger_test(self.commissioning.go_drive_dynamic_rev)
         elif self.tech_controller.snap_0():
-            _trigger_test(
+            self._trigger_test(
                 lambda: self.commissioning.go_heading_snap_test(
                     self.commissioning.snap_target_0_deg
                 )
             )
         elif self.tech_controller.snap_90():
-            _trigger_test(
+            self._trigger_test(
                 lambda: self.commissioning.go_heading_snap_test(
                     self.commissioning.snap_target_1_deg
                 )
             )
         elif self.tech_controller.snap_180():
-            _trigger_test(
+            self._trigger_test(
                 lambda: self.commissioning.go_heading_snap_test(
                     self.commissioning.snap_target_2_deg
                 )
             )
         elif self.tech_controller.snap_270():
-            _trigger_test(
+            self._trigger_test(
                 lambda: self.commissioning.go_heading_snap_test(
                     self.commissioning.snap_target_3_deg
                 )
             )
         elif self.tech_controller.translation_test():
-            _trigger_test(self.commissioning.go_translation_test)
+            self._trigger_test(self.commissioning.go_translation_test)
 
         wpilib.SmartDashboard.putBoolean("SignalLogger Running", self._signal_logger_running)
+
+    def _trigger_test(self, go_fn: Callable[[], None]) -> None:
+        """Auto-start SignalLogger if needed, then invoke a commissioning test."""
+        if not self._signal_logger_running:
+            SignalLogger.start()
+            self._signal_logger_running = True
+        go_fn()
 
     def disabledPeriodic(self) -> None:
         # Keep odometry fresh while disabled so the first snap/translation test
