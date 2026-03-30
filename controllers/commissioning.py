@@ -266,22 +266,22 @@ class Commissioning(StateMachine):
     # --- Tunable parameters (live-editable from Shuffleboard) ---
 
     # Characterization test settings
-    quasi_ramp_rate_vs: float = tunable(0.5)  # V/s for quasistatic ramp
-    dynamic_step_voltage_v: float = tunable(4.0)  # Step voltage for dynamic tests
-    max_test_duration_s: float = tunable(5.0)  # Hard timeout per test (s)
-    max_voltage_v: float = tunable(7.0)  # Controller-level voltage cap (V)
+    quasi_ramp_rate_vs = tunable(0.5)  # V/s for quasistatic ramp
+    dynamic_step_voltage_v = tunable(4.0)  # Step voltage for dynamic tests
+    max_test_duration_s = tunable(5.0)  # Hard timeout per test (s)
+    max_voltage_v = tunable(7.0)  # Controller-level voltage cap (V)
 
     # Module selector: 0-3 = individual module, 4 = all modules
-    target_module_index: int = tunable(4)
+    target_module_index = tunable(4)
 
     # Translation test
-    translation_distance_m: float = tunable(1.0)
+    translation_distance_m = tunable(1.0)
 
     # Heading snap targets (degrees — converted to radians in the state)
-    snap_target_0_deg: float = tunable(0.0)
-    snap_target_1_deg: float = tunable(90.0)
-    snap_target_2_deg: float = tunable(180.0)
-    snap_target_3_deg: float = tunable(270.0)
+    snap_target_0_deg = tunable(0.0)
+    snap_target_1_deg = tunable(90.0)
+    snap_target_2_deg = tunable(180.0)
+    snap_target_3_deg = tunable(270.0)
 
     # --- Internal bookkeeping (not MagicBot-managed) ---
 
