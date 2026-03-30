@@ -130,27 +130,27 @@ class PhysicsEngine:
             #     gearing=1,
             #     moi=0.0009972 * 4,
             # ),
-            Falcon500MotorSim(
-                self.robot.kicker.kicker,
-                gearing=1,
-                moi=0.0009972 * 2,
-            ),
-            Falcon500MotorSim(
-                self.robot.shooter.shooter_left,
-                gearing=1,
-                # 2x 3" Colson wheels (~0.1 kg each, r=0.0381m) + 10%
-                moi=0.00016,
-            ),
-            Falcon500MotorSim(
-                self.robot.shooter.shooter_right,
-                gearing=1,
-                moi=0.00016,
-            ),
-            Falcon500MotorSim(
-                self.robot.shooter.shooter_hood,
-                gearing=1,
-                moi=0.00016,
-            ),
+            # Falcon500MotorSim(
+            #     self.robot.kicker.kicker,
+            #     gearing=1,
+            #     moi=0.0009972 * 2,
+            # ),
+            # Falcon500MotorSim(
+            #     self.robot.shooter.shooter_left,
+            #     gearing=1,
+            #     # 2x 3" Colson wheels (~0.1 kg each, r=0.0381m) + 10%
+            #     moi=0.00016,
+            # ),
+            # Falcon500MotorSim(
+            #     self.robot.shooter.shooter_right,
+            #     gearing=1,
+            #     moi=0.00016,
+            # ),
+            # Falcon500MotorSim(
+            #     self.robot.shooter.shooter_hood,
+            #     gearing=1,
+            #     moi=0.00016,
+            # ),
         ]
 
         # Lagged steer angles for sim — makes turning feel more like the real robot
@@ -164,48 +164,48 @@ class PhysicsEngine:
             robotpy_apriltag.AprilTagField.k2026RebuiltWelded
         )
 
-        self.vision_sim = VisionSystemSim("ardu_cam-1")
-        self.vision_sim.addAprilTags(self.apriltag_layout)
+        # self.vision_sim = VisionSystemSim("ardu_cam-1")
+        # self.vision_sim.addAprilTags(self.apriltag_layout)
 
-        # Luma P1: OV9281 global shutter, 1280x800, 80h/56v FOV, ~89.6 diagonal
-        luma_p1_fov_diag = Rotation2d.fromDegrees(89.6)
+        # # Luma P1: OV9281 global shutter, 1280x800, 80h/56v FOV, ~89.6 diagonal
+        # luma_p1_fov_diag = Rotation2d.fromDegrees(89.6)
 
-        properties_bl = SimCameraProperties.OV9281_1280_720()
-        properties_bl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_bl = PhotonCameraSim(robot.vision.camera_rl, properties_bl)
-        self.camera_bl.setMaxSightRange(4.0)
+        # properties_bl = SimCameraProperties.OV9281_1280_720()
+        # properties_bl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        # self.camera_bl = PhotonCameraSim(robot.vision.camera_rl, properties_bl)
+        # self.camera_bl.setMaxSightRange(4.0)
 
-        properties_br = SimCameraProperties.OV9281_1280_720()
-        properties_br.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_br = PhotonCameraSim(robot.vision.camera_rr, properties_br)
-        self.camera_br.setMaxSightRange(4.0)
+        # properties_br = SimCameraProperties.OV9281_1280_720()
+        # properties_br.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        # self.camera_br = PhotonCameraSim(robot.vision.camera_rr, properties_br)
+        # self.camera_br.setMaxSightRange(4.0)
 
-        properties_back = SimCameraProperties.OV9281_1280_720()
-        properties_back.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_back = PhotonCameraSim(robot.vision.camera_back, properties_back)
-        self.camera_back.setMaxSightRange(4.0)
+        # properties_back = SimCameraProperties.OV9281_1280_720()
+        # properties_back.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+        # self.camera_back = PhotonCameraSim(robot.vision.camera_back, properties_back)
+        # self.camera_back.setMaxSightRange(4.0)
 
-        self.vision_sim.addCamera(
-            self.camera_bl,
-            self.robot.vision.camera_rl_offset,
-        )
-        self.vision_sim.addCamera(
-            self.camera_br,
-            self.robot.vision.camera_rr_offset,
-        )
-        self.vision_sim.addCamera(
-            self.camera_back,
-            self.robot.vision.camera_back_offset,
-        )
+        # self.vision_sim.addCamera(
+        #     self.camera_bl,
+        #     self.robot.vision.camera_rl_offset,
+        # )
+        # self.vision_sim.addCamera(
+        #     self.camera_br,
+        #     self.robot.vision.camera_rr_offset,
+        # )
+        # self.vision_sim.addCamera(
+        #     self.camera_back,
+        #     self.robot.vision.camera_back_offset,
+        # )
 
         # Sim-only chooser: which alliance won autonomous?
         # The FMS game message is the alliance whose HUB goes inactive FIRST —
         # the LOSER of auto — so the labels here are the inverse of the raw char.
-        self._auton_winner_chooser: wpilib.SendableChooser = wpilib.SendableChooser()
-        self._auton_winner_chooser.setDefaultOption("Unknown (both active)", "")
-        self._auton_winner_chooser.addOption("Red Won Auto  → Blue inactive first", "B")
-        self._auton_winner_chooser.addOption("Blue Won Auto → Red inactive first",  "R")
-        wpilib.SmartDashboard.putData("Sim/AutonWinner", self._auton_winner_chooser)
+        # self._auton_winner_chooser: wpilib.SendableChooser = wpilib.SendableChooser()
+        # self._auton_winner_chooser.setDefaultOption("Unknown (both active)", "")
+        # self._auton_winner_chooser.addOption("Red Won Auto  → Blue inactive first", "B")
+        # self._auton_winner_chooser.addOption("Blue Won Auto → Red inactive first",  "R")
+        # wpilib.SmartDashboard.putData("Sim/AutonWinner", self._auton_winner_chooser)
 
     def update_sim(self, now: float, tm_diff: float) -> None:
         # Enable the Phoenix6 simulated devices
@@ -213,10 +213,10 @@ class PhysicsEngine:
         if wpilib.DriverStation.isEnabled():
             phoenix6.unmanaged.feed_enable(0.1)
 
-        # Inject the simulated FMS game message so hub_shoot_indicator() works in sim
-        DriverStationSim.setGameSpecificMessage(
-            self._auton_winner_chooser.getSelected() or ""
-        )
+        # # Inject the simulated FMS game message so hub_shoot_indicator() works in sim
+        # DriverStationSim.setGameSpecificMessage(
+        #     self._auton_winner_chooser.getSelected() or ""
+        # )
 
         if False:
             poses: list[Pose3d] = []
@@ -281,5 +281,5 @@ class PhysicsEngine:
         self.gyro.set_raw_yaw(self.current_yaw + yaw_jitter)
 
         self.physics_controller.drive(speeds, tm_diff)
-        self.vision_sim.update(self.robot.drivetrain.get_pose())
+        # self.vision_sim.update(self.robot.drivetrain.get_pose())
 

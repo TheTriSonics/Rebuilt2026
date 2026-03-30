@@ -127,6 +127,8 @@ class MyRobot(MagicRobot):
         elif self.tech_controller.translation_test():
             _trigger_test(self.commissioning.go_translation_test)
 
+        wpilib.SmartDashboard.putBoolean("SignalLogger Running", self._signal_logger_running)
+
     def disabledPeriodic(self) -> None:
         # Keep odometry fresh while disabled so the first snap/translation test
         # has an accurate starting pose.
