@@ -58,6 +58,7 @@ class GasPump(StateMachine):
     @state(must_finish=True)
     def shooter_spin_up(self) -> None:
         self.shooter.spin_up()
+        self.kicker.reverse()
         if self.shooter.is_at_speed():
             self.next_state(self.kicker_spin_up)
 

@@ -74,3 +74,6 @@ class RebuiltOperator:
 
     def turret_aim_right(self):
         return self.controller.getPOV() == 90   # D-pad right → right lob
+    
+    def shooter_spin_up(self):
+        return self.controller.getBButtonPressed()
