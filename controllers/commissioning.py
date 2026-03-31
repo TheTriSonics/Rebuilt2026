@@ -250,6 +250,7 @@ import math
 
 from magicbot import StateMachine, feedback, state, tunable
 from phoenix6.controls import PositionVoltage
+from phoenix6 import SignalLogger
 
 from components.drivetrain import DrivetrainComponent
 
@@ -388,6 +389,7 @@ class Commissioning(StateMachine):
     def idle(self, initial_call: bool) -> None:
         """Idle — all motors zeroed, waiting for a test command."""
         if initial_call:
+            SignalLogger.write_string("state", "none")
             self._current_voltage = 0.0
             self._elapsed_time = 0.0
             self.drivetrain.end_characterization()
@@ -398,6 +400,7 @@ class Commissioning(StateMachine):
     def drive_quasistatic_fwd(self, initial_call: bool, state_tm: float) -> None:
         """Drive quasistatic forward — slowly ramp drive voltage, wheels straight."""
         if initial_call:
+            SignalLogger.write_string("state", "quasistatic-forward")
             self.drivetrain.begin_characterization()
             self._align_wheels_forward()
         if self._check_timeout(state_tm):
@@ -412,6 +415,7 @@ class Commissioning(StateMachine):
     def drive_quasistatic_rev(self, initial_call: bool, state_tm: float) -> None:
         """Drive quasistatic reverse — slowly ramp drive voltage negative, wheels straight."""
         if initial_call:
+            SignalLogger.write_string("state", "quasistatic-reverse")
             self.drivetrain.begin_characterization()
             self._align_wheels_forward()
         if self._check_timeout(state_tm):
@@ -426,6 +430,7 @@ class Commissioning(StateMachine):
     def drive_dynamic_fwd(self, initial_call: bool, state_tm: float) -> None:
         """Drive dynamic forward — apply constant step voltage, wheels straight."""
         if initial_call:
+            SignalLogger.write_string("state", "dynamic-forward")
             self.drivetrain.begin_characterization()
             self._align_wheels_forward()
         if self._check_timeout(state_tm):
@@ -440,6 +445,7 @@ class Commissioning(StateMachine):
     def drive_dynamic_rev(self, initial_call: bool, state_tm: float) -> None:
         """Drive dynamic reverse — apply constant negative step voltage, wheels straight."""
         if initial_call:
+            SignalLogger.write_string("state", "dynamic-reverse")
             self.drivetrain.begin_characterization()
             self._align_wheels_forward()
         if self._check_timeout(state_tm):
@@ -456,6 +462,7 @@ class Commissioning(StateMachine):
     def turn_quasistatic_fwd(self, initial_call: bool, state_tm: float) -> None:
         """Turn quasistatic forward — slowly ramp steer voltage, drives zeroed."""
         if initial_call:
+            SignalLogger.write_string("state", "quasistatic-forward")
             self.drivetrain.begin_characterization()
             self.drivetrain.apply_drive_voltage(0.0)
         if self._check_timeout(state_tm):
@@ -470,6 +477,7 @@ class Commissioning(StateMachine):
     def turn_quasistatic_rev(self, initial_call: bool, state_tm: float) -> None:
         """Turn quasistatic reverse — slowly ramp steer voltage negative, drives zeroed."""
         if initial_call:
+            SignalLogger.write_string("state", "quasistatic-reverse")
             self.drivetrain.begin_characterization()
             self.drivetrain.apply_drive_voltage(0.0)
         if self._check_timeout(state_tm):
@@ -484,6 +492,7 @@ class Commissioning(StateMachine):
     def turn_dynamic_fwd(self, initial_call: bool, state_tm: float) -> None:
         """Turn dynamic forward — apply constant step voltage to steer, drives zeroed."""
         if initial_call:
+            SignalLogger.write_string("state", "dynamic-forward")
             self.drivetrain.begin_characterization()
             self.drivetrain.apply_drive_voltage(0.0)
         if self._check_timeout(state_tm):
@@ -498,6 +507,7 @@ class Commissioning(StateMachine):
     def turn_dynamic_rev(self, initial_call: bool, state_tm: float) -> None:
         """Turn dynamic reverse — apply constant negative step voltage to steer, drives zeroed."""
         if initial_call:
+            SignalLogger.write_string("state", "dynamic-reverse")
             self.drivetrain.begin_characterization()
             self.drivetrain.apply_drive_voltage(0.0)
         if self._check_timeout(state_tm):
