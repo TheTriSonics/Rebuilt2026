@@ -23,13 +23,16 @@ from phoenix6 import SignalLogger
 from components.drivetrain import DrivetrainComponent
 from components.gyro import GyroComponent
 from controllers.commissioning import Commissioning
+from controllers.motor_commissioning import MotorCommissioning
 from hid.xbox_tech import TechController
+from hid.xbox_tech2 import TechController2
 from utilities.game import is_sim
 
 
 class MyRobot(MagicRobot):
     # Controllers (declared before components)
     commissioning: Commissioning
+    motor_commissioning: MotorCommissioning
 
     # Components
     gyro: GyroComponent
@@ -54,15 +57,21 @@ class MyRobot(MagicRobot):
 
     def teleopInit(self) -> None:
         self.tech_controller = TechController()
+        self.tech_controller2 = TechController2()
         self.commissioning.engage()
+        self.motor_commissioning.engage()
         curr_pose = self.drivetrain.get_pose()
         self.drivetrain.set_pose(curr_pose)
 
     def teleopPeriodic(self) -> None:
         self.tech_controller.update()
+        self.tech_controller2.update()
 
-        # --- SignalLogger toggle (Back button) ---
-        if self.tech_controller.toggle_signal_logger():
+        # --- SignalLogger toggle (Back button on either controller) ---
+        if (
+            self.tech_controller.toggle_signal_logger()
+            or self.tech_controller2.toggle_signal_logger()
+        ):
             if self._signal_logger_running:
                 SignalLogger.stop()
                 self._signal_logger_running = False
@@ -70,9 +79,14 @@ class MyRobot(MagicRobot):
                 SignalLogger.start()
                 self._signal_logger_running = True
 
-        # --- Emergency stop (Start button) ---
+        # --- Emergency stop ---
         if self.tech_controller.emergency_stop():
             self.commissioning.go_idle()
+            if self._signal_logger_running:
+                SignalLogger.stop()
+                self._signal_logger_running = False
+        if self.tech_controller2.emergency_stop():
+            self.motor_commissioning.go_idle()
             if self._signal_logger_running:
                 SignalLogger.stop()
                 self._signal_logger_running = False
@@ -122,6 +136,16 @@ class MyRobot(MagicRobot):
             )
         elif self.tech_controller.translation_test():
             self._trigger_test(self.commissioning.go_translation_test)
+
+        # --- Generic motor commissioning tests (TechController2, port 3) ---
+        if self.tech_controller2.quasistatic_fwd():
+            self._trigger_test(self.motor_commissioning.go_quasistatic_fwd)
+        elif self.tech_controller2.quasistatic_rev():
+            self._trigger_test(self.motor_commissioning.go_quasistatic_rev)
+        elif self.tech_controller2.dynamic_fwd():
+            self._trigger_test(self.motor_commissioning.go_dynamic_fwd)
+        elif self.tech_controller2.dynamic_rev():
+            self._trigger_test(self.motor_commissioning.go_dynamic_rev)
 
         wpilib.SmartDashboard.putBoolean("SignalLogger Running", self._signal_logger_running)
 
