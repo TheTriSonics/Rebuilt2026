@@ -284,6 +284,22 @@ class Commissioning(StateMachine):
     snap_target_2_deg = tunable(180.0)
     snap_target_3_deg = tunable(270.0)
 
+    # --- Dashboard buttons (momentary — set True to trigger, auto-reset after one loop) ---
+    dash_emergency_stop = tunable(False)
+    dash_turn_quasistatic_fwd = tunable(False)
+    dash_turn_quasistatic_rev = tunable(False)
+    dash_turn_dynamic_fwd = tunable(False)
+    dash_turn_dynamic_rev = tunable(False)
+    dash_drive_quasistatic_fwd = tunable(False)
+    dash_drive_quasistatic_rev = tunable(False)
+    dash_drive_dynamic_fwd = tunable(False)
+    dash_drive_dynamic_rev = tunable(False)
+    dash_snap_0 = tunable(False)
+    dash_snap_90 = tunable(False)
+    dash_snap_180 = tunable(False)
+    dash_snap_270 = tunable(False)
+    dash_translation_test = tunable(False)
+
     # --- Internal bookkeeping (not MagicBot-managed) ---
 
     def __init__(self) -> None:

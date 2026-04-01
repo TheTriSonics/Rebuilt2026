@@ -167,6 +167,13 @@ class MotorCommissioning(StateMachine):
     upper_limit_rot = tunable(0.0)
     lower_limit_rot = tunable(0.0)
 
+    # --- Dashboard buttons (momentary — set True to trigger, auto-reset after one loop) ---
+    dash_emergency_stop = tunable(False)
+    dash_quasistatic_fwd = tunable(False)
+    dash_quasistatic_rev = tunable(False)
+    dash_dynamic_fwd = tunable(False)
+    dash_dynamic_rev = tunable(False)
+
     def __init__(self) -> None:
         super().__init__()
         self._motor1: TalonFX | None = None
