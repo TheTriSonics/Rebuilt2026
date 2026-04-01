@@ -365,7 +365,7 @@ class VisionComponent:
                 continue
 
             ts = pupdate.timestampSeconds
-            if self._last_timestamps[cam_idx] <= ts:
+            if ts <= self._last_timestamps[cam_idx]:
                 # We've already processed this pose estimate, skip it
                 continue
             self._last_timestamps[cam_idx] = ts

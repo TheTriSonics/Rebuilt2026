@@ -77,3 +77,11 @@ class RebuiltOperator:
     
     def shooter_spin_up(self):
         return self.controller.getBButtonPressed()
+    
+    def rumble_on(self):
+        self.controller.setRumble(XboxController.RumbleType.kLeftRumble, 1.0)
+        self.controller.setRumble(XboxController.RumbleType.kRightRumble, 1.0)
+    
+    def rumble_off(self):
+        self.controller.setRumble(XboxController.RumbleType.kLeftRumble, 0.0)
+        self.controller.setRumble(XboxController.RumbleType.kRightRumble, 0.0)

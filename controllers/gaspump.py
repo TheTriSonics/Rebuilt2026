@@ -39,6 +39,10 @@ class GasPump(StateMachine):
     def go_intake_off(self) -> None:
         self.next_state_now(self.waiting)
 
+    def go_pre_speed(self) -> None:
+        self.next_state_now(self.pre_speed)
+
+
     # ------------------------------------------------------------------
     # States
     # ------------------------------------------------------------------
@@ -56,6 +60,11 @@ class GasPump(StateMachine):
             self.kicker.off()
 
     @state(must_finish=True)
+    def pre_speed(self) -> None:
+        self.shooter.spin_up()
+        self.kicker.reverse()
+
+    @state(must_finish=True)
     def shooter_spin_up(self) -> None:
         self.shooter.spin_up()
         self.kicker.reverse()
@@ -65,3 +74,5 @@ class GasPump(StateMachine):
     @state(must_finish=True)
     def kicker_spin_up(self) -> None:
         self.kicker.on()
+
+    

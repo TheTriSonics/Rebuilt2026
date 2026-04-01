@@ -164,6 +164,15 @@ class MyRobot(MagicRobot):
             self.shot_calc.set_target("left")
         if self.operator_controller.turret_aim_right():
             self.shot_calc.set_target("right")
+        if self.operator_controller.shooter_spin_up():
+            self.gaspump.go_pre_speed()
+        
+
+        if self.shooter.is_at_speed() or self.kicker.active or self.kicker.run_reverse:
+            self.operator_controller.rumble_on()
+        else:
+            self.operator_controller.rumble_off()
+
 
         can_shoot, phase_left = hub_shoot_indicator(self.game_msg)
         wpilib.SmartDashboard.putBoolean("Shoot/CanShoot", can_shoot)
