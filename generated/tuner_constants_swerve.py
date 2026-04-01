@@ -42,15 +42,24 @@ class TunerConstants:
     )
     # When using closed-loop control, the drive motor uses the control
     # output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
+    # _drive_gains = (
+    #     configs.Slot0Configs()
+    #     .with_k_p(2.0)
+    #     .with_k_i(0)
+    #     .with_k_d(0)
+    #     .with_k_s(0.3)
+    #     .with_k_v(0.1)
+    #     .with_k_a(0)
+    # )
     _drive_gains = (
         configs.Slot0Configs()
-        .with_k_p(2.0)
+        .with_k_p(2.77)
         .with_k_i(0)
         .with_k_d(0)
-        .with_k_s(0.3)
-        .with_k_v(0.1)
+        .with_k_s(0.3257)
+        .with_k_v(1.9035)
+        .with_k_a(0.51)
     )
-
     # The closed-loop output type to use for the steer motors;
 
     # This affects the PID/FF gains for the steer motors
@@ -165,7 +174,7 @@ class TunerConstants:
     _front_right_drive_motor_id = 12
     _front_right_steer_motor_id = 22
     _front_right_encoder_id = 32
-    _front_right_encoder_offset: units.rotation = -0.351318359375
+    _front_right_encoder_offset: units.rotation = -0.055908203125
     _front_right_steer_motor_inverted = False
     _front_right_encoder_inverted = False
 

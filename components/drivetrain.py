@@ -271,14 +271,14 @@ class DrivetrainComponent:
 
         # Used to lock the robot onto a heading; currently not used.
         self.heading_controller = ProfiledPIDControllerRadians(
-            6.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
+            4.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
         self.snap_heading: float | None = None
 
         # Used for path following and driving directly to a specific point
-        self.path_pid_control = PIDController(7.0, 0, 0)
+        self.path_pid_control = PIDController(4, 0, 0.2)
         self.path_heading_pid_control = PIDController(7.0, 0, 0)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
 
