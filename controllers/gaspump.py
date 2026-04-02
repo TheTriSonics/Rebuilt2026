@@ -58,6 +58,7 @@ class GasPump(StateMachine):
         if initial_call:
             self.shooter.stop()
             self.kicker.off()
+            
 
     @state(must_finish=True)
     def pre_speed(self) -> None:

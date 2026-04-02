@@ -10,6 +10,7 @@ from phoenix6.configs import (
     ClosedLoopGeneralConfigs,
     FeedbackConfigs,
     MotorOutputConfigs,
+    CurrentLimitsConfigs
 )
 from phoenix6.controls import DutyCycleOut, PositionVoltage, VelocityVoltage, VoltageOut
 from phoenix6.hardware import CANcoder, TalonFX
@@ -108,6 +109,10 @@ class SwerveModule:
             if drive_reversed
             else InvertedValue.COUNTER_CLOCKWISE_POSITIVE
         )
+        drive_motor_current_config = CurrentLimitsConfigs()
+        drive_motor_current_config.stator_current_limit = 65
+        drive_motor_current_config.stator_current_limit_enable = True
+        
 
         wheel_circumference = TunerConstants._wheel_radius * math.tau
         # sensor_to_mechanism_ratio converts motor rotations to meters
@@ -125,6 +130,8 @@ class SwerveModule:
         self.drive.configurator.apply(drive_motor_config)
         self.drive.configurator.apply(self.drive_pid, 0.01)
         self.drive.configurator.apply(drive_gear_ratio_config)
+        self.drive.configurator.apply(drive_motor_current_config)
+
 
         self.central_angle = Rotation2d(x, y)
 
@@ -267,16 +274,22 @@ class DrivetrainComponent:
 
         # Used to lock the robot onto a heading; currently not used.
         self.heading_controller = ProfiledPIDControllerRadians(
-            6.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
+            4.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
         )
+
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
         self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
         self.snap_heading: float | None = None
 
         # Used for path following and driving directly to a specific point
-        self.path_pid_control = PIDController(7.0, 0, 0)
-        self.path_heading_pid_control = PIDController(7.0, 0, 0)
+        # self.path_pid_control = PIDController(4.0, 0, 0.2)
+        # self.path_heading_pid_control = PIDController(4.0, 0, 0)
+        # self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
+
+        self.path_pid_control = PIDController(1.0, 0, 0.01)
+        self.path_heading_pid_control = PIDController(1.0, 0, 0.01)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
+
 
         # Define each of the four swerve modules using the SwerveModule class
         # also found in this file.

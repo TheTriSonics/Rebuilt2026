@@ -506,3 +506,56 @@ class HopperShoot_Move(AutonBase):
     @state(must_finish=True)
     def end(self, initial_call: bool, state_tm: float):
         ...
+
+
+class Simple(AutonBase):
+    MODE_NAME = "Simple"
+    raw_traj = load_swerve_trajectory(MODE_NAME)
+
+    tanker: Tanker
+    gaspump: GasPump
+
+    drivetrain: DrivetrainComponent
+    gyro: GyroComponent
+    intake: IntakeComponent
+    shot_calc: ShotCalculatorComponent
+
+    def get_initial_pose(self) -> Pose2d:
+        self.traj = mirrored(self.raw_traj) if is_left() else self.raw_traj
+        # Get the markers from the trajectory now
+        for e in self.traj.events:
+            print(e.event)
+
+        self.intake_on_pose = self.get_event_pose("IntakeOn")
+        self.last_pose = self.traj.get_final_pose(is_red())
+
+        pose = self.traj.get_initial_pose(is_red())
+        assert pose
+        return pose
+
+    @state(first=True, must_finish=True)
+    def intake_down(self, initial_call: bool):
+        if initial_call:
+            self.intake.rotate_down()
+
+        if self.intake.get_rotate_position() < 0.05:
+            self.next_state(self.begin_path)
+
+
+    @state(must_finish=True)
+    def begin_path(self, initial_call: bool):
+        if initial_call:
+            assert self.traj
+            self.tanker.go_follow_traj(self.traj)
+
+        assert self.last_pose
+        if self.at_pose(self.last_pose, tolerance=0.15):
+            self.next_state(self.end)
+
+
+    @state(must_finish=True)
+    def end(self, initial_call: bool):
+        self.gaspump.go_shoot_off()
+        self.intake.off()
+        # TODO: remove this before competition, or make it not do it with an FMS connected
+        self.intake.rotate_down()
