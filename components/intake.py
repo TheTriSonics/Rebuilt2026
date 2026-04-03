@@ -27,8 +27,8 @@ class IntakeComponent:
     lower_position = 0.00
     target_position = tunable(0.0)
 
-    intake_speed = tunable(-0.45)
-    sushi_speed = tunable(0.425)
+    intake_speed = tunable(-0.45 * 1.5)
+    sushi_speed = tunable(0.425 * 1.5)
     target_intake_speed = tunable(0.0)
     target_sushi_speed = tunable(0.0)
 

@@ -181,23 +181,6 @@ class RobotState:
         self._prev_module_positions = module_positions
         self._buffer.clear()
 
-    def get_estimated_position(self) -> Pose2d:  # noqa: N802
-        return self.get_estimated_position()
-
-    def reset_position(  # noqa: N802
-        self,
-        gyro_angle: Rotation2d,
-        module_positions: tuple[
-            SwerveModulePosition,
-            SwerveModulePosition,
-            SwerveModulePosition,
-            SwerveModulePosition,
-        ],
-        pose: Pose2d,
-    ) -> None:
-        self.reset_position(gyro_angle, module_positions, pose)
-
-    # ── Interpolation buffer (simple sorted list) ─────────────────────────
     def _buffer_add(self, timestamp: float, pose: Pose2d) -> None:
         """Add a timestamped odometry pose and prune old entries."""
         self._buffer.append((timestamp, pose))
