@@ -15,6 +15,7 @@ from utilities.game import is_auton, is_sim, is_disabled, is_match
 # Max trail length for AdvantageScope trajectory visualization
 _TRAIL_MAX = 100
 
+
 class VisionComponent:
     drivetrain: DrivetrainComponent
     gyro: GyroComponent
@@ -321,7 +322,7 @@ class VisionComponent:
     def execute(self) -> None:
         self.linear_baseline_std = 0.10 if is_auton() else 0.02
         disabled = is_disabled()
-        current_pose = self.drivetrain.estimator.getEstimatedPosition()
+        current_pose = self.drivetrain.estimator.get_estimated_position()
         off_field = self._is_off_field(current_pose)
 
         # Debug publishing is suppressed during FMS matches to save bandwidth
@@ -418,8 +419,8 @@ class VisionComponent:
             else:
                 pose, ts, stds = self._fuse_estimates(valid_estimates)
 
-            self.drivetrain.estimator.setVisionMeasurementStdDevs(stds)
-            self.drivetrain.estimator.addVisionMeasurement(pose, ts)
+            self.drivetrain.estimator.set_vision_std_devs(stds)
+            self.drivetrain.estimator.add_vision_measurement(pose, ts)
             now = Timer.getFPGATimestamp()
             self.last_vision_update = now
             self._last_std_xy = stds[0]

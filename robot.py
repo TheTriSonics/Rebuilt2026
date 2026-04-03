@@ -63,10 +63,7 @@ class MyRobot(MagicRobot):
             wpilib.DriverStation.silenceJoystickConnectionWarning(True)
 
     def autonomousInit(self):
-        curr_pose = self.drivetrain.get_pose()
-        # resetPosition (called inside set_pose) re-syncs the gyro offset
-        # internally, so we don't need to reset the hardware gyro
-        self.drivetrain.set_pose(curr_pose)
+        self.drivetrain.set_state_std_devs((0.01, 0.01, 0.01))
         self.tanker.engage()
         self.gaspump.engage()
 
@@ -87,10 +84,7 @@ class MyRobot(MagicRobot):
         self.drivetrain.stop_snapping()
         self.game_msg = wpilib.DriverStation.getGameSpecificMessage()
         # self.leds.set_game_msg(self.game_msg)
-        curr_pose = self.drivetrain.get_pose()
-        # resetPosition (called inside set_pose) re-syncs the gyro offset
-        # internally, so we don't need to reset the hardware gyro
-        self.drivetrain.set_pose_teleop_estimator(curr_pose)
+        self.drivetrain.set_state_std_devs((0.1, 0.1, 0.1))
 
     def teleopPeriodic(self):
         self.driver_controller.update_lob_allow()
