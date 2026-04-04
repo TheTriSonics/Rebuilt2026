@@ -24,11 +24,11 @@ class IntakeComponent:
     upper_position = 0.30
     tilt_position = 0.20
     # lower_position = -0.015
-    lower_position = 0.00
+    lower_position = 0.05  # NOTE: need to rezero CANCoder with padding in place. Stub for now to keep motor squeal from happening
     target_position = tunable(0.0)
 
-    intake_speed = tunable(-0.45 * 1.5)
-    sushi_speed = tunable(0.425 * 1.5)
+    intake_speed = tunable(-0.45 * 1.1)
+    sushi_speed = tunable(0.425 * 1.1)
     target_intake_speed = tunable(0.0)
     target_sushi_speed = tunable(0.0)
 

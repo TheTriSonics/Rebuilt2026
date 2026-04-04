@@ -20,7 +20,6 @@ pn = SmartDashboard.putNumber
 ps = SmartDashboard.putString
 
 
-#
 class HopperShoot(AutonBase):
     MODE_NAME = "HopperShoot"
     raw_traj = load_swerve_trajectory(MODE_NAME)
@@ -40,6 +39,7 @@ class HopperShoot(AutonBase):
             print(e.event)
 
         self.intake_on_pose = self.get_event_pose("IntakeOn")
+        self.shooter_warm_on_pose = self.get_event_pose("ShooterWarmUp")
         self.last_pose = self.traj.get_final_pose(is_red())
 
         pose = self.traj.get_initial_pose(is_red())
@@ -56,13 +56,16 @@ class HopperShoot(AutonBase):
 
 
     @state(must_finish=True)
-    def begin_path(self, initial_call: bool):
+    def begin_path(self, initial_call: bool, state_tm: float):
         if initial_call:
             assert self.traj
             self.tanker.go_follow_traj(self.traj)
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.intake.on()
+
+        if self.at_pose(self.shooter_warm_on_pose, tolerance=0.15) and state_tm > 4.0:
+            self.gaspump.go_pre_speed()
 
         assert self.last_pose
         if self.at_pose(self.last_pose, tolerance=0.15):
@@ -72,7 +75,77 @@ class HopperShoot(AutonBase):
     def shoot(self, initial_call: bool, state_tm: float):
         self.shot_calc.set_target('hub')
         self.tanker.go_drive_auto_target()
-        if state_tm > 0.5:
+        if state_tm > 0.01:
+            self.gaspump.go_shoot()
+        if state_tm > 3.0:
+            self.intake.rotate_tilt()
+            self.intake.on()
+        if state_tm > 6.0:
+            self.next_state(self.end)
+
+    @state(must_finish=True)
+    def end(self, initial_call: bool):
+        self.gaspump.go_shoot_off()
+        self.intake.off()
+        # TODO: remove this before competition, or make it not do it with an FMS connected
+        self.intake.rotate_down()
+
+class BumpyShoot(AutonBase):
+    MODE_NAME = "BumpyShoot"
+    raw_traj = load_swerve_trajectory(MODE_NAME)
+
+    tanker: Tanker
+    gaspump: GasPump
+
+    drivetrain: DrivetrainComponent
+    gyro: GyroComponent
+    intake: IntakeComponent
+    shot_calc: ShotCalculatorComponent
+
+    def get_initial_pose(self) -> Pose2d:
+        self.traj = mirrored(self.raw_traj) if is_left() else self.raw_traj
+        # Get the markers from the trajectory now
+        for e in self.traj.events:
+            print(e.event)
+
+        self.intake_on_pose = self.get_event_pose("IntakeOn")
+        self.shooter_warm_on_pose = self.get_event_pose("ShooterWarmUp")
+        self.last_pose = self.traj.get_final_pose(is_red())
+
+        pose = self.traj.get_initial_pose(is_red())
+        assert pose
+        return pose
+
+    @state(first=True, must_finish=True)
+    def intake_down(self, initial_call: bool):
+        if initial_call:
+            self.intake.rotate_down()
+
+        if self.intake.get_rotate_position() < 0.05:
+            self.next_state(self.begin_path)
+
+
+    @state(must_finish=True)
+    def begin_path(self, initial_call: bool, state_tm: float):
+        if initial_call:
+            assert self.traj
+            self.tanker.go_follow_traj(self.traj)
+
+        if self.at_pose(self.intake_on_pose, tolerance=0.15):
+            self.intake.on()
+
+        if self.at_pose(self.shooter_warm_on_pose, tolerance=0.15) and state_tm > 4.0:
+            self.gaspump.go_pre_speed()
+
+        assert self.last_pose
+        if self.at_pose(self.last_pose, tolerance=0.15):
+            self.next_state(self.shoot)
+
+    @state(must_finish=True)
+    def shoot(self, initial_call: bool, state_tm: float):
+        self.shot_calc.set_target('hub')
+        self.tanker.go_drive_auto_target()
+        if state_tm > 0.01:
             self.gaspump.go_shoot()
         if state_tm > 3.0:
             self.intake.rotate_tilt()
@@ -120,7 +193,7 @@ class HopperShootTwo(AutonBase):
         if initial_call:
             self.intake.rotate_down()
 
-        if self.intake.get_rotate_position() < 0.05:
+        if self.intake.get_rotate_position() < self.intake.lower_position + 0.02:
             self.next_state(self.begin_path)
 
 
