@@ -32,6 +32,7 @@ class VisionComponent:
         self.camera_rr = PhotonCamera("Rear_Right")
         self.camera_rl = PhotonCamera("Rear_Left")
         self.camera_back = PhotonCamera("Rear")
+        self.camera_front = PhotonCamera("Front")
 
         self.camera_rr_offset = Transform3d(
             Translation3d(
@@ -58,6 +59,14 @@ class VisionComponent:
             ),
             Rotation3d.fromDegrees(0.0, -25.0, 180.0),  # roll, pitch, yaw
         )
+        self.camera_front_offset = Transform3d(
+            Translation3d(
+                units.inchesToMeters(1.5),  # Forward/backward offset
+                units.inchesToMeters(0.0),  # Left/right offset, right is negative
+                units.inchesToMeters(20.0),  # Up/down offset
+            ),
+            Rotation3d.fromDegrees(0.0, -15.0, 0.0),  # roll, pitch, yaw
+        )
         self.linear_baseline_std = 0.10  # meters
 
         self.field = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltWelded)
@@ -65,6 +74,7 @@ class VisionComponent:
         self.pose_estimator_rr = PhotonPoseEstimator(self.field, self.camera_rr_offset)
         self.pose_estimator_rl = PhotonPoseEstimator(self.field, self.camera_rl_offset)
         self.pose_estimator_back = PhotonPoseEstimator(self.field, self.camera_back_offset)
+        self.pose_estimator_front = PhotonPoseEstimator(self.field, self.camera_front_offset)
 
         self.publisher_rr = (
             ntcore.NetworkTableInstance.getDefault()
@@ -81,23 +91,31 @@ class VisionComponent:
             .getStructTopic("/components/vision/pose_back", Pose2d)
             .publish()
         )
+        self.publisher_front = (
+            ntcore.NetworkTableInstance.getDefault()
+            .getStructTopic("/components/vision/pose_front", Pose2d)
+            .publish()
+        )
 
         self.camera_offsets = [
             self.camera_rr_offset,
             self.camera_rl_offset,
             self.camera_back_offset,
+            self.camera_front_offset,
         ]
 
-        self.cameras = [self.camera_rr, self.camera_rl, self.camera_back]
+        self.cameras = [self.camera_rr, self.camera_rl, self.camera_back, self.camera_front]
         self.pose_estimators = [
             self.pose_estimator_rr,
             self.pose_estimator_rl,
             self.pose_estimator_back,
+            self.pose_estimator_front,
         ]
         self.publishers = [
             self.publisher_rr,
             self.publisher_rl,
             self.publisher_back,
+            self.publisher_front,
         ]
 
         # Pre-computed inverse offsets for single-tag estimation (all 3 cameras)
@@ -105,6 +123,7 @@ class VisionComponent:
             self.camera_rr_offset.inverse(),
             self.camera_rl_offset.inverse(),
             self.camera_back_offset.inverse(),
+            self.camera_front_offset.inverse(),
         ]
 
         # Stale timestamp tracking per camera
