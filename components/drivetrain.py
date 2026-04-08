@@ -16,10 +16,10 @@ from phoenix6.controls import DutyCycleOut, PositionVoltage, VelocityVoltage, Vo
 from phoenix6.hardware import CANcoder, TalonFX
 from phoenix6.signals import FeedbackSensorSourceValue, InvertedValue, NeutralModeValue
 from wpimath.controller import (
-    ProfiledPIDControllerRadians,
     SimpleMotorFeedforwardMeters,
     PIDController,
 )
+from magicbot import feedback
 from utilities.robot_state import RobotState
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
 from wpimath.kinematics import (
@@ -28,7 +28,6 @@ from wpimath.kinematics import (
     SwerveModulePosition,
     SwerveModuleState,
 )
-from wpimath.trajectory import TrapezoidProfileRadians
 from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
 from utilities.game import is_match, is_red
@@ -112,7 +111,7 @@ class SwerveModule:
         drive_motor_current_config = CurrentLimitsConfigs()
         drive_motor_current_config.stator_current_limit = 65
         drive_motor_current_config.stator_current_limit_enable = True
-        
+
 
         wheel_circumference = TunerConstants._wheel_radius * math.tau
         # sensor_to_mechanism_ratio converts motor rotations to meters
@@ -266,13 +265,6 @@ class DrivetrainComponent:
             ntcore.NetworkTableInstance.getDefault().getStructTopic("DesiredPose", Pose2d).publish()
         )
 
-        # Used to lock the robot onto a heading; currently not used.
-        self.heading_controller = ProfiledPIDControllerRadians(
-            4.0, 0, 0, TrapezoidProfileRadians.Constraints(3 * math.tau, 49 * 6)
-        )
-
-        self.heading_controller.enableContinuousInput(-math.pi, math.pi)
-        self.heading_controller.setTolerance(self.HEADING_TOLERANCE)
         self.snap_heading: float | None = None
 
         # Used for path following and driving directly to a specific point
@@ -281,8 +273,9 @@ class DrivetrainComponent:
         # self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
 
         self.path_pid_control = PIDController(1.0, 0, 0.01)
-        self.path_heading_pid_control = PIDController(1.0, 0, 0.01)
+        self.path_heading_pid_control = PIDController(3.8, 0, 0.01)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
+        wpilib.SmartDashboard.putData('heading PID', self.path_heading_pid_control)
 
 
         # Define each of the four swerve modules using the SwerveModule class
@@ -359,8 +352,6 @@ class DrivetrainComponent:
                 "measured", SwerveModuleState
             ).publish()
 
-        #     wpilib.SmartDashboard.putData("Heading PID", self.heading_controller)
-
     def get_chassis_speeds(self) -> ChassisSpeeds:
         return self.kinematics.toChassisSpeeds(self.get_module_states())
 
@@ -397,6 +388,8 @@ class DrivetrainComponent:
 
     def drive_field(self, vx: float, vy: float, omega: float) -> None:
         """Field oriented drive commands"""
+        if abs(omega) > 0:
+            self.stop_snapping()
         current_heading = self.get_rotation()
         self.chassis_speeds = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, omega, current_heading)
 
@@ -432,8 +425,8 @@ class DrivetrainComponent:
 
     def drive_local(self, vx: float, vy: float, omega: float) -> None:
         """Robot oriented drive commands"""
-        # if abs(omega) < 0.01 and self.snap_heading is None:
-        #     self.snap_to_heading(self.get_heading().radians())
+        if abs(omega) > 0:
+            self.stop_snapping()
         self.chassis_speeds = ChassisSpeeds(vx, vy, omega)
 
     def set_slow_mode(self, enabled: bool) -> None:
@@ -445,7 +438,7 @@ class DrivetrainComponent:
         """set a heading target for the heading controller"""
         self.snapping_to_heading = True
         self.snap_heading = heading
-        self.heading_controller.setGoal(self.snap_heading)
+        self.path_heading_pid_control.setSetpoint(self.snap_heading)
 
     def stop_snapping(self) -> None:
         """stops the heading_controller"""
@@ -456,7 +449,7 @@ class DrivetrainComponent:
         """Returns True when the heading snap controller has reached its goal."""
         if not self.snapping_to_heading or self.snap_heading is None:
             return False
-        return self.heading_controller.atGoal()
+        return self.path_heading_pid_control.atSetpoint()
 
     def _rate_limit_speeds(self, desired: ChassisSpeeds, dt: float) -> ChassisSpeeds:
         """Limit acceleration to prevent wheel slip and tipping.
@@ -505,15 +498,20 @@ class DrivetrainComponent:
 
         return ChassisSpeeds(new_vx, new_vy, new_omega)
 
+    @feedback
+    def get_snap_heading(self) -> float:
+        if self.snap_heading is None:
+            return 720
+        else:
+            return self.snap_heading
+
     def execute(self) -> None:
         if self.snapping_to_heading:
-            self.chassis_speeds.omega = self.heading_controller.calculate(
+            self.chassis_speeds.omega = self.path_heading_pid_control.calculate(
                 self.get_rotation().radians()
             )
         else:
-            self.heading_controller.reset(
-                self.get_rotation().radians(), self.get_rotational_velocity()
-            )
+            self.path_heading_pid_control.reset()
 
         if self._slow_mode:
             d = self.slow_mode_speed_divisor
