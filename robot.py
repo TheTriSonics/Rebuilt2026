@@ -107,6 +107,19 @@ class MyRobot(MagicRobot):
         if self.driver_controller.robot_centric():
             self.tanker.go_drive_local()
 
+        desired_heading = None
+        if self.driver_controller.heading_away():
+            desired_heading = math.pi if is_red() else 0
+        if self.driver_controller.heading_toward():
+            desired_heading = 0 if is_red() else math.pi
+        if self.driver_controller.heading_left():
+            desired_heading = -math.pi/2 if is_red() else math.pi/2
+        if self.driver_controller.heading_right():
+            desired_heading = math.pi/2 if is_red() else -math.pi/2
+        if desired_heading is not None:
+            self.drivetrain.snap_to_heading(desired_heading)
+
+
         if self.driver_controller.reset_yaw():
             self.drivetrain.reset_yaw()
         if self.driver_controller.set_heading_to_vision():

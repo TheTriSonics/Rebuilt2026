@@ -78,4 +78,14 @@ class RebuiltDriver:
         if not self.controller.getLeftBumperButton() and not self.controller.getRightBumperButton():
             self.allow_lob_target = True
 
+    def heading_away(self) -> bool:
+        return self.controller.getYButtonPressed()
 
+    def heading_toward(self) -> bool:
+        return self.controller.getAButtonPressed()
+
+    def heading_left(self) -> bool:
+        return self.controller.getXButtonPressed()
+
+    def heading_right(self) -> bool:
+        return self.controller.getBButtonPressed()
