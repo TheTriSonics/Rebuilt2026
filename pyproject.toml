@@ -45,6 +45,8 @@ requires = [
 [dependency-groups]
 dev = [
     "ruff>=0.14.14",
+    "matplotlib>=3.9",
+    "scipy>=1.14",
 ]
 
 [tool.ruff]

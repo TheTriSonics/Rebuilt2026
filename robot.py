@@ -11,6 +11,7 @@ from components.kicker import KickerComponent
 from components.intake import IntakeComponent
 from components.shooter import ShooterComponent
 from components.leds import LEDComponent
+from components.robot_viz import RobotVisualization
 from utilities.scalers import rescale_js
 from hid.xbox_driver import RebuiltDriver
 from hid.xbox_operator import RebuiltOperator
@@ -38,6 +39,7 @@ class MyRobot(MagicRobot):
     shooter: ShooterComponent
     # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
+    robot_viz: RobotVisualization
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
