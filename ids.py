@@ -23,7 +23,7 @@ class TalonId:
     TURN_BL = CANDevice(24, drive)
 
     SUSHI = CANDevice(7, shooter)
-    ROTATE = CANDevice(50, shooter)
+    EXTEND = CANDevice(50, shooter)
     ROLLER = CANDevice(51, shooter)
     KICKER = CANDevice(54, shooter)
     #CLIMBER = CANDevice(63, shooter)
@@ -37,7 +37,7 @@ class CancoderId:
     SWERVE_FR = CANDevice(32, drive)
     SWERVE_BR = CANDevice(33, drive)
     SWERVE_BL = CANDevice(34, drive)
-    INTAKE = CANDevice(36, shooter)
+    # INTAKE = CANDevice(36, shooter)
 
 
 class CANdleId:

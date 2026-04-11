@@ -47,15 +47,6 @@ class HopperShoot(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.begin_path)
-
-
-    @state(must_finish=True)
     def begin_path(self, initial_call: bool, state_tm: float):
         if initial_call:
             assert self.traj
@@ -63,6 +54,7 @@ class HopperShoot(AutonBase):
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.intake.on()
+            self.intake.extend_out()
 
         if self.at_pose(self.shooter_warm_on_pose, tolerance=0.15) and state_tm > 4.0:
             self.gaspump.go_pre_speed()
@@ -78,7 +70,7 @@ class HopperShoot(AutonBase):
         if state_tm > 0.01:
             self.gaspump.go_shoot()
         if state_tm > 3.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 6.0:
             self.next_state(self.end)
@@ -87,8 +79,7 @@ class HopperShoot(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        # TODO: remove this before competition, or make it not do it with an FMS connected
-        self.intake.rotate_down()
+        self.intake.extend_out()
 
 class BumpyShoot(AutonBase):
     MODE_NAME = "BumpyShoot"
@@ -117,15 +108,6 @@ class BumpyShoot(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.begin_path)
-
-
-    @state(must_finish=True)
     def begin_path(self, initial_call: bool, state_tm: float):
         if initial_call:
             assert self.traj
@@ -133,6 +115,7 @@ class BumpyShoot(AutonBase):
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.intake.on()
+            self.intake.extend_out()
 
         if self.at_pose(self.shooter_warm_on_pose, tolerance=0.15) and state_tm > 4.0:
             self.gaspump.go_pre_speed()
@@ -148,7 +131,7 @@ class BumpyShoot(AutonBase):
         if state_tm > 0.01:
             self.gaspump.go_shoot()
         if state_tm > 3.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 6.0:
             self.next_state(self.end)
@@ -157,8 +140,7 @@ class BumpyShoot(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        # TODO: remove this before competition, or make it not do it with an FMS connected
-        self.intake.rotate_down()
+        self.intake.extend_out()
 
 
 class HopperShootTwo(AutonBase):
@@ -189,15 +171,6 @@ class HopperShootTwo(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < self.intake.lower_position + 0.02:
-            self.next_state(self.begin_path)
-
-
-    @state(must_finish=True)
     def begin_path(self, initial_call: bool):
         if initial_call:
             assert self.traj
@@ -205,6 +178,7 @@ class HopperShootTwo(AutonBase):
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.intake.on()
+            self.intake.extend_out()
 
         assert self.last_pose
         if self.at_pose(self.last_pose, tolerance=0.15):
@@ -217,7 +191,7 @@ class HopperShootTwo(AutonBase):
         if state_tm > 0.5:
             self.gaspump.go_shoot()
         if state_tm > 3.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 6.0:
             self.next_state(self.hopper2)
@@ -225,10 +199,9 @@ class HopperShootTwo(AutonBase):
     @state(must_finish=True)
     def hopper2(self, initial_call: bool):
         if initial_call:
-            self.intake.rotate_down()
+            self.intake.extend_out()
             self.gaspump.go_shoot_off()
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.begin_second_path)
+        self.next_state(self.begin_second_path)
 
     @state(must_finish=True)
     def begin_second_path(self, initial_call: bool, state_tm: float):
@@ -248,7 +221,7 @@ class HopperShootTwo(AutonBase):
         if state_tm > 0.5:
             self.gaspump.go_shoot()
         if state_tm > 3.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 6.0:
             self.next_state(self.end)
@@ -257,7 +230,7 @@ class HopperShootTwo(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        self.intake.rotate_up()
+        self.intake.pull_in()
 
 
 class PlayerStationBump(AutonBase):
@@ -313,14 +286,6 @@ class PlayerStationBump(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.follow_seg1)
-
-    @state(must_finish=True)
     def follow_seg1(self, initial_call: bool):
         """Follow the trajectory up to the split point."""
         if initial_call:
@@ -354,7 +319,7 @@ class PlayerStationBump(AutonBase):
         if state_tm > 0.5:
             self.gaspump.go_shoot()
         if state_tm > 2.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 6.0:
             self.next_state(self.end)
@@ -363,7 +328,7 @@ class PlayerStationBump(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        self.intake.rotate_down()
+        self.intake.extend_out()
 
 
 class PlayerStationBumpNoHang(AutonBase):
@@ -419,21 +384,12 @@ class PlayerStationBumpNoHang(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.follow_seg1)
-
-    @state(must_finish=True)
     def follow_seg1(self, initial_call: bool):
         """Follow the trajectory up to the split point."""
         if initial_call:
             self.tanker.go_follow_traj(self.traj_seg1)
 
         if self.at_pose(self.pause_pose, tolerance=0.05):
-            # self.next_state(self.line_it_up)
             self.next_state(self.wait_at_split)
 
     @state(must_finish=True)
@@ -469,7 +425,7 @@ class PlayerStationBumpNoHang(AutonBase):
         if state_tm > 0.5:
             self.gaspump.go_shoot()
         if state_tm > 2.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 6.0:
             self.next_state(self.end)
@@ -478,10 +434,7 @@ class PlayerStationBumpNoHang(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        self.intake.rotate_down()
-
-
-
+        self.intake.extend_out()
 
 
 class HopperShoot_Move(AutonBase):
@@ -512,15 +465,6 @@ class HopperShoot_Move(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.begin_path)
-
-
-    @state(must_finish=True)
     def begin_path(self, initial_call: bool):
         if initial_call:
             assert self.traj
@@ -528,6 +472,7 @@ class HopperShoot_Move(AutonBase):
 
         if self.at_pose(self.intake_on_pose, tolerance=0.15):
             self.intake.on()
+            self.intake.extend_out()
 
         assert self.last_pose
         if self.at_pose(self.last_pose, tolerance=0.15):
@@ -540,7 +485,7 @@ class HopperShoot_Move(AutonBase):
         if state_tm > 0.5:
             self.gaspump.go_shoot()
         if state_tm > 2.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 4.0:
             self.next_state(self.hopper2)
@@ -548,10 +493,9 @@ class HopperShoot_Move(AutonBase):
     @state(must_finish=True)
     def hopper2(self, initial_call: bool):
         if initial_call:
-            self.intake.rotate_down()
+            self.intake.extend_out()
             self.gaspump.go_shoot_off()
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.begin_second_path)
+        self.next_state(self.begin_second_path)
 
     @state(must_finish=True)
     def begin_second_path(self, initial_call: bool, state_tm: float):
@@ -571,7 +515,7 @@ class HopperShoot_Move(AutonBase):
         if state_tm > 0.5:
             self.gaspump.go_shoot()
         if state_tm > 2.0:
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
             self.intake.on()
         if state_tm > 4.0:
             self.next_state(self.end)
@@ -607,15 +551,6 @@ class Simple(AutonBase):
         return pose
 
     @state(first=True, must_finish=True)
-    def intake_down(self, initial_call: bool):
-        if initial_call:
-            self.intake.rotate_down()
-
-        if self.intake.get_rotate_position() < 0.05:
-            self.next_state(self.begin_path)
-
-
-    @state(must_finish=True)
     def begin_path(self, initial_call: bool):
         if initial_call:
             assert self.traj
@@ -630,5 +565,4 @@ class Simple(AutonBase):
     def end(self, initial_call: bool):
         self.gaspump.go_shoot_off()
         self.intake.off()
-        # TODO: remove this before competition, or make it not do it with an FMS connected
-        self.intake.rotate_down()
+        self.intake.extend_out()

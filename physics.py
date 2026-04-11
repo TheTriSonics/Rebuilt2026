@@ -119,19 +119,12 @@ class PhysicsEngine:
             for module in robot.drivetrain.modules
         ]
 
-        # Intake rotate uses fused CANcoder — simulate the encoder separately
-        self.intake_rotate_sim = Falcon500MotorSim(
-            self.robot.intake.rotate,
-            # rotor_to_sensor_ratio = 49.846, so gearing = 1/49.846
-            gearing=1 / 49.846,
-            # Intake arm is heavier than a swerve module
-            moi=0.005,
-        )
-        self.intake_encoder_sim = self.robot.intake.rotate_encoder.sim_state
-        self.intake_encoder_sim.set_supply_voltage(12.0)
-        self.intake_rotate_gearing = 49.846  # motor revs per encoder rev
-
         self.manip_motors: list[Falcon500MotorSim] = [
+            Falcon500MotorSim(
+                self.robot.intake.extend,
+                gearing=1 / 49.846,
+                moi=0.005,
+            ),
             Falcon500MotorSim(
                 self.robot.intake.roller,
                 gearing=1,
@@ -260,18 +253,6 @@ class PhysicsEngine:
             steer.update(tm_diff)
         for m in self.manip_motors:
             m.update(tm_diff)
-
-        # Update intake rotate motor and sync its CANcoder position.
-        # The motor is configured CLOCKWISE_POSITIVE (inverted), so
-        # motor_voltage has the opposite sign — negate the resulting
-        # position/velocity so the CANcoder moves the correct direction.
-        self.intake_rotate_sim.update(tm_diff)
-        mechanism_pos = self.intake_rotate_sim.motor_sim.getAngularPosition()
-        mechanism_vel = self.intake_rotate_sim.motor_sim.getAngularVelocity()
-        encoder_pos = -mechanism_pos / math.tau
-        encoder_vel = -mechanism_vel / math.tau
-        self.intake_encoder_sim.set_raw_position(encoder_pos)
-        self.intake_encoder_sim.set_velocity(encoder_vel)
 
         # Track steer angles with a lag filter (25% per step) so turning in sim
         # feels more like the real robot instead of instantaneous.

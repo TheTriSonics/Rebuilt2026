@@ -129,7 +129,7 @@ class MyRobot(MagicRobot):
             self.drivetrain.set_pose(curr_pose)
 
         if self.driver_controller.intake_up():
-            self.intake.rotate_up()
+            self.intake.pull_in()
 
         if self.driver_controller.target_lob_left():
             self.shot_calc.set_target("left")
@@ -148,12 +148,12 @@ class MyRobot(MagicRobot):
 
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.on()
-            self.intake.rotate_down()
+            self.intake.extend_out()
         if self.operator_controller.eject():
             self.intake.reverse()
             self.kicker.reverse()
         if self.operator_controller.intake_flip():  # Y button
-            self.intake.rotate_tilt()
+            self.intake.pull_in()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
         if self.operator_controller.shooter_shoot():  # Right bumper
