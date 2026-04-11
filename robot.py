@@ -189,6 +189,8 @@ class MyRobot(MagicRobot):
         wpilib.SmartDashboard.putNumber("Shoot/PhaseTimeLeft", phase_left)
 
     def disabledPeriodic(self):
+        if hasattr(self, 'operator_controller'):
+            self.operator_controller.rumble_off()
         # this keeps us updating odometry even when disabled, vision will put
         # us where it can
         self.vision.execute()
