@@ -21,13 +21,13 @@ class IntakeComponent:
 
     # Measure: extend fully, read rotations, measure distance in meters,
     # then set this to distance / rotations.
-    meters_per_rotation = 0.05  # TODO: measure and update
+    meters_per_rotation = 0.01  # One rotation works out to 1cm. Nice!
 
     out_position = 0.30  # meters
     in_position = 0.00  # meters
     target_position = tunable(0.0)  # meters
 
-    intake_speed = tunable(-0.45 * 1.1)
+    intake_speed = tunable(0.45 * 1.1)
     sushi_speed = tunable(0.425 * 1.1)
     target_intake_speed = tunable(0.0)
     target_sushi_speed = tunable(0.0)
@@ -44,21 +44,30 @@ class IntakeComponent:
     extend_request = MotionMagicVoltage(0).with_slot(0)
 
     def __init__(self):
-        motor_config = MotorOutputConfigs()
-        motor_config.neutral_mode = NeutralModeValue.BRAKE
-        motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+        extend_motor_config = MotorOutputConfigs()
+        # Extend is in coast mode because we can use it like a bumper of sorts.
+        extend_motor_config.neutral_mode = NeutralModeValue.COAST
+        extend_motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+
+        roller_motor_config = MotorOutputConfigs()
+        roller_motor_config.neutral_mode = NeutralModeValue.BRAKE
+        roller_motor_config.inverted = InvertedValue.COUNTER_CLOCKWISE_POSITIVE
+
+        sushi_motor_config = MotorOutputConfigs()
+        sushi_motor_config.neutral_mode = NeutralModeValue.BRAKE
+        sushi_motor_config.inverted = InvertedValue.CLOCKWISE_POSITIVE
 
         feedback_config = FeedbackConfigs()
         feedback_config.sensor_to_mechanism_ratio = 1.0
-        feedback_config.rotor_to_sensor_ratio = 49.846
+        feedback_config.rotor_to_sensor_ratio = 1.0
 
         pid = (
             Slot0Configs()
-            .with_k_p(60.0)
+            .with_k_p(2.0)
             .with_k_i(0.0)
-            .with_k_d(15.0)
-            .with_k_s(0.5)
-            .with_k_v(2.0)
+            .with_k_d(0.0)
+            .with_k_s(0.05)
+            .with_k_v(0.15)
             .with_k_a(0)
             .with_static_feedforward_sign(
                 StaticFeedforwardSignValue.USE_CLOSED_LOOP_SIGN
@@ -67,15 +76,18 @@ class IntakeComponent:
 
         motion_magic = (
             MotionMagicConfigs()
-            .with_motion_magic_cruise_velocity(1.0)
-            .with_motion_magic_acceleration(2.0)
-            .with_motion_magic_jerk(10.0)
+            .with_motion_magic_cruise_velocity(60.0)
+            .with_motion_magic_acceleration(120.0)
+            .with_motion_magic_jerk(600.0)
         )
 
-        self.extend.configurator.apply(motor_config)
+        self.extend.configurator.apply(extend_motor_config)
         self.extend.configurator.apply(pid, 2.0)
         self.extend.configurator.apply(feedback_config)
         self.extend.configurator.apply(motion_magic)
+
+        self.roller.configurator.apply(roller_motor_config)
+        self.sushi.configurator.apply(sushi_motor_config)
 
     def setup(self):
         self.extend.set_position(0.00)
@@ -104,6 +116,9 @@ class IntakeComponent:
 
     def pull_in(self) -> None:
         self.target_position = self.in_position
+
+    def push_out(self) -> None:
+        self.target_position = self.out_position
 
     def set_speed(self, intake_speed: float, sushi_speed: float) -> None:
         self.target_intake_speed = intake_speed

@@ -152,7 +152,7 @@ class MyRobot(MagicRobot):
         if self.operator_controller.eject():
             self.intake.reverse()
             self.kicker.reverse()
-        if self.operator_controller.intake_flip():  # Y button
+        if self.operator_controller.intake_in():  # Y button
             self.intake.pull_in()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
