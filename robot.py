@@ -11,6 +11,7 @@ from components.kicker import KickerComponent
 from components.intake import IntakeComponent
 from components.shooter import ShooterComponent
 from components.leds import LEDComponent
+from components.robot_viz import RobotVisualization
 from utilities.scalers import rescale_js
 from hid.xbox_driver import RebuiltDriver
 from hid.xbox_operator import RebuiltOperator
@@ -38,6 +39,7 @@ class MyRobot(MagicRobot):
     shooter: ShooterComponent
     # leds: LEDComponent
     battery_monitor: BatteryMonitorComponent
+    robot_viz: RobotVisualization
 
     # Robot's max speed in X/Y plane
     max_speed = tunable(8.0)
@@ -129,7 +131,7 @@ class MyRobot(MagicRobot):
             self.drivetrain.set_pose(curr_pose)
 
         if self.driver_controller.intake_up():
-            self.intake.rotate_up()
+            self.intake.pull_in()
 
         if self.driver_controller.target_lob_left():
             self.shot_calc.set_target("left")
@@ -148,12 +150,12 @@ class MyRobot(MagicRobot):
 
         if self.operator_controller.intake_on():  # Right trigger
             self.intake.on()
-            self.intake.rotate_down()
+            self.intake.extend_out()
         if self.operator_controller.eject():
             self.intake.reverse()
             self.kicker.reverse()
-        if self.operator_controller.intake_flip():  # Y button
-            self.intake.rotate_tilt()
+        if self.operator_controller.intake_in():  # Y button
+            self.intake.pull_in()
         if self.operator_controller.intake_idle():  # Left bumper
             self.intake.off()
         if self.operator_controller.shooter_shoot():  # Right bumper

@@ -407,7 +407,12 @@ class DrivetrainComponent:
         robot_pose = self.get_pose()
         xvel = sample.vx + self.path_pid_control.calculate(robot_pose.x, sample.x)
         yvel = sample.vy + self.path_pid_control.calculate(robot_pose.y, sample.y)
-        ovel = sample.omega + self.path_heading_pid_control.calculate(
+        # Our heading PID controller does the job on its own so we don't need to
+        # add in omega -- just let the same controller that the driver uses in
+        # teleop to snap to or maintain a heading.  This seems simpler than
+        # having two different PID controllers - one that adds on to omega and
+        # one that doesn't.
+        ovel = self.path_heading_pid_control.calculate(
             robot_pose.rotation().radians(), sample.heading
         )
         desired_pose = Pose2d(Translation2d(sample.x, sample.y), Rotation2d(sample.heading))

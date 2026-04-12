@@ -104,7 +104,7 @@ class PhysicsEngine:
             SimpleTalonFXMotorSim(
                 module.drive,
                 units_per_rev=1 / drive_motor_rev_to_meters,
-                kV=2.7,
+                kV=6.0,
             )
             for module in robot.drivetrain.modules
         ]
@@ -119,17 +119,34 @@ class PhysicsEngine:
             for module in robot.drivetrain.modules
         ]
 
+        # Intake roller and sushi: open-loop duty-cycle motors, no gearing
+        self.intake_roller_sim = SimpleTalonFXMotorSim(
+            self.robot.intake.roller,
+            units_per_rev=1.0,
+            kV=1.0,
+        )
+        self.intake_sushi_sim = SimpleTalonFXMotorSim(
+            self.robot.intake.sushi,
+            units_per_rev=1.0,
+            kV=1.0,
+        )
+
         self.manip_motors: list[Falcon500MotorSim] = [
-            # Falcon500MotorSim(
-            #     self.robot.intake.rotate,
-            #     gearing=1,
-            #     moi=0.0009972 * 4,
-            # ),
-            # Falcon500MotorSim(
-            #     self.robot.intake.roller,
-            #     gearing=1,
-            #     moi=0.0009972 * 4,
-            # ),
+            Falcon500MotorSim(
+                self.robot.intake.extend,
+                gearing=1 / 49.846,
+                moi=0.005,
+            ),
+            Falcon500MotorSim(
+                self.robot.intake.roller,
+                gearing=1,
+                moi=0.0005,
+            ),
+            Falcon500MotorSim(
+                self.robot.intake.sushi,
+                gearing=1,
+                moi=0.0005,
+            ),
             Falcon500MotorSim(
                 self.robot.kicker.kicker,
                 gearing=1,
@@ -170,20 +187,36 @@ class PhysicsEngine:
         # Luma P1: OV9281 global shutter, 1280x800, 80h/56v FOV, ~89.6 diagonal
         luma_p1_fov_diag = Rotation2d.fromDegrees(89.6)
 
-        properties_bl = SimCameraProperties.OV9281_1280_720()
-        properties_bl.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_bl = PhotonCameraSim(robot.vision.camera_rl, properties_bl)
+        # Realistic vision noise — measured from MIBKN match logs:
+        #   Rear camera (best view):  ~5 cm position std dev
+        #   Side cameras (oblique):   ~20-25 cm position std dev
+        #   Heading:                  ~5-18 deg std dev
+        # These pixel-noise values produce distance-dependent pose error
+        # that approximates the real camera behavior.
+        CALIB_AVG_ERROR_PX = 0.75   # average tag-corner error (pixels)
+        CALIB_STD_DEV_PX = 0.35     # per-frame variation in corner error
+        CAM_AVG_LATENCY_S = 0.035   # 35 ms average pipeline latency
+        CAM_LATENCY_STD_S = 0.010   # 10 ms jitter
+
+        def _make_luma_p1_properties() -> SimCameraProperties:
+            props = SimCameraProperties.OV9281_1280_720()
+            props.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
+            props.setCalibError(CALIB_AVG_ERROR_PX, CALIB_STD_DEV_PX)
+            props.setAvgLatency(CAM_AVG_LATENCY_S)
+            props.setLatencyStdDev(CAM_LATENCY_STD_S)
+            return props
+
+        self.camera_bl = PhotonCameraSim(robot.vision.camera_rl, _make_luma_p1_properties())
         self.camera_bl.setMaxSightRange(4.0)
 
-        properties_br = SimCameraProperties.OV9281_1280_720()
-        properties_br.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_br = PhotonCameraSim(robot.vision.camera_rr, properties_br)
+        self.camera_br = PhotonCameraSim(robot.vision.camera_rr, _make_luma_p1_properties())
         self.camera_br.setMaxSightRange(4.0)
 
-        properties_back = SimCameraProperties.OV9281_1280_720()
-        properties_back.setCalibrationFromFOV(1280, 800, luma_p1_fov_diag)
-        self.camera_back = PhotonCameraSim(robot.vision.camera_back, properties_back)
+        self.camera_back = PhotonCameraSim(robot.vision.camera_back, _make_luma_p1_properties())
         self.camera_back.setMaxSightRange(4.0)
+
+        self.camera_front = PhotonCameraSim(robot.vision.camera_front, _make_luma_p1_properties())
+        self.camera_front.setMaxSightRange(4.0)
 
         self.vision_sim.addCamera(
             self.camera_bl,
@@ -196,6 +229,10 @@ class PhysicsEngine:
         self.vision_sim.addCamera(
             self.camera_back,
             self.robot.vision.camera_back_offset,
+        )
+        self.vision_sim.addCamera(
+            self.camera_front,
+            self.robot.vision.camera_front_offset,
         )
 
         # Sim-only chooser: which alliance won autonomous?
@@ -248,6 +285,8 @@ class PhysicsEngine:
             steer.update(tm_diff)
         for m in self.manip_motors:
             m.update(tm_diff)
+        self.intake_roller_sim.update(tm_diff)
+        self.intake_sushi_sim.update(tm_diff)
 
         # Track steer angles with a lag filter (25% per step) so turning in sim
         # feels more like the real robot instead of instantaneous.
@@ -271,8 +310,9 @@ class PhysicsEngine:
             self.swerve_modules[3].get(),
         ))
 
-        # Reduce sim turning speed to ~25% to better match real-robot feel
-        speeds.omega *= 0.35
+        # Scale sim turning speed to match real-robot behavior
+        # (tuned via tools/sim_tuner.py against MIBKN match logs)
+        speeds.omega *= 0.38
 
         self.current_yaw += math.degrees(speeds.omega * tm_diff)
         sigma = (math.radians(0.5) / math.tau) / 2
