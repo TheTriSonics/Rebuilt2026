@@ -33,8 +33,8 @@ class IntakeComponent:
     target_sushi_speed = tunable(0.0)
 
     config_limits = tunable(False)
-    stator_current_limit = tunable(60)
-    supply_current_limit = tunable(120)
+    stator_current_limit = tunable(20)
+    supply_current_limit = tunable(40)
     supply_current_lower_limit = tunable(0)
     supply_current_lower_time = tunable(0.0)
 

@@ -10,7 +10,7 @@ from magicbot import tunable, feedback
 class KickerComponent:
     kicker = TalonFX(ids.TalonId.KICKER.id, ids.TalonId.KICKER.bus)
 
-    kicker_speed = tunable(-32.0)
+    kicker_speed = tunable(32.0)
     active = False
     run_reverse = False
 

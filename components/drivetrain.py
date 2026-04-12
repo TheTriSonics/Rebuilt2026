@@ -272,7 +272,7 @@ class DrivetrainComponent:
         # self.path_heading_pid_control = PIDController(4.0, 0, 0)
         # self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
 
-        self.path_pid_control = PIDController(1.0, 0, 0.01)
+        self.path_pid_control = PIDController(2.0, 0, 0.01)
         self.path_heading_pid_control = PIDController(3.8, 0, 0.01)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
         wpilib.SmartDashboard.putData('heading PID', self.path_heading_pid_control)

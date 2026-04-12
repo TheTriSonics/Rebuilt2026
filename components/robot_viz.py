@@ -172,6 +172,7 @@ class RobotVisualization:
         wpilib.SmartDashboard.putData("Robot Side View", self.mech)
 
     def execute(self):
+        return
         # ── Intake arm angle ─────────────────────────────────────────
         enc_pos = self.intake.rotate_encoder.get_position().value
         arm_angle = enc_pos * 360 + ARM_ANGLE_OFFSET
