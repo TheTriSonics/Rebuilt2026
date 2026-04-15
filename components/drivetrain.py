@@ -18,10 +18,12 @@ from phoenix6.signals import FeedbackSensorSourceValue, InvertedValue, NeutralMo
 from wpimath.controller import (
     SimpleMotorFeedforwardMeters,
     PIDController,
+    ProfiledPIDControllerRadians,
 )
 from magicbot import feedback
 from utilities.robot_state import RobotState
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
+from wpimath.trajectory import TrapezoidProfileRadians
 from wpimath.kinematics import (
     ChassisSpeeds,
     SwerveDrive4Kinematics,
@@ -266,14 +268,14 @@ class DrivetrainComponent:
         )
 
         self.snap_heading: float | None = None
+        self.heading_controller = ProfiledPIDControllerRadians(
+            3.0, 0, 0.10, TrapezoidProfileRadians.Constraints(4 * math.tau, 50 * math.tau)
+        )
+        self.heading_controller.enableContinuousInput(-math.pi, math.pi)
 
-        # Used for path following and driving directly to a specific point
-        # self.path_pid_control = PIDController(4.0, 0, 0.2)
-        # self.path_heading_pid_control = PIDController(4.0, 0, 0)
-        # self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
 
-        self.path_pid_control = PIDController(2.0, 0, 0.01)
-        self.path_heading_pid_control = PIDController(3.8, 0, 0.01)
+        self.path_pid_control = PIDController(1.7, 0, 0.01)
+        self.path_heading_pid_control = PIDController(1.7, 0, 0.01)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
         wpilib.SmartDashboard.putData('heading PID', self.path_heading_pid_control)
 
@@ -407,12 +409,7 @@ class DrivetrainComponent:
         robot_pose = self.get_pose()
         xvel = sample.vx + self.path_pid_control.calculate(robot_pose.x, sample.x)
         yvel = sample.vy + self.path_pid_control.calculate(robot_pose.y, sample.y)
-        # Our heading PID controller does the job on its own so we don't need to
-        # add in omega -- just let the same controller that the driver uses in
-        # teleop to snap to or maintain a heading.  This seems simpler than
-        # having two different PID controllers - one that adds on to omega and
-        # one that doesn't.
-        ovel = self.path_heading_pid_control.calculate(
+        ovel = sample.omega + self.path_heading_pid_control.calculate(
             robot_pose.rotation().radians(), sample.heading
         )
         desired_pose = Pose2d(Translation2d(sample.x, sample.y), Rotation2d(sample.heading))
@@ -443,7 +440,7 @@ class DrivetrainComponent:
         """set a heading target for the heading controller"""
         self.snapping_to_heading = True
         self.snap_heading = heading
-        self.path_heading_pid_control.setSetpoint(self.snap_heading)
+        self.heading_controller.setGoal(self.snap_heading)
 
     def stop_snapping(self) -> None:
         """stops the heading_controller"""
@@ -454,7 +451,7 @@ class DrivetrainComponent:
         """Returns True when the heading snap controller has reached its goal."""
         if not self.snapping_to_heading or self.snap_heading is None:
             return False
-        return self.path_heading_pid_control.atSetpoint()
+        return self.heading_controller.atGoal()
 
     def _rate_limit_speeds(self, desired: ChassisSpeeds, dt: float) -> ChassisSpeeds:
         """Limit acceleration to prevent wheel slip and tipping.
@@ -512,11 +509,13 @@ class DrivetrainComponent:
 
     def execute(self) -> None:
         if self.snapping_to_heading:
-            self.chassis_speeds.omega = self.path_heading_pid_control.calculate(
+            self.chassis_speeds.omega = self.heading_controller.calculate(
                 self.get_rotation().radians()
             )
         else:
-            self.path_heading_pid_control.reset()
+            self.heading_controller.reset(
+                self.get_rotation().radians(), self.get_rotational_velocity()
+            )
 
         if self._slow_mode:
             d = self.slow_mode_speed_divisor

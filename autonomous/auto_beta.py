@@ -20,6 +20,41 @@ pn = SmartDashboard.putNumber
 ps = SmartDashboard.putString
 
 
+class PIDTuning(AutonBase):
+    MODE_NAME = "PIDTuning"
+    raw_traj = load_swerve_trajectory(MODE_NAME)
+
+    tanker: Tanker
+    gaspump: GasPump
+
+    drivetrain: DrivetrainComponent
+    gyro: GyroComponent
+    intake: IntakeComponent
+    shot_calc: ShotCalculatorComponent
+
+    def get_initial_pose(self) -> Pose2d:
+        self.traj = mirrored(self.raw_traj) if is_left() else self.raw_traj
+        self.last_pose = self.traj.get_final_pose(is_red())
+        pose = self.traj.get_initial_pose(is_red())
+        assert pose
+        return pose
+
+    @state(first=True, must_finish=True)
+    def begin_path(self, initial_call: bool, state_tm: float):
+        if initial_call:
+            assert self.traj
+            self.tanker.go_follow_traj(self.traj)
+
+        if state_tm > 3.0:
+            assert self.last_pose
+            if self.at_pose(self.last_pose, tolerance=0.05):
+                self.next_state(self.end)
+
+    @state(must_finish=True)
+    def end(self, initial_call: bool):
+        ...
+
+
 class HopperShoot(AutonBase):
     MODE_NAME = "HopperShoot"
     raw_traj = load_swerve_trajectory(MODE_NAME)
