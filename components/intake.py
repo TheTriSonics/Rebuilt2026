@@ -28,9 +28,10 @@ class IntakeComponent:
     target_position = tunable(0.0)  # meters
 
     intake_speed = tunable(0.45 * 1.1)
-    sushi_speed = tunable(0.425 * 1.1)
+    sushi_speed = tunable(-0.425 * -1.1)
     target_intake_speed = tunable(0.0)
     target_sushi_speed = tunable(0.0)
+
 
     config_limits = tunable(False)
     stator_current_limit = tunable(20)

@@ -126,7 +126,6 @@ class SwerveModule:
 
         # configuration for motor pid and feedforward
         self.drive_pid = TunerConstants._drive_gains
-        self.drive_ff = SimpleMotorFeedforwardMeters(kS=0.01, kV=0.09, kA=0.0)
 
         self.drive.configurator.apply(drive_motor_config)
         self.drive.configurator.apply(self.drive_pid, 0.01)
@@ -274,8 +273,8 @@ class DrivetrainComponent:
         self.heading_controller.enableContinuousInput(-math.pi, math.pi)
 
 
-        self.path_pid_control = PIDController(1.7, 0, 0.01)
-        self.path_heading_pid_control = PIDController(1.7, 0, 0.01)
+        self.path_pid_control = PIDController(5.0, 0, 0.00)
+        self.path_heading_pid_control = PIDController(1.7, 0, 0.00)
         self.path_heading_pid_control.enableContinuousInput(-math.pi, math.pi)
         wpilib.SmartDashboard.putData('heading PID', self.path_heading_pid_control)
 
