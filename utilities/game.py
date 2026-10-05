@@ -33,13 +33,11 @@ def is_sim() -> bool:
 
 
 def is_auton() -> bool:
-    mode = wpilib.SmartDashboard.getString('/robot/mode', '')
-    return mode in ['auto']
+    return wpilib.DriverStation.isAutonomousEnabled()
 
 
 def is_disabled() -> bool:
-    mode = wpilib.SmartDashboard.getString('/robot/mode', '')
-    return mode in ['disabled', '']
+    return wpilib.DriverStation.isDisabled()
 
 
 # ── REBUILT 2026 Shift Timing Constants (seconds remaining in teleop) ─────────
