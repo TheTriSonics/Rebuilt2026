@@ -24,10 +24,12 @@ PATHS_DIR = Path(__file__).resolve().parent.parent / "deploy" / "pathplanner" / 
 
 
 def _xy(point: dict) -> np.ndarray:
+    """A PathPlanner {"x": .., "y": ..} point as a numpy array."""
     return np.array([point["x"], point["y"]])
 
 
 def smooth_file(path_file: Path, lock_ends: bool) -> None:
+    """Recompute every control point in one .path file and save it in place."""
     data = json.loads(path_file.read_text())
     waypoints = data["waypoints"]
     if len(waypoints) < 2:
@@ -44,15 +46,19 @@ def smooth_file(path_file: Path, lock_ends: bool) -> None:
     for i in range(len(waypoints) - 1):
         waypoints[i]["nextControl"] = {"x": float(first[i][0]), "y": float(first[i][1])}
         waypoints[i + 1]["prevControl"] = {"x": float(second[i][0]), "y": float(second[i][1])}
-    # Read by the auto-smooth PathPlanner fork; ignored by everything else
+    # Read by the auto-smooth PathPlanner fork (same keys it writes); ignored by everything else
     data["autoSmooth"] = True
-    data["autoSmoothLockEnds"] = lock_ends
+    if lock_ends:
+        data["autoSmoothLockEnds"] = True
+    else:
+        data.pop("autoSmoothLockEnds", None)
 
     path_file.write_text(json.dumps(data, indent=2) + "\n")
     print(f"{path_file.stem}: smoothed {len(waypoints)} waypoints")
 
 
 def main() -> None:
+    """Parse the command line and smooth the requested paths."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("names", nargs="*", help="path names (without .path)")
     parser.add_argument("--all", action="store_true", help="smooth every path")
@@ -63,11 +69,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    files = sorted(PATHS_DIR.glob("*.path")) if args.all else []
-    files += [PATHS_DIR / f"{name}.path" for name in args.names]
+    files = set(PATHS_DIR.glob("*.path")) if args.all else set()
+    for name in args.names:
+        path_file = PATHS_DIR / f"{name}.path"
+        if not path_file.exists():
+            parser.error(f"no such path: {path_file}")
+        files.add(path_file)
     if not files:
         parser.error("give path names or --all")
-    for f in files:
+    for f in sorted(files):
         smooth_file(f, args.lock_ends)
 
 

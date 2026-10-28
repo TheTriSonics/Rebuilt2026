@@ -20,6 +20,8 @@ from utilities.drive_path import DrivePath
 
 @dataclass
 class FollowerConfig:
+    """Limits and gains for PathFollower. Tanker exposes the main ones as tunables."""
+
     max_speed: float = 4.0  # m/s
     max_accel: float = 3.0  # m/s^2
     max_decel: float = 3.0  # m/s^2
@@ -34,11 +36,19 @@ class FollowerConfig:
 
 
 class PathFollower:
+    """Follows one DrivePath. Make a new one for each path, then call update()
+    every loop with the robot's pose and drive the speeds it returns."""
+
     # How far ahead of the last known spot to look for the robot each loop.
     # Searching only forward keeps paths that cross themselves from skipping ahead.
     SEARCH_AHEAD = 1.0  # m
+    # Only count the path as finished once we're this close to its end along the
+    # path, so a loop that ends where it started doesn't finish immediately
+    END_ZONE = 0.25  # m
 
     def __init__(self, path: DrivePath, config: FollowerConfig, start_speed: float = 0.0):
+        """start_speed is how fast the robot is already moving, in m/s, so a
+        path started on the fly doesn't slam the brakes before speeding back up."""
         self.path = path
         self.config = config
         self.speed = start_speed
@@ -51,6 +61,8 @@ class PathFollower:
         self._profile = self._plan_speeds()
 
     def _plan_speeds(self) -> np.ndarray:
+        """Fastest allowed speed at each point of the path, before the end of the
+        path and the robot's actual speed are taken into account."""
         cfg, path = self.config, self.path
         cap = np.minimum(path.speed_cap, min(cfg.max_speed, path.max_speed))
         with np.errstate(divide="ignore"):
@@ -73,7 +85,8 @@ class PathFollower:
         return event in self.path.events and self.progress >= self.path.events[event]
 
     def update(self, pose: Pose2d, dt: float) -> tuple[float, float, float]:
-        """Returns field-relative (vx, vy, omega) to drive this loop."""
+        """Field-relative (vx, vy, omega) to drive this loop. dt is the time since
+        the last call in seconds. Also updates progress, finished and lookahead_pose."""
         cfg, path = self.config, self.path
         rx, ry = pose.x, pose.y
 
@@ -119,6 +132,8 @@ class PathFollower:
             self.finished = self.index == self._end_index
         else:
             self.finished = (
-                to_end < cfg.position_tolerance and abs(end_heading_error) < cfg.heading_tolerance
+                path.length - self.progress < self.END_ZONE
+                and to_end < cfg.position_tolerance
+                and abs(end_heading_error) < cfg.heading_tolerance
             )
         return vx, vy, omega

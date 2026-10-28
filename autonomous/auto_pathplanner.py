@@ -15,6 +15,8 @@ from autonomous.base import AutonBase
 
 
 class PPNewPath(AutonBase):
+    """Drive New Path.path with PathPlanner's time-based follower, then hold the end pose."""
+
     MODE_NAME = "PP: New Path"
     PATH_NAME = "New Path"
 
@@ -27,6 +29,7 @@ class PPNewPath(AutonBase):
     shot_calc: ShotCalculatorComponent
 
     def get_initial_pose(self) -> Pose2d:
+        """Generate the trajectory for the current alliance/side; runs while disabled."""
         # Generated here (while disabled) because it's too slow to do at auton start
         self.pp_traj = load_pp_trajectory(self.PATH_NAME, is_red(), is_left())
         self.last_pose = self.pp_traj.getEndState().pose
@@ -34,6 +37,7 @@ class PPNewPath(AutonBase):
 
     @state(first=True, must_finish=True)
     def begin_path(self, initial_call: bool, state_tm: float):
+        """Follow the trajectory until its time is up and we're at the end pose."""
         if initial_call:
             self.tanker.go_follow_pp_traj(self.pp_traj)
 
@@ -43,6 +47,7 @@ class PPNewPath(AutonBase):
 
     @state(must_finish=True)
     def end(self, initial_call: bool):
+        """Done; Tanker keeps holding the final pose."""
         # Tanker stays in follow_pp_path, holding the final pose
         ...
 
@@ -63,6 +68,7 @@ class PPBumpyShoot(AutonBase):
     shot_calc: ShotCalculatorComponent
 
     def get_initial_pose(self) -> Pose2d:
+        """Generate the trajectory and find the marker poses; runs while disabled."""
         self.pp_traj = load_pp_trajectory(self.PATH_NAME, is_red(), is_left())
         self.intake_on_pose = pp_event_pose(self.PATH_NAME, self.pp_traj, "IntakeOn")
         self.shooter_warm_on_pose = pp_event_pose(self.PATH_NAME, self.pp_traj, "ShooterWarmUp")
@@ -71,6 +77,7 @@ class PPBumpyShoot(AutonBase):
 
     @state(first=True, must_finish=True)
     def begin_path(self, initial_call: bool, state_tm: float):
+        """Follow the path, turning on the intake and shooter at their markers."""
         if initial_call:
             self.tanker.go_follow_pp_traj(self.pp_traj)
 
@@ -86,6 +93,7 @@ class PPBumpyShoot(AutonBase):
 
     @state(must_finish=True)
     def shoot(self, initial_call: bool, state_tm: float):
+        """Aim at the hub and shoot for six seconds, pulling the intake in halfway."""
         self.shot_calc.set_target("hub")
         self.tanker.go_drive_auto_target()
         if state_tm > 0.01:
@@ -98,6 +106,7 @@ class PPBumpyShoot(AutonBase):
 
     @state(must_finish=True)
     def end(self, initial_call: bool):
+        """Shut the shooter and intake off."""
         self.gaspump.go_shoot_off()
         self.intake.off()
         self.intake.extend_out()

@@ -45,6 +45,8 @@ class Tanker(StateMachine):
         self.path_pub = nt.getStructArrayTopic("/components/tanker/path", Pose2d).publish()
         self.lookahead_pub = nt.getStructTopic("/components/tanker/lookahead", Pose2d).publish()
         self.follower: PathFollower | None = None
+        self._last_follow_time = 0.0
+        self.pp_traj: PathPlannerTrajectory | None = None
 
     def set_stick_values(self, x: float, y: float, rot: float):
         self.stick_x = x
@@ -155,6 +157,8 @@ class Tanker(StateMachine):
 
     @state(must_finish=True)
     def follow_pp_path(self, initial_call: bool, state_tm: float):
+        """Drive the PathPlanner trajectory set by go_follow_pp_traj()."""
+        assert self.pp_traj
         # Past the end of the path sample() holds the final state, so we keep
         # correcting toward the end pose until something else takes over
         self.drivetrain.follow_pp_state(self.pp_traj.sample(state_tm))
@@ -180,15 +184,21 @@ class Tanker(StateMachine):
         self.drivetrain.stop_snapping()
         self.next_state_now(self.follow_drive_path)
 
+    def _following_drive_path(self) -> bool:
+        """True while the point-to-point follower is the one driving."""
+        return self.follower is not None and self.current_state == self.follow_drive_path.name
+
     def is_path_finished(self) -> bool:
-        return self.follower is not None and self.follower.finished
+        """True once the point-to-point follower has settled at the end of its path."""
+        return self._following_drive_path() and self.follower.finished
 
     def path_passed(self, event: str) -> bool:
-        """True once the current path is past the named event marker."""
-        return self.follower is not None and self.follower.passed(event)
+        """True once the current point-to-point path is past the named event marker."""
+        return self._following_drive_path() and self.follower.passed(event)
 
     @state(must_finish=True)
     def follow_drive_path(self, initial_call: bool):
+        """Drive the DrivePath set by go_follow_drive_path() with the point-to-point follower."""
         assert self.follower
         now = wpilib.Timer.getFPGATimestamp()
         dt, self._last_follow_time = now - self._last_follow_time, now

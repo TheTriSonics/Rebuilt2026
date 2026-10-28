@@ -6,7 +6,7 @@
 # Paths can come from:
 #   - PathPlanner .path files (we read the bezier curves ourselves, no pathplannerlib)
 #   - Choreo .traj files (just the positions/headings, timing is ignored)
-#   - DrivePath.through(), which builds bezier curves on the fly in well under 1ms
+#   - DrivePath.through(), which builds bezier curves on the fly in a few milliseconds
 import copy
 import json
 import math
@@ -22,8 +22,19 @@ from wpimath.geometry import Pose2d, Rotation2d, Translation2d
 # Distance between points after resampling, in meters
 SPACING = 0.02
 
+# Number of points averaged when smoothing curvature
+CURVATURE_SMOOTHING = 5
+
 
 class DrivePath:
+    """A path on the field as evenly spaced points with headings and speed caps.
+
+    Attributes the follower uses: s (distance along the path at each point),
+    x, y, heading (radians, unwrapped), speed_cap (m/s), curvature (1/m),
+    heading_rate (rad per meter traveled), length, max_speed, max_accel,
+    end_speed and events (name -> distance along the path).
+    """
+
     def __init__(
         self,
         xy: np.ndarray,
@@ -47,9 +58,8 @@ class DrivePath:
             speed_cap = np.full(len(xy), math.inf)
 
         # Drop repeated points so distance along the path keeps increasing
-        seg = np.hypot(*np.diff(xy, axis=0).T)
-        keep = np.concatenate(([True], seg > 1e-9))
-        raw_s = np.concatenate(([0.0], np.cumsum(seg)))
+        raw_s = _arc_length(xy)
+        keep = np.concatenate(([True], np.diff(raw_s) > 1e-9))
         raw_s_kept = raw_s[keep]
 
         self.name = name
@@ -65,22 +75,31 @@ class DrivePath:
         self.y = np.interp(self.s, raw_s_kept, xy[keep, 1])
         self.heading = np.interp(self.s, raw_s_kept, heading[keep])
         self.speed_cap = np.interp(self.s, raw_s_kept, np.asarray(speed_cap)[keep])
-        self.events = {name: float(raw_s[idx]) for name, idx in events}
+        self.events = {event: float(raw_s[idx]) for event, idx in events}
         self._compute_curvature()
 
     def _compute_curvature(self) -> None:
+        """Fill in curvature and heading_rate from the current x, y and heading."""
         ds = max(self.length / (len(self.s) - 1), 1e-9)
         tangent = np.unwrap(np.arctan2(np.gradient(self.y), np.gradient(self.x)))
         curvature = np.abs(np.gradient(tangent, ds))
-        # Light smoothing so a single noisy point doesn't slam the brakes
-        self.curvature = np.convolve(curvature, np.ones(5) / 5, mode="same")
+        # Light smoothing so a single noisy point doesn't slam the brakes. Padding
+        # with the end values keeps the array the same length, even on tiny paths.
+        padded = np.pad(curvature, CURVATURE_SMOOTHING // 2, mode="edge")
+        kernel = np.ones(CURVATURE_SMOOTHING) / CURVATURE_SMOOTHING
+        self.curvature = np.convolve(padded, kernel, mode="valid")
         self.heading_rate = np.gradient(self.heading, ds)  # rad per meter traveled
 
     # ---- Construction -------------------------------------------------------
 
     @staticmethod
     def from_pathplanner(name: str) -> "DrivePath":
-        """Load deploy/pathplanner/paths/<name>.path (blue alliance, right side)."""
+        """Load deploy/pathplanner/paths/<name>.path (blue alliance, right side).
+
+        Keeps the bezier shape, rotation targets, constraint zones (as speed
+        caps), global max velocity/acceleration, goal end velocity and event
+        markers. Point-towards zones are ignored.
+        """
         path_file = os.path.join(
             wpilib.getDeployDirectory(), "pathplanner", "paths", name + ".path"
         )
@@ -111,7 +130,7 @@ class DrivePath:
         )
         knot_pos = np.array([p for p, _ in targets])
         knot_heading = np.unwrap(np.radians([r for _, r in targets]))
-        raw_s = np.concatenate(([0.0], np.cumsum(np.hypot(*np.diff(xy, axis=0).T))))
+        raw_s = _arc_length(xy)
         heading = np.interp(raw_s, np.interp(knot_pos, wrp, raw_s), knot_heading)
 
         constraints = data["globalConstraints"]
@@ -141,7 +160,7 @@ class DrivePath:
 
     @staticmethod
     def from_choreo(traj: SwerveTrajectory) -> "DrivePath":
-        """Use a Choreo trajectory's shape and headings, ignoring its timing."""
+        """Use a Choreo trajectory's shape, headings and events, ignoring its timing."""
         samples = traj.samples
         xy = np.array([(s.x, s.y) for s in samples])
         heading = np.array([s.heading for s in samples])
@@ -193,7 +212,7 @@ class DrivePath:
             )
         xy, _ = _sample_beziers(segments)
 
-        raw_s = np.concatenate(([0.0], np.cumsum(np.hypot(*np.diff(xy, axis=0).T))))
+        raw_s = _arc_length(xy)
         turn = (end.rotation() - start.rotation()).radians()
         fraction = raw_s / raw_s[-1] if raw_s[-1] > 0 else np.ones(len(raw_s))
         heading = start.rotation().radians() + turn * fraction
@@ -219,28 +238,37 @@ class DrivePath:
     # ---- Queries ------------------------------------------------------------
 
     def pose_at(self, index: int) -> Pose2d:
+        """Robot pose (position and heading) at the given point index."""
         return Pose2d(self.x[index], self.y[index], self.heading[index])
 
     def start_pose(self) -> Pose2d:
+        """Robot pose at the start of the path."""
         return self.pose_at(0)
 
     def end_pose(self) -> Pose2d:
+        """Robot pose at the end of the path."""
         return self.pose_at(len(self.s) - 1)
 
-    def event_pose(self, name: str) -> Pose2d:
-        return self.pose_at(int(round(self.events[name] / max(self.s[1], 1e-9))))
-
     def preview(self, every: int = 10) -> list[Pose2d]:
-        """Subset of poses for drawing on a dashboard."""
-        idx = list(range(0, len(self.s), every)) + [len(self.s) - 1]
+        """Every `every`th pose plus the last one, for drawing on a dashboard."""
+        idx = list(range(0, len(self.s), every))
+        if idx[-1] != len(self.s) - 1:
+            idx.append(len(self.s) - 1)
         return [self.pose_at(i) for i in idx]
 
 
 def _xy(point: dict) -> np.ndarray:
+    """A PathPlanner {"x": .., "y": ..} point as a numpy array."""
     return np.array([point["x"], point["y"]])
 
 
+def _arc_length(xy: np.ndarray) -> np.ndarray:
+    """Distance along a polyline at each of its points, starting at 0."""
+    return np.concatenate(([0.0], np.cumsum(np.hypot(*np.diff(xy, axis=0).T))))
+
+
 def _index_of(sorted_values: np.ndarray, value: float) -> int:
+    """Index of the first entry >= value, clamped to the last entry."""
     return min(int(np.searchsorted(sorted_values, value)), len(sorted_values) - 1)
 
 

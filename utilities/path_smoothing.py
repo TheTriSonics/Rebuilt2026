@@ -14,7 +14,6 @@ def smooth_controls(
     points: np.ndarray,
     start_dir: np.ndarray | None = None,
     end_dir: np.ndarray | None = None,
-    uniform: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Control points for the cubic beziers through `points` ((n+1, 2) array).
 
@@ -22,17 +21,16 @@ def smooth_controls(
     bezier is points[i], first[i], second[i], points[i+1].
 
     start_dir/end_dir pin the direction of travel at the ends (any length,
-    only the direction is used); leave them None for a "natural" end with no
-    bend. uniform=True reproduces the original FRCProfileGenerator solve,
-    where every segment counts the same regardless of length.
+    only the direction is used). Leave them None, or pass a zero-length
+    vector, for a "natural" end with no bend.
     """
     p = np.asarray(points, dtype=float)
     n = len(p) - 1
     if n < 1:
         raise ValueError("need at least two points")
-    chord = np.maximum(np.hypot(*np.diff(p, axis=0).T), 1e-6)
-    h = np.ones(n) if uniform else chord
-    slope = np.diff(p, axis=0) / h[:, None]  # direction (and stretch) of each segment
+    h = np.maximum(np.hypot(*np.diff(p, axis=0).T), 1e-6)
+    slope = np.diff(p, axis=0) / h[:, None]  # unit direction of each segment
+    start_dir, end_dir = _unit(start_dir), _unit(end_dir)
 
     # Unknowns are the tangent D_i at every point. Requiring the curve's
     # second derivative to match on both sides of each interior point gives
@@ -44,15 +42,14 @@ def smooth_controls(
         A[i, i] = 2 * (h[i - 1] + h[i])
         A[i, i + 1] = h[i - 1]
         b[i] = 3 * (h[i] * slope[i - 1] + h[i - 1] * slope[i])
-    # A pinned tangent is ~1 per meter with chord spacing, ~segment length with uniform
     if start_dir is None:
         A[0, 0], A[0, 1], b[0] = 2, 1, 3 * slope[0]
     else:
-        A[0, 0], b[0] = 1, _unit(start_dir) * (chord[0] if uniform else 1)
+        A[0, 0], b[0] = 1, start_dir
     if end_dir is None:
         A[n, n - 1], A[n, n], b[n] = 1, 2, 3 * slope[n - 1]
     else:
-        A[n, n], b[n] = 1, _unit(end_dir) * (chord[-1] if uniform else 1)
+        A[n, n], b[n] = 1, end_dir
     D = np.linalg.solve(A, b)
 
     first = p[:-1] + D[:-1] * (h[:, None] / 3)
@@ -60,6 +57,10 @@ def smooth_controls(
     return first, second
 
 
-def _unit(v: np.ndarray) -> np.ndarray:
+def _unit(v: np.ndarray | None) -> np.ndarray | None:
+    """v scaled to length 1, or None if v is None or (nearly) zero length."""
+    if v is None:
+        return None
     v = np.asarray(v, dtype=float)
-    return v / np.hypot(*v)
+    norm = np.hypot(*v)
+    return v / norm if norm > 1e-9 else None
