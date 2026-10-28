@@ -1,12 +1,16 @@
 import math
 from choreo.trajectory import SwerveTrajectory
+from pathplannerlib.trajectory import PathPlannerTrajectory
 import ntcore
+import wpilib
 from wpimath.geometry import Pose2d
-from magicbot import StateMachine, state
+from magicbot import StateMachine, state, tunable
 
 from components.drivetrain import DrivetrainComponent
 from components.shot_calculator import ShotCalculatorComponent
 from utilities.game import is_red
+from utilities.drive_path import DrivePath
+from utilities.path_follower import FollowerConfig, PathFollower
 from choreo import load_swerve_trajectory
 
 class Tanker(StateMachine):
@@ -19,6 +23,14 @@ class Tanker(StateMachine):
 
     stick_x, stick_y, stick_o = 0, 0, 0
 
+    # Point-to-point follower settings, picked up each time a new path starts
+    follow_max_speed = tunable(FollowerConfig.max_speed)
+    follow_max_accel = tunable(FollowerConfig.max_accel)
+    follow_max_decel = tunable(FollowerConfig.max_decel)
+    follow_max_lateral_accel = tunable(FollowerConfig.max_lateral_accel)
+    follow_lookahead = tunable(FollowerConfig.lookahead)
+    follow_heading_kp = tunable(FollowerConfig.heading_kp)
+
 
     def __init__(self):
         super().__init__()
@@ -29,6 +41,10 @@ class Tanker(StateMachine):
             .publish()
         )
         self._last_drive_mode = self.go_drive_local
+        nt = ntcore.NetworkTableInstance.getDefault()
+        self.path_pub = nt.getStructArrayTopic("/components/tanker/path", Pose2d).publish()
+        self.lookahead_pub = nt.getStructTopic("/components/tanker/lookahead", Pose2d).publish()
+        self.follower: PathFollower | None = None
 
     def set_stick_values(self, x: float, y: float, rot: float):
         self.stick_x = x
@@ -127,3 +143,56 @@ class Tanker(StateMachine):
         sample = self.traj.sample_at(state_tm, is_red())
         assert sample
         self.drivetrain.follow_path(sample)
+
+    def go_follow_pp_traj(self, traj: PathPlannerTrajectory, set_pose: bool = True) -> None:
+        """Follow a PathPlanner trajectory. Unlike Choreo, it is already flipped
+        for alliance/side when generated (see utilities/pathplanner_utils.py)."""
+        self.pp_traj = traj
+        if set_pose:
+            self.drivetrain.set_pose(traj.getInitialPose())
+        self.drivetrain.stop_snapping()
+        self.next_state_now(self.follow_pp_path)
+
+    @state(must_finish=True)
+    def follow_pp_path(self, initial_call: bool, state_tm: float):
+        # Past the end of the path sample() holds the final state, so we keep
+        # correcting toward the end pose until something else takes over
+        self.drivetrain.follow_pp_state(self.pp_traj.sample(state_tm))
+
+    def go_follow_drive_path(self, path: DrivePath, set_pose: bool = False) -> None:
+        """Follow a DrivePath with the point-to-point follower. Paths are in
+        field coordinates, so flip them with path.for_side() first."""
+        if set_pose:
+            self.drivetrain.set_pose(path.start_pose())
+        config = FollowerConfig(
+            max_speed=self.follow_max_speed,
+            max_accel=self.follow_max_accel,
+            max_decel=self.follow_max_decel,
+            max_lateral_accel=self.follow_max_lateral_accel,
+            lookahead=self.follow_lookahead,
+            heading_kp=self.follow_heading_kp,
+        )
+        # Start from the speed we're already going so on-the-fly paths blend in
+        current_speed = math.hypot(self.drivetrain.vx, self.drivetrain.vy)
+        self.follower = PathFollower(path, config, start_speed=current_speed)
+        self.path_pub.set(path.preview())
+        self._last_follow_time = wpilib.Timer.getFPGATimestamp()
+        self.drivetrain.stop_snapping()
+        self.next_state_now(self.follow_drive_path)
+
+    def is_path_finished(self) -> bool:
+        return self.follower is not None and self.follower.finished
+
+    def path_passed(self, event: str) -> bool:
+        """True once the current path is past the named event marker."""
+        return self.follower is not None and self.follower.passed(event)
+
+    @state(must_finish=True)
+    def follow_drive_path(self, initial_call: bool):
+        assert self.follower
+        now = wpilib.Timer.getFPGATimestamp()
+        dt, self._last_follow_time = now - self._last_follow_time, now
+        # Keeps running after the end so we hold the final pose
+        vx, vy, omega = self.follower.update(self.drivetrain.get_pose(), dt)
+        self.lookahead_pub.set(self.follower.lookahead_pose)
+        self.drivetrain.drive_field(vx, vy, omega)

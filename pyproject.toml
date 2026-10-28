@@ -7,11 +7,12 @@ requires-python = ">=3.13"
 dependencies = [
     "numpy>=2.4.1",
     "phoenix6>=26.1.0",
-    "robotpy[apriltag]>=2026.2.1.1",
+    "robotpy[apriltag,commands2]>=2026.2.1.1",
     "robotpy-apriltag>=2026.2.1.1",
     "wpilib>=2026.2.1",
     "sleipnirgroup-choreolib>=2026.0.1",
     "photonlibpy>=2026.2.2",
+    "robotpy-pathplannerlib>=2026.1.2",
 ]
 [tool.robotpy]
 
@@ -23,7 +24,7 @@ robotpy_version = "2026.2.1.1"
 components = [
     #"all",
     "apriltag",
-    # "commands2",
+    "commands2",  # required by robotpy-pathplannerlib
     # "cscore",
     # "romi",
     # "sim",
@@ -34,10 +35,10 @@ requires = [
     "phoenix6>=26.1.0",
     "photonlibpy>=2026.2.2",
     "sleipnirgroup-choreolib>=2026.0.1",
+    "robotpy-pathplannerlib>=2026.1.2",
     # "photonlibpy",
     # "robotpy-ctre",  # Phoenix 5
     # "robotpy-navx",
-    # "robotpy-pathplannerlib",
     # "robotpy-playingwithfusion",
     # "robotpy-rev",
 ]

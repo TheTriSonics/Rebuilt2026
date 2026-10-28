@@ -34,6 +34,7 @@ from components.gyro import GyroComponent
 from generated.tuner_constants_swerve import TunerConstants
 from utilities.game import is_match, is_red
 from choreo.trajectory import SwerveSample
+from pathplannerlib.trajectory import PathPlannerTrajectoryState
 from ids import TalonId, CancoderId
 
 
@@ -412,6 +413,19 @@ class DrivetrainComponent:
             robot_pose.rotation().radians(), sample.heading
         )
         desired_pose = Pose2d(Translation2d(sample.x, sample.y), Rotation2d(sample.heading))
+        self.desired_pose_pub.set(desired_pose)
+        self.drive_field(xvel, yvel, ovel)
+
+    def follow_pp_state(self, target: PathPlannerTrajectoryState) -> None:
+        """PathPlanner equivalent of follow_path, using the same PID gains."""
+        robot_pose = self.get_pose()
+        desired_pose = target.pose
+        speeds = target.fieldSpeeds
+        xvel = speeds.vx + self.path_pid_control.calculate(robot_pose.x, desired_pose.x)
+        yvel = speeds.vy + self.path_pid_control.calculate(robot_pose.y, desired_pose.y)
+        ovel = speeds.omega + self.path_heading_pid_control.calculate(
+            robot_pose.rotation().radians(), desired_pose.rotation().radians()
+        )
         self.desired_pose_pub.set(desired_pose)
         self.drive_field(xvel, yvel, ovel)
 
